@@ -3,7 +3,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 
 ######################################################################
 
@@ -82,6 +82,9 @@ my %text_strings = (
 
 	'SRT_C_FIND_NODE_BY_ID_NO_ARG_ID' => 
 		"$CC.find_node_by_id(): missing NODE_ID argument",
+
+	'SRT_C_FIND_CH_ND_BY_SID_NO_ARG_VAL' => 
+		"$CC.find_child_node_by_surrogate_id(): missing TARGET_ATTR_VALUE argument",
 
 	'SRT_N_NEW_NODE_NO_ARGS' => 
 		"$CN.new_node(): missing NODE_TYPE argument",
@@ -320,6 +323,13 @@ my %text_strings = (
 		"$CN.find_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing TARGET_ATTR_VALUE argument",
 
+	'SRT_N_FIND_CH_ND_BY_SID_NOT_IN_CONT' => 
+		"$CN.find_child_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"you can not invoke this method on this Node because it is not in a Container",
+	'SRT_N_FIND_CH_ND_BY_SID_NO_ARG_VAL' => 
+		"$CN.find_child_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing TARGET_ATTR_VALUE argument",
+
 	'SRT_N_ASDC_NID_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"a deferrable constraint was violated; ".
@@ -384,6 +394,10 @@ my %text_strings = (
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"a deferrable constraint was violated; this Node has too few ({COUNT}) ".
 		"primary-child '{CNTYPE}' Nodes; you must have at least {EXPNUM} of them",
+	'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN' => 
+		"$CN.assert_deferrable_constraints(): concerning the '{PSNTYPE}' pseudo-Node; ".
+		"a deferrable constraint was violated; this pseudo-Node has too few ({COUNT}) ".
+		"primary-child '{CNTYPE}' Nodes; you must have at least {EXPNUM} of them",
 	'SRT_N_ASDC_CH_N_TOO_MANY_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"a deferrable constraint was violated; this Node has too many ({COUNT}) ".
@@ -391,12 +405,6 @@ my %text_strings = (
 
 	'SRT_N_ASDC_MUDI_NON_DISTINCT' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
-		"a deferrable constraint was violated; ".
-		"at least two of its child Nodes have identical attribute set values ('{VALUES}') ".
-		"with respect to the mutual-distinct child group '{MUDI}'; you must change ".
-		"either the '{C1NTYPE}' Node with Id '{C1NID}' or the '{C2NTYPE}' Node with Id '{C2NID}'",
-	'SRT_N_ASDC_MUDI_NON_DISTINCT_PSN' => 
-		"$CN.assert_deferrable_constraints(): concerning the '{PSNTYPE}' pseudo-Node; ".
 		"a deferrable constraint was violated; ".
 		"at least two of its child Nodes have identical attribute set values ('{VALUES}') ".
 		"with respect to the mutual-distinct child group '{MUDI}'; you must change ".

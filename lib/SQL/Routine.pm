@@ -3,7 +3,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.53';
+our $VERSION = '0.54';
 
 use Locale::KeyedText '1.01';
 
@@ -314,35 +314,17 @@ my %PSEUDONODE_TYPES = (
 	$SQLRT_L1_ROOT_PSND => {
 	},
 	$SQLRT_L2_ELEM_PSND => {
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['scalar_data_type',['si_name'],[],[]],
-				['row_data_type',['si_name'],[],[]],
-			]],
-		],
 	},
 	$SQLRT_L2_BLPR_PSND => {
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['catalog',['si_name'],[],[]],
-				['application',['si_name'],[],[]],
-			]],
+		$TPI_CHILD_QUANTS => [
+			['application',1,undef],
 		],
 	},
 	$SQLRT_L2_TOOL_PSND => {
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['data_storage_product',['si_name'],[],[]],
-				['data_link_product',['si_name'],[],[]],
-			]],
-		],
 	},
 	$SQLRT_L2_SITE_PSND => {
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['catalog_instance',['si_name'],[],[]],
-				['application_instance',['si_name'],[],[]],
-			]],
+		$TPI_CHILD_QUANTS => [
+			['application_instance',1,undef],
 		],
 	},
 	$SQLRT_L2_CIRC_PSND => {
@@ -463,13 +445,6 @@ my %NODE_TYPES = (
 		},
 		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
 		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['catalog_link',['si_name'],[],[]],
-				['schema',['si_name'],[],[]],
-				['role',['si_name'],[],[]],
-			]],
-		],
 	},
 	'application' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -480,17 +455,6 @@ my %NODE_TYPES = (
 		},
 		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
 		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['catalog_link',['si_name'],[],[]],
-				['scalar_domain',['si_name'],[],[]],
-				['row_domain',['si_name'],[],[]],
-				['sequence',['si_name'],[],[]],
-				['table',['si_name'],[],[]],
-				['view',['si_name'],[],[]],
-				['routine',['si_name'],[],[]],
-			]],
-		],
 	},
 	'owner' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -531,16 +495,6 @@ my %NODE_TYPES = (
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
 		$TPI_MA_ATTRS => [[],[],[qw( owner )]],
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['scalar_domain',['si_name'],[],[]],
-				['row_domain',['si_name'],[],[]],
-				['sequence',['si_name'],[],[]],
-				['table',['si_name'],[],[]],
-				['view',['si_name'],[],[]],
-				['routine',['si_name'],[],[]],
-			]],
-		],
 	},
 	'role' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -836,6 +790,7 @@ my %NODE_TYPES = (
 		$TPI_SI_ATNM => [undef,undef,'si_row_field'],
 		$TPI_ANCES_ATCORS => {
 			'si_row_field' => [$S,$P],
+			'src_field' => [$S,$P,$C],
 		},
 	},
 	'view_join' => {
@@ -943,7 +898,13 @@ my %NODE_TYPES = (
 		],
 		$TPI_ANCES_ATCORS => {
 			'set_result_field' => [$S,$R,$P],
+			'set_src_field' => [$S,$R,$P,$C],
+			'call_src_arg' => [$S,$R,$P,$C],
+			'call_view_arg' => [$S,$P,'valf_call_view'],
+			'call_uroutine_cxt' => [$S,$P,'valf_call_uroutine'],
+			'call_uroutine_arg' => [$S,$P,'valf_call_uroutine'],
 			'valf_src_field' => [$S,$R,$P,$C],
+			'valf_result_field' => [$S,$R,$P],
 		},
 		$TPI_MUDI_ATGPS => [
 			['ak_view_arg',[
@@ -997,13 +958,6 @@ my %NODE_TYPES = (
 		$TPI_CHILD_QUANTS => [
 			['routine_context',0,1],
 			['routine_stmt',1,undef],
-		],
-		$TPI_MUDI_ATGPS => [
-			['ak_name',[
-				['routine_context',['si_name'],[],[]],
-				['routine_arg',['si_name'],[],[]],
-				['routine_var',['si_name'],[],[]],
-			]],
 		],
 	},
 	'routine_context' => {
@@ -1171,6 +1125,10 @@ my %NODE_TYPES = (
 				[[],[],['catalog_link'],[],0],
 			]],
 		],
+		$TPI_ANCES_ATCORS => {
+			'call_uroutine_cxt' => [$S,$P,'valf_call_uroutine'],
+			'call_uroutine_arg' => [$S,$P,'valf_call_uroutine'],
+		},
 		$TPI_MUDI_ATGPS => [
 			['ak_sroutine_arg',[
 				['routine_expr',[],['call_sroutine_cxt'],[]],
@@ -1363,17 +1321,18 @@ my %NODE_TYPES = (
 		],
 	},
 );
+my $ATTR_ID = 'id'; # attribute name to use for the node id
 my $ATTR_PP = 'pp'; # attribute name to use for the node's primary parent node-ref
+
 # This structure is used as a speed-efficiency measure.  It creates a reverse-index of sorts 
 # out of each SI_ATNM that resembles and is used as a simpler version of a MUDI_ATGP.
 # It makes the distinct constraint property of surrogate node ids faster to enforce.
 my %TYPE_CHILD_SI_ATNMS = ();
 while( my ($_node_type, $_type_info) = each %NODE_TYPES ) {
-	my $si_atnm = $_type_info->{$TPI_SI_ATNM} or next;
+	my $si_atnm = $_type_info->{$TPI_SI_ATNM} || $ATTR_ID;
 	if( my $pp_psnd = $_type_info->{$TPI_PP_PSEUDONODE} ) {
 		$TYPE_CHILD_SI_ATNMS{$pp_psnd} ||= {};
 		$TYPE_CHILD_SI_ATNMS{$pp_psnd}->{$_node_type} = $si_atnm;
-		next;
 	} else { # no pseudonode, so must be PP attrs
 		foreach my $pp_node_type (@{$_type_info->{$TPI_AT_NREFS}->{$ATTR_PP}}) {
 			$TYPE_CHILD_SI_ATNMS{$pp_node_type} ||= {};
@@ -1388,7 +1347,6 @@ my $NAMT_ID      = 'ID'; # node id attribute
 my $NAMT_LITERAL = 'LITERAL'; # literal attribute
 my $NAMT_ENUM    = 'ENUM'; # enumerated attribute
 my $NAMT_NODE    = 'NODE'; # node attribute
-my $ATTR_ID      = 'id'; # attribute name to use for the node id
 
 # These special hash keys are used by the get_all_properties[/*]() methods, 
 # and/or by the build*node*() functions and methods for RAD:
@@ -1570,6 +1528,9 @@ sub _throw_error_message {
 		if( $self->{$NPROP_CONTAINER} ) {
 			$args->{'SIDCH'} = $self->_get_surrogate_id_chain_as_str();
 		}
+		if( ref($args->{'ARG'}) eq 'ARRAY' ) {
+			$args->{'ARG'} = 'PERL_ARRAY:['.join(',',@{$args->{'ARG'}}).']';
+		}
 	}
 	die Locale::KeyedText->new_message( $error_code, $args );
 }
@@ -1713,6 +1674,39 @@ sub find_node_by_id {
 
 ######################################################################
 
+sub find_child_node_by_surrogate_id {
+	my ($container, $target_attr_value) = @_;
+	defined( $target_attr_value ) or $container->_throw_error_message( 'SRT_C_FIND_CH_ND_BY_SID_NO_ARG_VAL' );
+	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+	my ($l2_psn, $chain_first, @chain_rest);
+	unless( defined( $target_attr_value->[0] ) ) {
+		# The given surrogate id chain starts with [undef,'root',<l2-psn>,<chain-of-node-si>].
+		(undef, undef, $l2_psn, $chain_first, @chain_rest) = @{$target_attr_value};
+	} else {
+		# The given surrogate id chain starts with [<chain-of-node-si>].
+		($chain_first, @chain_rest) = @{$target_attr_value};
+	}
+	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
+	my @nodes_to_search;
+	if( $l2_psn and grep { $l2_psn eq $_ } @L2_PSEUDONODE_LIST ) {
+		# Search only children of a specific pseudo-Node.
+		@nodes_to_search = @{$pseudonodes->{$l2_psn}};
+	} else {
+		# Search children of all pseudo-Nodes.
+		@nodes_to_search = map { @{$pseudonodes->{$_}} } @L2_PSEUDONODE_LIST;
+	}
+	foreach my $child (@nodes_to_search) {
+		if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
+			if( $si_atvl eq $chain_first ) {
+				return( @chain_rest ? $child->find_child_node_by_surrogate_id( \@chain_rest ) : $child );
+			}
+		}
+	}
+	return( undef );
+}
+
+######################################################################
+
 sub get_next_free_node_id {
 	my ($container) = @_;
 	return( $container->{$CPROP_NEXT_FREE_NID} );
@@ -1731,8 +1725,7 @@ sub assert_deferrable_constraints {
 	}
 	# Test nodes in the same order that they appear in the Node tree.
 	foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
-		SQL::Routine::Node->_assert_child_comp_deferrable_constraints(
-			$pseudonode_name, $container->{$CPROP_PSEUDONODES}->{$pseudonode_name} );
+		SQL::Routine::Node->_assert_child_comp_deferrable_constraints( $pseudonode_name, $container );
 		foreach my $child_node (@{$container->{$CPROP_PSEUDONODES}->{$pseudonode_name}}) {
 			$container->_assert_deferrable_constraints( $child_node );
 		}
@@ -2706,6 +2699,8 @@ sub find_node_by_surrogate_id {
 	my %exp_p_node_types = map { ($_ => 1) } @{$type_info->{$TPI_AT_NREFS}->{$self_attr_name}};
 	if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
 		return( $node->_find_node_by_surrogate_id_using_path( \%exp_p_node_types, $target_attr_value, $search_path ) );
+	} elsif( !defined( $target_attr_value->[0] ) ) {
+		return( $node->_find_node_by_surrogate_id_from_root( \%exp_p_node_types, $target_attr_value ) );
 	} else {
 		return( $node->_find_node_by_surrogate_id_within_layers( \%exp_p_node_types, $target_attr_value->[0] ) );
 	}
@@ -2749,6 +2744,16 @@ sub _find_node_by_surrogate_id_within_layers {
 		# There is no further up that we can go, so no match was found.
 		return( undef );
 	}
+}
+
+sub _find_node_by_surrogate_id_from_root {
+	my ($node, $exp_p_node_types, $target_attr_value) = @_;
+	if( my $found_node = $node->{$NPROP_CONTAINER}->find_child_node_by_surrogate_id( $target_attr_value ) ) {
+		if( $exp_p_node_types->{$found_node->{$NPROP_NODE_TYPE}} ) {
+			return( $found_node );
+		}
+	}
+	return( undef );
 }
 
 sub _find_node_by_surrogate_id_using_path {
@@ -2823,6 +2828,34 @@ sub _find_node_by_surrogate_id_using_path {
 
 ######################################################################
 
+sub find_child_node_by_surrogate_id {
+	my ($node, $target_attr_value) = @_;
+	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_FIND_CH_ND_BY_SID_NOT_IN_CONT' );
+	defined( $target_attr_value ) or $node->_throw_error_message( 'SRT_N_FIND_CH_ND_BY_SID_NO_ARG_VAL' );
+	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+	if( defined( $target_attr_value->[0] ) ) {
+		# The given surrogate id chain is relative to the current Node.
+		my $curr_node = $node;
+		ELEM: foreach my $chain_element (@{$target_attr_value}) {
+			foreach my $child (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+				if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
+					if( $si_atvl eq $chain_element ) {
+						$curr_node = $child;
+						next ELEM;
+					}
+				}
+			}
+			return( undef );
+		}
+		return( $curr_node );
+	} else {
+		# The given surrogate id chain starts at the root of the current Node's Container.
+		return( $node->{$NPROP_CONTAINER}->find_child_node_by_surrogate_id( $target_attr_value ) );
+	}
+}
+
+######################################################################
+
 sub assert_deferrable_constraints {
 	my ($node) = @_;
 	# Only "Well Known" Nodes would get this invoked by Container.assert_deferrable_constraints().
@@ -2830,8 +2863,7 @@ sub assert_deferrable_constraints {
 	# is invoked directly by external code.
 	$node->_assert_in_node_deferrable_constraints(); # can call on Alone, Well Known
 	if( $node->{$NPROP_CONTAINER} ) {
-		$node->_assert_child_comp_deferrable_constraints(
-			undef, $node->get_child_nodes() ); # call on Well Known only
+		$node->_assert_child_comp_deferrable_constraints(); # call on Well Known only
 	}
 }
 
@@ -3005,48 +3037,62 @@ sub _assert_in_node_deferrable_constraints {
 
 sub _assert_child_comp_deferrable_constraints {
 	# Assertions in this method can only be performed on Nodes in "Well Known" status.
-	my ($node_or_class, $pseudonode_name, $child_nodes) = @_;
+	my ($node_or_class, $pseudonode_name, $container) = @_;
 	my $type_info = ref($node_or_class) ? 
 		$NODE_TYPES{$node_or_class->{$NPROP_NODE_TYPE}} : 
 		$PSEUDONODE_TYPES{$pseudonode_name};
 
-	# Do not evaluate any child Nodes that we aren't the primary parent Node of.
+	# First, gather a child list.
+
+	my @parent_node_types = ();
+	my @child_nodes = ();
 	if( ref($node_or_class) ) {
-		# If $node_or_class is a Node, then _assert_in_node_deferrable_constraints() 
-		# would have already been called on it, so each child Node is guaranteed to have a 
-		# specific primary parent Node attribute, and that attribute is set.
-		my @child_nodes = ();
+		my @parent_nodes = ($node_or_class);
+		my $curr_node = $node_or_class;
+		while( my $wr_atnm = $NODE_TYPES{$curr_node->{$NPROP_NODE_TYPE}}->{$TPI_WR_ATNM} ) {
+			if( $curr_node = $curr_node->{$NPROP_AT_NREFS}->{$wr_atnm} ) {
+				unshift( @parent_nodes, $curr_node );
+			} else {
+				last; # avoid undef warnings in while expr due to unset $curr_node
+			}
+		}
 		my %children_were_output = ();
-		foreach my $child_node (@{$child_nodes}) {
-			if( my $child_main_parent = $child_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
-				if( $child_main_parent eq $node_or_class ) {
-					# Only nav to child if we are its primary parent, not simply any parent.
-					unless( $children_were_output{$child_node} ) {
-						# Only nav to child once; a child may link to primary parent multiple times.
-						push( @child_nodes, $child_node );
-						$children_were_output{$child_node} = 1;
+		foreach my $parent_node (@parent_nodes) {
+			push( @parent_node_types, $parent_node->{$NPROP_NODE_TYPE} );
+			foreach my $child_node (@{$parent_node->{$NPROP_CHILD_NODES}}) {
+				if( my $child_main_parent = $child_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+					if( $child_main_parent eq $parent_node ) {
+						# Only nav to child if we are its primary parent, not simply any parent.
+						unless( $children_were_output{$child_node} ) {
+							# Only nav to child once; a child may link to primary parent multiple times.
+							push( @child_nodes, $child_node );
+							$children_were_output{$child_node} = 1;
+						}
 					}
 				}
 			}
 		}
-		$child_nodes = \@child_nodes; # We are primary-parent of all remaining child Nodes.
+	} else {
+		push( @parent_node_types, $pseudonode_name );
+		@child_nodes = @{$container->{$CPROP_PSEUDONODES}->{$pseudonode_name}};
 	}
 
 	# 1: Now assert that the surrogate id (SI) of each child Node is distinct.
 
-	if( my $type_child_si = ref($node_or_class) ? 
-			$TYPE_CHILD_SI_ATNMS{$node_or_class->{$NPROP_NODE_TYPE}} : 
-			$TYPE_CHILD_SI_ATNMS{$pseudonode_name} ) {
+	my %type_child_si = map { (%{$TYPE_CHILD_SI_ATNMS{$_}||{}}) } @parent_node_types;
+	if( scalar( keys %type_child_si ) ) {
 		my %examined_children = ();
-		foreach my $child_node (@{$child_nodes}) {
+		foreach my $child_node (@child_nodes) {
 			my $child_node_type = $child_node->{$NPROP_NODE_TYPE};
-			if( my $si_atnm = $type_child_si->{$child_node_type} ) {
-				my ($lit, $enum, $nref) = @{$si_atnm};
+			if( my $si_atnm = $type_child_si{$child_node_type} ) {
+				my ($lit, $enum, $nref) = ref($si_atnm) eq 'ARRAY' ? @{$si_atnm} : ();
 				my $hash_key = 
 					$lit ? $child_node->{$NPROP_AT_LITERALS}->{$lit} : 
 					$enum ? $child_node->{$NPROP_AT_ENUMS}->{$enum} : 
-					$nref ? $child_node->{$NPROP_AT_NREFS}->{$nref} : undef;
+					$nref ? $child_node->{$NPROP_AT_NREFS}->{$nref} : 
+					$child_node->{$NPROP_NODE_ID};
 				defined( $hash_key ) or next; # An error, but let a different test flag it.
+				ref($hash_key) and next; # some comps by target lit/enum are known to be false errors; todo, see if any legit errors
 				if( exists( $examined_children{$hash_key} ) ) {
 					# Multiple Nodes have the same primary-parent and surrogate id.
 					my $child_node_id = $child_node->{$NPROP_NODE_ID};
@@ -3077,17 +3123,22 @@ sub _assert_child_comp_deferrable_constraints {
 		foreach my $child_quant (@{$child_quants}) {
 			my ($child_node_type, $range_min, $range_max) = @{$child_quant};
 			my $child_count = 0;
-			foreach my $child_node (@{$child_nodes}) {
+			foreach my $child_node (@child_nodes) {
 				$child_node->{$NPROP_NODE_TYPE} eq $child_node_type or next;
 				$child_count ++;
 			}
-			# SHORT CUT: We know that with all of our existing config data, 
-			# there are no pseudo-Nodes with TPI_CHILD_QUANTS, only Nodes.
 			if( $child_count < $range_min ) { 
-				$node_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET', 
-					{ 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
+				if( ref($node_or_class) ) {
+					$node_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET', 
+						{ 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
+				} else {
+					$node_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN', 
+						{ 'COUNT' => $child_count, 'PSNTYPE' => $pseudonode_name, 'EXPNUM' => $range_min } );
+				}
 			}
 			if( defined( $range_max ) and $child_count > $range_max ) {
+				# SHORT CUT: We know that with all of our existing config data, 
+				# there are no pseudo-Nodes that have a maximum limit for children.
 				$node_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_MANY_SET', 
 					{ 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_max } );
 			}
@@ -3103,7 +3154,7 @@ sub _assert_child_comp_deferrable_constraints {
 			my %examined_children = ();
 			foreach my $mudi_atgp_subset (@{$mudi_atgp_subsets}) {
 				my ($child_node_type, $lits, $enums, $nrefs) = @{$mudi_atgp_subset};
-				CHILD: foreach my $child_node (@{$child_nodes}) {
+				CHILD: foreach my $child_node (@child_nodes) {
 					$child_node->{$NPROP_NODE_TYPE} eq $child_node_type or next CHILD;
 					my $hash_key = ',';
 					foreach my $attr_name (@{$lits}) {
@@ -3129,18 +3180,12 @@ sub _assert_child_comp_deferrable_constraints {
 						my $matched_child_node = $examined_children{$hash_key};
 						my $matched_child_node_type = $matched_child_node->{$NPROP_NODE_TYPE};
 						my $matched_child_node_id = $matched_child_node->{$NPROP_NODE_ID};
-						if( ref($node_or_class) ) {
-							$node_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT', 
-								{ 'VALUES' => $hash_key, 'MUDI' => $mudi_name, 
-								'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
-								'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
-						} else {
-							$node_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT_PSN', 
-								{ 'PSNTYPE' => $pseudonode_name, 
-								'VALUES' => $hash_key, 'MUDI' => $mudi_name, 
-								'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
-								'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
-						}
+						# SHORT CUT: We know that with all of our existing config data, 
+						# there are no pseudo-Nodes with TPI_MUDI_ATGPS, only Nodes.
+						$node_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT', 
+							{ 'VALUES' => $hash_key, 'MUDI' => $mudi_name, 
+							'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
+							'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
 					}
 					$examined_children{$hash_key} = $child_node;
 				}
@@ -4165,6 +4210,23 @@ all Nodes in a Container have a distinct Node Id, there will never be more than
 one Node returned.  The speed of this search is also very fast, and takes the
 same amount of time regardless of how many Nodes are in the Container.
 
+=head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
+
+	my $data_type_node = $model->find_child_node_by_surrogate_id( 'str100' );
+
+This "getter" method searches for a Node in this Container whose Surrogate Node
+Id matches the TARGET_ATTR_VALUE argument; if one is found then it is returned
+by reference; if none is found, then undef is returned.  The TARGET_ATTR_VALUE
+argument is treated as an array-ref; if it is in fact not one, that single value
+is used as a single-element array.  The search is multi-generational, one
+generation more childwards per array element.  If the first array element is
+undef, then we assume it follows the format that Node.get_surrogate_id_chain()
+outputs; the first 3 elements are [undef,'root',<l2-psn>] and the 4th element
+matches a Node that has a pseudo-Node parent.  If the first array element is not
+undef, we treat it as the aforementioned 4th element.  If a valid <l2-psn> is
+extracted, then only child Nodes of that pseudo-Node are searched; otherwise,
+the child Nodes of all pseudo-Nodes are searched.
+
 =head2 get_next_free_node_id()
 
 	my $node_id = $model->get_next_free_node_id();
@@ -4552,7 +4614,7 @@ returns the current Node's surrogate id chain as an array ref.
 
 =head2 find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
 
-	my $table_node = $table_index_node->find_node_by_surrogate_id( 'father_id', 'person' );
+	my $table_node = $table_index_node->find_node_by_surrogate_id( 'f_table', 'person' );
 
 This "getter" method may only be called on Nodes that are in a Container, and
 the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
@@ -4564,6 +4626,22 @@ reference; if none is found, then undef is returned.  The search is context
 sensitive and scoped; it starts by examining the Nodes that are closest to this
 Node's location in its Container's Node tree and then spreads outwards, looking
 within just the locations that are supposed to be visible to this Node.
+
+=head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
+
+	my $table_index_node = $table_node->find_child_node_by_surrogate_id( 'fk_father' );
+
+This "getter" method may only be called on Nodes that are in a Container, or it
+throws an exception.  This method searches for a child Node of the current Node
+whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if one is found
+then it is returned by reference; if none is found, then undef is returned.  The
+TARGET_ATTR_VALUE argument is treated as an array-ref; if it is in fact not one,
+that single value is used as a single-element array.  The search is
+multi-generational, one generation more childwards per array element; the first
+element matches a child of the invoked Node, the next element the child of the
+first matched child, and so on.  If said array ref has undef as its first
+element, then this method behaves the same as
+Container.find_child_node_by_surrogate_id( TARGET_ATTR_VALUE ).
 
 =head2 assert_deferrable_constraints()
 

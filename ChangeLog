@@ -1,3 +1,65 @@
+2005-02-15   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.54.
+
+	* New code file versions are: Routine.pm v0.54 and en.pm v0.24.
+
+	* This is a snapshot release, showing a "before" state to contrast with the
+	"after" state of release v0.55, which will change the implementation of
+	parent-child Node relationships, including what properties Nodes have and
+	their use code in Routine.pm.
+
+	* Multiple corresponding updates to the data dictionary represented in
+	Language.pod and Routine.pm.  Added new or updated the "Ancestor Attribute
+	Correlation List" for these 3 Node types, to add 9 new correlation pairs:
+	view_field (1), view_expr (6), routine_expr (2).  Added new "Child Quantity
+	List" for these 2 pseudo-Node types: 'blueprints', 'sites'; these new
+	constraints require that every model have at least 1 'application' and
+	'application_instance'.  Removed the explicit "Distinct Child Groups List"
+	constraints, (namely those that just acted on surrogate id attributes, which
+	now have implicit constraints instead), for 4 pseudo-Node and 4 Node types:
+	elements, blueprints, catalog, application, schema, routine, tools, sites.
+	Also, small NODE TYPES docs update in Language.pod about SI constraints.
+
+	* Upgraded the surrogate id distinctness constraints so that they now apply
+	to children of all pseudo-Nodes and Nodes, and they are now all implicitly
+	active (no data dictionary mentions).  Also, if a given primary-parent Node
+	is a "wrapper" for another Node, then the combined set of child Nodes
+	between all of them must now have distinct surrogate id values.  Most
+	Routine.pm upgrades for this were in the
+	_assert_child_comp_deferrable_constraints() private method, which also now
+	takes a different argument list; updated calls to it in the
+	assert_deferrable_constraints() methods; a minor update to the
+	%TYPE_CHILD_SI_ATNMS dict-index structure was also done.
+
+	* Updated _assert_child_comp_deferrable_constraints(), and en.pm, concerning
+	error messages when the common parent is a pseudo-Node; there is now one
+	(SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN) for CQL constraints, and there is no
+	longer one (SRT_N_ASDC_MUDI_NON_DISTINCT_PSN) for DCGL constraints.
+
+	* Upgraded method find_node_by_surrogate_id() to take a rooted target
+	parameter (needed for objects in the 'application' space to see those in the
+	'catalog' space); added 2 new Routine.pm public methods
+	[Container|Node].find_child_node_by_surrogate_id(), and a new private method
+	_find_node_by_surrogate_id_from_root(); added 3 new corresponding en.pm user
+	text messages.
+
+	* Upgraded _throw_error_message() to serialize any array-ref value given 
+	as the 'ARG' message argument value.
+
+	* Fixed minor bug in documentation for find_node_by_surrogate_id().
+
+	* Multiple test suite updates.  Large upgrades to t_SRT_Abstract.pm so that
+	it is now synchronized with t_SRT_Terse.pm; both tests now produce identical
+	SRT models, except for their Node Id values; minor updates to
+	t_SRT_Terse.pm, mainly for formatting, and nothing was removed.  These two
+	test files should have always been synchronized, but SQL::Routine had
+	previously lacked the ability to implement some things with just the
+	surrogate-id API.  Also added a new 'application_instance' Node to both test
+	files, since it is now mandatory.  Simplified the t_SRT_Circular.pm tests;
+	removed the non-View Nodes from the Model since they weren't needed for the
+	test.  There were zero changes to t_SRT_Verbose.pm.
+
 2005-02-11   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.53.

@@ -1468,16 +1468,21 @@ NODE_ID attribute must always be set, and have a distinct value relative to all
 other Nodes in the same Container.  Another of these is that, when a Node is in
 a Container, any Node ref attributes can only point to Nodes that are
 simultaneously in the same container.  As another, you can never set a primary
-parent for a Node which is a direct or indirect descendent of that Node, so
-circular references are guaranteed to never exist.
+parent for a Node which is a direct or indirect descendent of that Node
+(including the linking Node itself), so circular references are guaranteed to
+never exist.
 
 The "Attribute List" also contains a few details that pertain to deferrable
 constraints.  One deferrable constraint is that a Node's NODE_ID attribute must
 be set; that is, this constraint is only deferrable for Nodes that are not in
 Containers.  Another deferrable constraint is that a Node's primary-parent
 attribute must be set, if the Node has one.  Another deferrable constraint is
-that any "SI" and "WR" and "MA" attributes are populated.  All "Attribute List"
-deferrable constraints can be tested on Nodes of any status, including "Alone".
+that any "SI" and "MA" attributes are populated.  Another deferrable constraint
+is that all Nodes sharing a common primary-parent have a distinct surrogate id
+value; moreover, if a given primary-parent Node is a "wrapper" for another Node,
+then the combined set of child Nodes between all of them must have distinct
+surrogate id values.  All "Attribute List" deferrable constraints can be tested
+on Nodes of any status, including "Alone".
 
 The B<Exclusive Attribute Groups List> says what groups of mutually exclusive
 attributes there are for a Node type; no more than one member of a group may
@@ -1555,18 +1560,19 @@ group must have distinct/unique values for particular attributes (usually
 
 For each mudi-name group there can be one or more Node attributes where the
 attribute value combination must be distinct, besides the constantly applied
-distinct NODE_ID/id constraint; a single child-attr-name on a line means only
-that one attribute is distinct within itself, where multiple child-attr-name
-indicate a combination to check.  If there are multiple lines under a
-mudi-name, then each one will have a different child-node-type; the attributes
-that line up vertically between different Node types are meant to correspond,
-and would be of the same major+minor attribute type; each corresponding line
-would also have the same number of child-attr-name.  For all comparisons, an
-undefined attribute value always counts as a distinct value; multiple undefined
-corresponding values will not violate the constraint (other constraints
-eliminate undefined values when they are a problem).  The implicit distinct-id
-constraints all have a mudi-name of 'primary'.  All "Distinct Child Groups
-List" constraints are deferrable and can only be tested on "Well Known" Nodes.
+distinct NODE_ID/id constraint, and the deferrable distinct surrogate id
+constraint; a single child-attr-name on a line means only that one attribute is
+distinct within itself, where multiple child-attr-name indicate a combination to
+check.  If there are multiple lines under a mudi-name, then each one will have a
+different child-node-type; the attributes that line up vertically between
+different Node types are meant to correspond, and would be of the same
+major+minor attribute type; each corresponding line would also have the same
+number of child-attr-name.  For all comparisons, an undefined attribute value
+always counts as a distinct value; multiple undefined corresponding values will
+not violate the constraint (other constraints eliminate undefined values when
+they are a problem).  The implicit distinct-id constraints all have a mudi-name
+of 'primary'.  All "Distinct Child Groups List" constraints are deferrable and
+can only be tested on "Well Known" Nodes.
 
 =head2 root
 
@@ -1576,12 +1582,6 @@ other 5 pseudo-Nodes: elements, blueprints, tools, sites, circumventions.
 =head2 elements
 
 This pseudo-Node has two child Node-types: scalar_data_type, row_data_type.
-
-Distinct Child Groups List:
-
-	ak_name:
-		scalar_data_type - si_name
-		row_data_type - si_name
 
 =head2 scalar_data_type
 
@@ -1709,11 +1709,9 @@ Attribute List:
 
 This pseudo-Node has two child Node-types: catalog, application.
 
-Distinct Child Groups List:
+Child Quantity List:
 
-	ak_name:
-		catalog - si_name
-		application - si_name
+	application - 1
 
 =head2 catalog
 
@@ -1736,13 +1734,6 @@ Attribute List:
 	si_name - L.cstr - SI - lets you label the blueprint if you want; this isn't used when making SQL
 	single_schema - L.bool - true, catalog lim to 1 schema, rendered in 1-sch prod w no nm prefix
 
-Distinct Child Groups List:
-
-	ak_name:
-		catalog_link - si_name
-		schema - si_name
-		role - si_name
-
 =head2 application
 
 This type of Node collects information that is specific to a database-using
@@ -1764,17 +1755,6 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	si_name - L.cstr - SI - lets you label the blueprint if you want
-
-Distinct Child Groups List:
-
-	ak_name:
-		catalog_link - si_name
-		scalar_domain - si_name
-		row_domain - si_name
-		sequence - si_name
-		table - si_name
-		view - si_name
-		routine - si_name
 
 =head2 owner
 
@@ -1848,16 +1828,6 @@ Attribute List:
 	pp - N.catalog - the catalog that this schema/namespace is in
 	si_name - L.cstr - SI - the name this schema/namespace is identified by
 	owner - N.owner - MA - the user that owns this schema
-
-Distinct Child Groups List:
-
-	ak_name:
-		scalar_domain - si_name
-		row_domain - si_name
-		sequence - si_name
-		table - si_name
-		view - si_name
-		routine - si_name
 
 =head2 role
 
@@ -2254,6 +2224,7 @@ Attribute List:
 Ancestor Attribute Correlation List:
 
 	si_row_field - S.P - match child of S.P(view).row_data_type(row_data_type)
+	src_field - S.P.C - match child of S.P(view).C(view_src)
 
 =head2 view_join
 
@@ -2384,7 +2355,13 @@ Local Attribute Dependencies List:
 Ancestor Attribute Correlation List:
 
 	set_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
+	set_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+	call_src_arg - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+	call_view_arg - S.P.valf_call_view - match child of S.P(view_expr).valf_call_view(view)
+	call_uroutine_cxt - S.P.valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
+	call_uroutine_arg - S.P.valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
 	valf_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+	valf_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
 
 Distinct Child Groups List:
 
@@ -2437,13 +2414,6 @@ Child Quantity List:
 
 	routine_context - 0 - 1
 	routine_stmt - 1
-
-Distinct Child Groups List:
-
-	ak_name:
-		routine_context - si_name
-		routine_arg - si_name
-		routine_var - si_name
 
 =head2 routine_context
 
@@ -2604,6 +2574,11 @@ Local Attribute Dependencies List:
 	valf_call_uroutine:
 		catalog_link
 
+Ancestor Attribute Correlation List:
+
+	call_uroutine_cxt - S.P.valf_call_uroutine - match child of S.P(routine_[expr|stmt]).valf_call_uroutine(routine)
+	call_uroutine_arg - S.P.valf_call_uroutine - match child of S.P(routine_[expr|stmt]).valf_call_uroutine(routine)
+
 Distinct Child Groups List:
 
 	ak_sroutine_arg:
@@ -2617,12 +2592,6 @@ Distinct Child Groups List:
 
 This pseudo-Node has two child Node-types: data_storage_product,
 data_link_product.
-
-Distinct Child Groups List:
-
-	ak_name:
-		data_storage_product - si_name
-		data_link_product - si_name
 
 =head2 data_storage_product
 
@@ -2683,11 +2652,9 @@ Attribute List:
 This pseudo-Node has two child Node-types: catalog_instance,
 application_instance.
 
-Distinct Child Groups List:
+Child Quantity List:
 
-	ak_name:
-		catalog_instance - si_name
-		application_instance - si_name
+	application_instance - 1
 
 =head2 catalog_instance
 

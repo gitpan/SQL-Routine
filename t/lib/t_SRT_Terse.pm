@@ -171,10 +171,8 @@ sub create_and_populate_model {
 		) ),
 		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
 				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
-			[ { 'id' => 701, 'si_name' => 'primary'        , 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 702, 'si_field' => 220, }, ], 
-			[ { 'id' => 703, 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 704, 'si_field' => 221, }, ], 
+			[ { 'id' => 701, 'si_name' => 'primary'        , 'index_type' => 'UNIQUE', }, { 'id' => 702, 'si_field' => 220, }, ], 
+			[ { 'id' => 703, 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, { 'id' => 704, 'si_field' => 221, }, ], 
 			[ { 'id' => 705, 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 44, }, 
 				{ 'id' => 706, 'si_field' => 224, 'f_field' => 220 }, ], 
 			[ { 'id' => 707, 'si_name' => 'fk_mother', 'index_type' => 'FOREIGN', 'f_table' => 44, }, 
@@ -232,12 +230,9 @@ sub create_and_populate_model {
 		) ),
 		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
 				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
-			[ { 'id' => 709, 'si_name' => 'primary'         , 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 710, 'si_field' => 201, }, ], 
-			[ { 'id' => 711, 'si_name' => 'ak_login_name'   , 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 712, 'si_field' => 202, }, ], 
-			[ { 'id' => 713, 'si_name' => 'ak_private_email', 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 714, 'si_field' => 205, }, ], 
+			[ { 'id' => 709, 'si_name' => 'primary'         , 'index_type' => 'UNIQUE', }, { 'id' => 710, 'si_field' => 201, }, ], 
+			[ { 'id' => 711, 'si_name' => 'ak_login_name'   , 'index_type' => 'UNIQUE', }, { 'id' => 712, 'si_field' => 202, }, ], 
+			[ { 'id' => 713, 'si_name' => 'ak_private_email', 'index_type' => 'UNIQUE', }, { 'id' => 714, 'si_field' => 205, }, ], 
 		) ),
 	] } );
 
@@ -249,10 +244,8 @@ sub create_and_populate_model {
 		) ),
 		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
 				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
-			[ { 'id' => 715, 'si_name' => 'primary'       , 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 716, 'si_field' => 208, }, ], 
-			[ { 'id' => 717, 'si_name' => 'ak_public_name', 'index_type' => 'UNIQUE', }, 
-				{ 'id' => 718, 'si_field' => 209, }, ], 
+			[ { 'id' => 715, 'si_name' => 'primary'       , 'index_type' => 'UNIQUE', }, { 'id' => 716, 'si_field' => 208, }, ], 
+			[ { 'id' => 717, 'si_name' => 'ak_public_name', 'index_type' => 'UNIQUE', }, { 'id' => 718, 'si_field' => 209, }, ], 
 			[ { 'id' => 719, 'si_name' => 'fk_user'       , 'index_type' => 'FOREIGN', 'f_table' => 41, }, 
 				{ 'id' => 720, 'si_field' => 208, 'f_field' => 201 }, ], 
 		) ),
@@ -314,13 +307,10 @@ sub create_and_populate_model {
 		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 'CHILDREN' => [ 
 				map { { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_ } } @{$_->[1]}
 				] } } (
-			[ { 'id' => 721, 'si_name' => 'primary', 'index_type' => 'UNIQUE', },
-				[ { 'id' => 722, 'si_field' => 217, }, 
-				{ 'id' => 723, 'si_field' => 218, }, ],
-			], 
+			[ { 'id' => 721, 'si_name' => 'primary', 'index_type' => 'UNIQUE', }, 
+				[ { 'id' => 722, 'si_field' => 217, }, { 'id' => 723, 'si_field' => 218, }, ], ], 
 			[ { 'id' => 724, 'si_name' => 'fk_user', 'index_type' => 'FOREIGN', 'f_table' => 41, }, 
-				[ { 'id' => 725, 'si_field' => 217, 'f_field' => 201 }, ],
-			], 
+				[ { 'id' => 725, 'si_field' => 217, 'f_field' => 201 }, ], ], 
 		) ),
 	] } );
 
@@ -331,19 +321,13 @@ sub create_and_populate_model {
 
 	$application->build_child_node_tree( { 'NODE_TYPE' => 'view', 'ATTRS' => { 'id' => 53, 
 			'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 313, }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'id' => 76, 'si_name' => 'user_pref', 
-			'match' => 43, }, 'CHILDREN' => [ 
+		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'id' => 76, 'si_name' => 'user_pref', 'match' => 43, }, 'CHILDREN' => [ 
 			{ 'NODE_TYPE' => 'view_src_field', 'ATTRS' => { 'id' => 423, 'si_match_field' => 218, }, },
 			{ 'NODE_TYPE' => 'view_src_field', 'ATTRS' => { 'id' => 424, 'si_match_field' => 219, }, },
 		] },
-		( map { { 'NODE_TYPE' => 'view_field', 'ATTRS' => $_ } } (
-			{ 'id' => 622, 'si_row_field' => 122, },
-			{ 'id' => 623, 'si_row_field' => 123, },
-		) ),
+		{ 'NODE_TYPE' => 'view_field', 'ATTRS' => { 'id' => 842, 'si_row_field' => 122, 'src_field' => 424, }, },
 		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'RESULT', 
-			'id' => 842, 'set_result_field' => 122, 'cont_type' => 'SCALAR', 'valf_src_field' => 424, }, },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'RESULT', 
-			'id' => 843, 'set_result_field' => 123, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, 'CHILDREN' => [ 
+				'id' => 843, 'set_result_field' => 123, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, 'CHILDREN' => [ 
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
 				'id' => 844, 'cont_type' => 'SCALAR', 'valf_src_field' => 424, }, },
 		] },
@@ -460,7 +444,8 @@ sub create_and_populate_model {
 
 	##### NEXT SET INSTANCE-TYPE DETAILS #####
 
-	# ... TODO ...
+	my $app_inst = $model->build_child_node_tree( { 'NODE_TYPE' => 'application_instance', 
+		'ATTRS' => { 'id' => 35, 'si_name' => 'My App Instance', 'blueprint' => 34, }, } ); 
 
 	##### END OF DETAILS SETTING #####
 
@@ -708,9 +693,7 @@ sub expected_model_xml_output {
 					<view_src_field id="423" si_match_field="218" />
 					<view_src_field id="424" si_match_field="219" />
 				</view_src>
-				<view_field id="622" si_row_field="122" />
-				<view_field id="623" si_row_field="123" />
-				<view_expr id="842" view_part="RESULT" set_result_field="122" cont_type="SCALAR" valf_src_field="424" />
+				<view_field id="842" si_row_field="122" src_field="424" />
 				<view_expr id="843" view_part="RESULT" set_result_field="123" cont_type="SCALAR" valf_call_sroutine="COUNT">
 					<view_expr id="844" cont_type="SCALAR" valf_src_field="424" />
 				</view_expr>
@@ -781,7 +764,9 @@ sub expected_model_xml_output {
 		</application>
 	</blueprints>
 	<tools />
-	<sites />
+	<sites>
+		<application_instance id="35" si_name="My App Instance" blueprint="34" />
+	</sites>
 	<circumventions />
 </root>
 '

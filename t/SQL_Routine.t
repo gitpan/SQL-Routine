@@ -12,8 +12,8 @@ use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine '0.53';
-use SQL::Routine::L::en '0.23';
+use SQL::Routine '0.54';
+use SQL::Routine::L::en '0.24';
 
 ######################################################################
 # Here are some utility methods:

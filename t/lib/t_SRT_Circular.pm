@@ -12,15 +12,11 @@ t_SRT_Circular;
 
 sub test_circular_ref_prevention {
 	my (undef, $class) = @_;
+
 	my $model = $class->new_container();
 	$model->auto_set_node_ids( 1 );
 
-	my $catalog_bp = $model->build_child_node( 'catalog', 'The Catalog Blueprint' );
-	my $owner = $catalog_bp->build_child_node( 'owner', 'Gene\'s Owner' );
-	my $schema = $catalog_bp->build_child_node( 'schema', 'gene' );
-	$schema->set_node_ref_attribute( 'owner', $owner );
-
-	my $vw1 = $schema->build_child_node( 'view', 'foo' );
+	my $vw1 = $model->build_node( 'view', 'foo' );
 	$vw1->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $vw2 = $vw1->build_child_node( 'view', 'bar' );

@@ -1,8 +1,19 @@
 TODO
 
-- Rewrite the SYNOPSIS documentation to emphasize the simplest-to-use API.
+- Split up the Node properties AT_NREFS and CHILD_NODES so that links done
+through primary-parent/child relationships are stored separately; a lot of code
+can then be simplified (though some more complex); the system should be faster.
+
+- Find some efficient way to maintain an index of surrogate ids for Nodes so
+that using them isn't so expensive.  Currently, the code is optimized for those
+people that don't use surrogate ids, and there is no overhead for index
+maintenance.  After the change, index maintenance itself should have a very low
+overhead or they may be more trouble than they're worth.  The use of them should
+perhaps be controlled by a boolean Container property.
 
 - Continue fleshing out the standard_routine enumerated type documentation.
+
+- Rewrite the SYNOPSIS documentation to emphasize the simplest-to-use API.
 
 - Add more deferred constraints to reduce erroneous models.
 
