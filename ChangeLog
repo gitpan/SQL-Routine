@@ -1,0 +1,135 @@
+2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Release 0.43.
+
+	* This is the first version of the SQL-Routine distribution under that
+	name, which follows the official registration of SQL::Routine with the Perl
+	5 Module List.  The core module has been renamed to SQL::Routine from
+	SQL::SyntaxModel, its previous name; all similarly named modules and files
+	were correspondingly renamed.  All name-related strings, both in code and
+	documentation, were updated as follows: "SyntaxModel" -> "Routine", "SSM"
+	-> "SRT", "SQLSM" -> "SQLRT", "sqlsm" -> "sqlrt".
+
+	* New code file versions are: Routine.pm v0.43 and en.pm v0.15.
+
+	* Updated external dependencies on Locale::KeyedText to v1.00.
+
+	* Changed the NAME of Routine.pm to "Specify all database tasks with SQL
+	routines" from "An abstract syntax tree for all types of SQL".
+
+	* Aside from the name references, version numbers, and dependencies, no
+	changes were made to any code or documentation between SQL-SyntaxModel-0.42
+	and SQL-Routine-0.43.  A significant update to the main documentation is 
+	planned for v0.44 which reflects the module's current functional domain.
+
+	* For historical posterity, here is this distribution's file manifest:
+
+		ChangeLog
+		INSTALL
+		lib/SQL/Routine.pm
+		lib/SQL/Routine/API_C.pod
+		lib/SQL/Routine/L/en.pm
+		lib/SQL/Routine/Language.pod
+		LICENSE
+		Makefile.PL
+		MANIFEST
+		META.yml                                Module meta-data (added by MakeMaker)
+		ReadMe
+		t/lib/t_SQL_Routine.pm
+		t/SQL_Routine.t
+		TODO
+
+	* Rewrote the TODO file so it actually lists some near-future plans.
+
+2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
+
+	The next version of the Module List will list the following module:
+
+	  modid:       SQL::Routine
+	  DSLIP:       cdpOg
+	  description: Specify all database tasks with SQL routines
+	  userid:      DUNCAND (Darren Duncan)
+	  chapterid:   11 (String_Lang_Text_Proc)
+	  enteredby:   BDFOY (brian d foy)
+	  enteredon:   Mon Oct  4 20:04:46 2004 GMT
+
+	The resulting entry will be:
+
+	SQL::
+	::Routine         cdpOg Specify all database tasks with SQL routines DUNCAND
+
+2004-09-13   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel-0.42, the last version of the distribution having that
+	name which contained the modules that became the SQL-Routine distribution,
+	was released on CPAN.
+
+2004-03-22   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel-0.28, the first version of a distribution having that
+	name, was released on CPAN.  Early versions of the modules that became the
+	SQL-Routine distribution were included.
+
+2004-03-21   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta-0.27, the last version of the distribution having that name which
+	contained the modules that became the SQL-Routine distribution, was
+	released on CPAN.
+
+2003-01-27   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta-0.02, the first version of a distribution having that name, was
+	released on CPAN.  Early versions of the modules that became the
+	SQL-Routine distribution were included.
+
+2003-01-05   Darren Duncan <perl@DarrenDuncan.net>
+
+	* DBIx-Portable-0.01, the only version of a distribution having that name,
+	was released on CPAN.  Early versions of the modules that became the
+	SQL-Routine distribution were included.
+
+2002-11-12   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Began development on the modules which became the SQL-Routine
+	distribution as their own entity that is separate from my application, for
+	open-source distribution on CPAN.  The modules were to comprise an
+	RDBMS-generic DB framework for any application to use.
+
+	* Modules based on a template created by h2xs 1.18.
+
+2002-07-28
+
+	* Posted the first significant update to the second prototype, which added
+	an index or cache for data that was expensive to calculate for each page
+	request, and involved rewriting about a fourth of the perl code.
+
+2002-06-07
+
+	* Posted to my website the second public prototype demo of the new
+	self-proprietary database driven application, whose database schema, user
+	interface, feature set, and Perl application code was almost completely
+	rewritten. The new version explicitly had separate modules for database
+	communication and the web interface logic, with MySQL-specific code and
+	database generic or data dictionary code in separate files, and separate
+	files for parts of the web interface.  The program used the same generic
+	CPAN modules as in the first prototype, DBI/MySQL and CGI::Portable.
+
+2001-11-24
+
+	* Posted the last update to the first prototype.
+
+2001-07-12
+
+	* Posted to my website the first public prototype demo of a new
+	self-proprietary database driven application, which is like a cross between
+	a multimedia metadata catalogue and a repository for historical or
+	genealogical data.  This application contained the first prototypes of code
+	that ended up in these modules.  All of this application's code, for
+	database communication and web interface logic, was situated in a single
+	module, with the rest of the program being more generic CPAN modules like
+	DBI (and DBD for MySQL) and CGI::Portable.
+
+2000-05-17
+
+	* Requested MySQL database privileges on my web host so I have something to
+	start developing, testing and deploying database driven applications on.

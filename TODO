@@ -1,0 +1,20 @@
+TODO
+
+- Rewrite significant portions of the main documentation in Routine.pm and
+Language.pod to better explain the current functional domain of SQL::Routine
+and emphasize its routine-centric conceptualization of things, vs the more
+generic tree conceptualization of the old SQL::SyntaxModel.
+
+- Remove the distinct 'command' Nodes and merge related concepts into both
+routines and standard procedures/functions.  After the change, one would define
+a 'routine' to do DDL just as they are used for DML now.
+
+- Make standard procedures/functions take named arguments rather than
+positional ones, just as user-defined routines do.
+
+- Miscellaneous cleanup.
+
+- Add more deferred constraints to reduce erroneous models.
+
+- Keep watch on the separately released "Rosetta" framework modules and ensure
+we continue to meet their needs.
