@@ -1,3 +1,92 @@
+2004-10-16   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Release 0.44.
+
+	* New code file versions are: Routine.pm v0.44.
+
+	* This is a major release, with multiple significant data-design,
+	documentation, and test suite changes, but almost no changes to the code
+	proper.  All changes were in Routine.pm, Language.pod, and
+	t_SQL_Routine.pm.  No changes were made to en.pm or API_C.pod.
+
+	* Added 4 new enumerated value types: container_type, exception_type,
+	standard_routine, standard_routine_arg.  Removed 6 old enumerated value
+	types: basic_expr_type, standard_func, basic_var_type, basic_stmt_type,
+	standard_proc, command_type.  The 4 new types are mostly recombined
+	replacements for the old 6 ones, though some of the old were simply
+	superfluous.  exception_type is completely new.  container_type corresponds
+	to basic_var_type plus the return-values documentation section in
+	command_type plus the 'LIST' of basic_expr_type.  standard_routine is
+	mostly the 3-way combination of command_type, standard_proc, standard_func,
+	plus 'CAST' and 'RETURN' of basic_[expr|stmt]_type.  The majority of
+	basic_[expr|stmt]_type was simply dropped since the info they gave
+	duplicated what could be known by reading other attributes in
+	[view|routine]_expr Nodes, which mostly corresponded 1:1.
+
+	* Removed the 'command' and 'command_arg' Node types, which were only meant
+	to be a temporary stop-gap feature anyway.  Their functionality has been
+	integrated into the standard 'routine[|*]' Nodes, which can now embed
+	built-in routine calls for all kinds of functionality, including queries,
+	DML, DDL, and connection management.
+
+	* Eliminated the 'elements' level 2 pseudo-Node, which hasn't been used for
+	awhile; only 4 are left: 'blueprints', 'tools', 'sites', 'circumventions'.
+
+	* All built-in standard routines now take named arguments rather than
+	positional ones, just like user-defined routines; they can now all be used
+	in the same ways.  In addition, it is now standard practice for any
+	built-in routine to indicate failure by throwing an exception; the routine
+	is assumed to have succeeded if it doesn't do this.
+
+	* All schema object types (domains, sequences, tables, views, routines) can
+	now be defined as either server/database-side or application-side (the
+	first 3 were added).  Defining a table on the application-side is now the
+	official way to make a "temporary table"; there is no 'table' Node
+	attribute for that.
+
+	* There is now more detailed documentation for many built-in routines,
+	including what their arguments are, side-effects of calling them, and
+	exceptions they may throw.
+
+	* Added the commonly used 'ANSEL' to the 'char_enc_type' enum list.
+
+	* Added a 'single_schema' attribute to 'catalog' Nodes.
+
+	* Many small clean-ups and standardization with the order of attribute
+	Nodes.  Now, all primary-parent candidate attributes always appear at the
+	top of the list, below 'id'; then comes the 'name' attribute if there is
+	one; then come the other attributes, starting with any always-mandatory or
+	'type' ones, and grouped by functional relation.  Renamed and regrouped
+	most view_expr and routine_expr attributes; the ones indicating
+	correspondence such as what cols or args to *set* or *pass to* go first,
+	and the ones indicating where a value comes from are below them; the latter
+	group all start with 'valf_' for "value from".  The routine_stmt Node was
+	simplified, with some details stored in routine_expr Nodes instead.  A set
+	of 8 new attributes in routine_expr, which start with 'actn_' (for "act
+	on") are used mainly with former 'CREATE_' (etc) standard routines.  The 
+	new attribute names should be more descriptive than the old ones.
+
+	* In Routine.pm, updated Node.assert_deferrable_constraints() in how the
+	"Local Attribute Dependencies List" constraints are implemented so that
+	depended-on attributes of all 3 major types are handled with common code.
+
+	* Rewrote major parts of the SYNOPSIS in Routine.pm so that it provides a 
+	complete but simple working example, rather than just a few lines plus 
+	a reference to another file.
+
+	* Updated sigificant chunks of t_SQL_Routine.pm to give a more complete
+	semblence of working examples.
+
+	* Replaced all documentation occurances of "SQL-2003" with "SQL:2003".
+
+	* Updated all code that referenced module version numbers so that those
+	numbers are now quoted in strings rather than being bare numbers.  In the
+	*.pm files, this affected only the "use" strings, since each $VERSION was
+	already declared as a string.  In the *.t files, the "use" strings.  In the
+	Makefile.PL, each PREREQ_PM item was updated.
+
+	* A few other small changes and fixes.
+
 2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
 
 	* Release 0.43.

@@ -10,9 +10,9 @@ package SQL::Routine;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.43';
+our $VERSION = '0.44';
 
-use Locale::KeyedText 1.00;
+use Locale::KeyedText '1.00';
 
 ######################################################################
 
@@ -148,6 +148,63 @@ my $NPROP_CHILD_NODES = 'child_nodes'; # array - list of refs to other Nodes hav
 # here so that multiple Node types can make use of the same value lists.  
 # Currently only the codes are shown, but attributes may be attached later.
 my %ENUMERATED_TYPES = (
+	'container_type' => { map { ($_ => 1) } qw(
+		SCALAR ERROR CONN CURSOR LIST SRT_NODE SRT_NODE_LIST
+	) },
+	'exception_type' => { map { ($_ => 1) } qw(
+		SRTX_NO_ENVI_LOAD_FAILED SRTX_ENVI_EXEC_FAILED 
+		SRTX_NO_CONN_SERVER_ABSENT SRTX_NO_CONN_BAD_AUTH SRTX_NO_CONN_ACTIVE_LOST
+	) },
+	'standard_routine' => { map { ($_ => 1) } qw(
+		CATALOG_LIST CATALOG_INFO CATALOG_VERIFY 
+		CATALOG_CREATE CATALOG_DELETE CATALOG_CLONE CATALOG_MOVE
+		CATALOG_OPEN 
+		CATALOG_CLOSE 
+		CATALOG_PING CATALOG_ATTACH CATALOG_DETACH 
+		SCHEMA_LIST SCHEMA_INFO SCHEMA_VERIFY
+		SCHEMA_CREATE SCHEMA_DELETE SCHEMA_CLONE SCHEMA_UPDATE 
+		DOMAIN_LIST DOMAIN_INFO DOMAIN_VERIFY
+		DOMAIN_CREATE DOMAIN_DELETE DOMAIN_CLONE DOMAIN_UPDATE
+		SEQU_LIST SEQU_INFO SEQU_VERIFY
+		SEQU_CREATE SEQU_DELETE SEQU_CLONE SEQU_UPDATE
+		TABLE_LIST TABLE_INFO TABLE_VERIFY
+		TABLE_CREATE TABLE_DELETE TABLE_CLONE TABLE_UPDATE
+		VIEW_LIST VIEW_INFO VIEW_VERIFY
+		VIEW_CREATE VIEW_DELETE VIEW_CLONE VIEW_UPDATE
+		ROUTINE_LIST ROUTINE_INFO ROUTINE_VERIFY 
+		ROUTINE_CREATE ROUTINE_DELETE ROUTINE_CLONE ROUTINE_UPDATE
+		USER_LIST USER_INFO USER_VERIFY
+		USER_CREATE USER_DELETE USER_CLONE USER_UPDATE USER_GRANT USER_REVOKE
+		REC_FETCH 
+		REC_VERIFY REC_INSERT REC_UPDATE 
+		REC_DELETE REC_REPLACE REC_CLONE REC_LOCK REC_UNLOCK
+		RETURN
+		CURSOR_OPEN CURSOR_CLOSE CURSOR_FETCH SELECT_INTO
+		INSERT UPDATE DELETE 
+		COMMIT ROLLBACK
+		LOCK UNLOCK 
+		PLAIN THROW TRY CATCH IF ELSEIF ELSE SWITCH CASE OTHERWISE FOREACH 
+		FOR WHILE UNTIL MAP GREP REGEXP 
+		LOOP CONDITION LOGIC 
+		CAST
+		NOT AND OR XOR
+		EQ NE LT GT LE GE IS_NULL NOT_NULL COALESCE SWITCH LIKE
+		ADD SUB MUL DIV DIVI MOD ROUND ABS POWER LOG
+		SCONCAT SLENGTH SINDEX SUBSTR SREPEAT STRIM SPAD SPADL LC UC
+		COUNT MIN MAX SUM AVG CONCAT EVERY ANY SOME EXISTS
+		GB_SETS GB_RLUP GB_CUBE
+	) },
+	'standard_routine_arg' => { map { ($_ => 1) } qw(
+		RECURSIVE LINK_BP SOURCE_LINK_BP DEST_LINK_BP 
+		CONN_CX LOGIN_USER LOGIN_PASS
+		RETURN_VALUE
+		CURSOR_CX INSERT_DEFN UPDATE_DEFN DELETE_DEFN
+		CAST_TARGET CAST_OPERAND
+		FACTOR FACTORS LHS RHS ARG TERMS
+		LOOK_IN CASES DEFAULT LOOK_FOR FIXED_LEFT FIXED_RIGHT
+		START REMOVE DIVIDEND DIVISOR PLACES OPERAND RADIX EXPONENT
+		SOURCE START_POS STR_LEN REPEAT
+	) },
 	'privilege_type' => { map { ($_ => 1) } qw(
 		ALL SELECT DELETE INSERT UPDATE CONNECT EXECUTE CREATE ALTER DROP 
 	) },
@@ -156,7 +213,7 @@ my %ENUMERATED_TYPES = (
 		DATM_FULL DATM_DATE DATM_TIME INTRVL_YM INTRVL_DT 
 	) },
 	'char_enc_type' => { map { ($_ => 1) } qw(
-		UTF8 UTF16 UTF32 ASCII EBCDIC
+		UTF8 UTF16 UTF32 ASCII ANSEL EBCDIC
 	) },
 	'calendar' => { map { ($_ => 1) } qw(
 		ABS GRE JUL CHI HEB ISL JPN
@@ -176,20 +233,6 @@ my %ENUMERATED_TYPES = (
 	'view_part' => { map { ($_ => 1) } qw(
 		RESULT SET FROM WHERE GROUP HAVING WINDOW ORDER MAXR SKIPR
 	) },
-	'basic_expr_type' => { map { ($_ => 1) } qw(
-		LIT CAST COL MCOL VARG ARG VAR SEQN CVIEW SFUNC UFUNC LIST
-	) },
-	'standard_func' => { map { ($_ => 1) } qw(
-		NOT AND OR XOR
-		EQ NE LT GT LE GE IS_NULL NOT_NULL COALESCE SWITCH LIKE
-		ADD SUB MUL DIV DIVI MOD ROUND ABS POWER LOG
-		SCONCAT SLENGTH SINDEX SUBSTR SREPEAT STRIM SPAD SPADL LC UC
-		COUNT MIN MAX SUM AVG CONCAT EVERY ANY SOME EXISTS
-		GB_SETS GB_RLUP GB_CUBE
-	) },
-	'basic_var_type' => { map { ($_ => 1) } qw(
-		SCALAR RECORD ARRAY CURSOR
-	) },
 	'routine_type' => { map { ($_ => 1) } qw(
 		PACKAGE TRIGGER PROCEDURE FUNCTION BLOCK
 	) },
@@ -198,46 +241,8 @@ my %ENUMERATED_TYPES = (
 		BEFR_UPD AFTR_UPD INST_UPD 
 		BEFR_DEL AFTR_DEL INST_DEL
 	) },
-	'basic_stmt_type' => { map { ($_ => 1) } qw(
-		BLOCK ASSIGN RETURN SPROC UPROC
-	) },
-	'standard_proc' => { map { ($_ => 1) } qw(
-		CURSOR_OPEN CURSOR_CLOSE CURSOR_FETCH SELECT_INTO
-		INSERT UPDATE DELETE 
-		COMMIT ROLLBACK
-		LOCK UNLOCK 
-		PLAIN THROW TRY CATCH IF ELSEIF ELSE SWITCH CASE OTHERWISE FOREACH 
-		FOR WHILE UNTIL MAP GREP REGEXP 
-		LOOP CONDITION LOGIC 
-	) },
 	'user_type' => { map { ($_ => 1) } qw(
 		ROOT SCHEMA_OWNER DATA_EDITOR ANONYMOUS
-	) },
-	'command_type' => { map { ($_ => 1) } qw(
-		DB_LIST DB_INFO DB_VERIFY DB_CREATE DB_DELETE DB_CLONE DB_MOVE
-		DB_OPEN 
-		DB_CLOSE 
-		DB_PING DB_ATTACH DB_DETACH 
-		TRA_OPEN 
-		TRA_CLOSE
-		SCHEMA_LIST SCHEMA_INFO SCHEMA_VERIFY
-		SCHEMA_CREATE SCHEMA_DELETE SCHEMA_CLONE SCHEMA_UPDATE 
-		DOMAIN_LIST DOMAIN_INFO DOMAIN_VERIFY
-		DOMAIN_CREATE DOMAIN_DELETE DOMAIN_CLONE DOMAIN_UPDATE
-		SEQU_LIST SEQU_INFO SEQU_VERIFY
-		SEQU_CREATE SEQU_DELETE SEQU_CLONE SEQU_UPDATE
-		TABLE_LIST TABLE_INFO TABLE_VERIFY
-		TABLE_CREATE TABLE_DELETE TABLE_CLONE TABLE_UPDATE
-		VIEW_LIST VIEW_INFO VIEW_VERIFY
-		VIEW_CREATE VIEW_DELETE VIEW_CLONE VIEW_UPDATE
-		ROUTINE_LIST ROUTINE_INFO ROUTINE_VERIFY 
-		ROUTINE_CREATE ROUTINE_DELETE ROUTINE_CLONE ROUTINE_UPDATE
-		USER_LIST USER_INFO USER_VERIFY
-		USER_CREATE USER_DELETE USER_CLONE USER_UPDATE USER_GRANT USER_REVOKE
-		REC_FETCH 
-		REC_VERIFY REC_INSERT REC_UPDATE 
-		REC_DELETE REC_REPLACE REC_CLONE REC_LOCK REC_UNLOCK
-		CALL_PROC CALL_FUNC
 	) },
 );
 
@@ -280,18 +285,14 @@ my $TPI_MUDI_ATGPS   = 'mudi_atgps'; # Array of groups of mutually distinct attr
 
 # Names of special "pseudo-Nodes" that are used in an XML version of this structure.
 my $SQLRT_L1_ROOT_PSND = 'root';
-my $SQLRT_L2_ELEM_PSND = 'elements';
 my $SQLRT_L2_BLPR_PSND = 'blueprints';
 my $SQLRT_L2_TOOL_PSND = 'tools';
 my $SQLRT_L2_SITE_PSND = 'sites';
 my $SQLRT_L2_CIRC_PSND = 'circumventions';
-my @L2_PSEUDONODE_LIST = ($SQLRT_L2_ELEM_PSND, $SQLRT_L2_BLPR_PSND, 
-	$SQLRT_L2_TOOL_PSND, $SQLRT_L2_SITE_PSND, $SQLRT_L2_CIRC_PSND);
+my @L2_PSEUDONODE_LIST = ($SQLRT_L2_BLPR_PSND, $SQLRT_L2_TOOL_PSND, $SQLRT_L2_SITE_PSND, $SQLRT_L2_CIRC_PSND);
 # This hash is used like the subsequent %NODE_TYPES for specific purposes.
 my %PSEUDONODE_TYPES = (
 	$SQLRT_L1_ROOT_PSND => {
-	},
-	$SQLRT_L2_ELEM_PSND => {
 	},
 	$SQLRT_L2_BLPR_PSND => {
 		$TPI_MUDI_ATGPS => [
@@ -327,10 +328,11 @@ my %PSEUDONODE_TYPES = (
 my %NODE_TYPES = (
 	'catalog' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id name 
+			id name single_schema
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
+			'single_schema' => 'bool',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
 		$TPI_MUDI_ATGPS => [
@@ -352,9 +354,11 @@ my %NODE_TYPES = (
 		$TPI_MUDI_ATGPS => [
 			['ak_name',[
 				['catalog_link',['name'],[],[]],
+				['domain',['name'],[],[]],
+				['sequence',['name'],[],[]],
+				['table',['name'],[],[]],
 				['view',['name'],[],[]],
 				['routine',['name'],[],[]],
-				['command',['name'],[],[]],
 			]],
 		],
 	},
@@ -420,7 +424,7 @@ my %NODE_TYPES = (
 	},
 	'privilege_on' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id role schema domain sequence table routine
+			id role schema domain sequence table view routine
 		)],
 		$TPI_AT_NREFS => {
 			'role' => 'role',
@@ -428,11 +432,12 @@ my %NODE_TYPES = (
 			'domain' => 'domain',
 			'sequence' => 'sequence',
 			'table' => 'table',
+			'view' => 'view',
 			'routine' => 'routine',
 		},
 		$TPI_P_NODE_ATNMS => [qw( role )],
 		$TPI_MUTEX_ATGPS => [
-			['privilege_on',[],[],[qw( schema domain sequence table routine )],1],
+			['privilege_on',[],[],[qw( schema domain sequence table view routine )],1],
 		],
 		$TPI_MUDI_ATGPS => [
 			['ak_option',[
@@ -455,7 +460,7 @@ my %NODE_TYPES = (
 	},
 	'domain' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id schema name base_type num_precision num_scale num_octets num_unsigned 
+			id schema application name base_type num_precision num_scale num_octets num_unsigned 
 			max_octets max_chars store_fixed char_enc trim_white uc_latin lc_latin 
 			pad_char trim_pad calendar with_zone range_min range_max 
 		)],
@@ -484,8 +489,9 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_NREFS => {
 			'schema' => 'schema',
+			'application' => 'application',
 		},
-		$TPI_P_NODE_ATNMS => [qw( schema )],
+		$TPI_P_NODE_ATNMS => [qw( schema application )],
 		$TPI_MA_ATTRS => [[qw( name )],[qw( base_type )],[]],
 		$TPI_MUTEX_ATGPS => [
 			['num_size',[qw( num_precision num_octets )],[],[],0],
@@ -531,7 +537,7 @@ my %NODE_TYPES = (
 	},
 	'sequence' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id schema name increment min_val max_val start_val cycle order 
+			id schema application name increment min_val max_val start_val cycle order 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -544,21 +550,23 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_NREFS => {
 			'schema' => 'schema',
+			'application' => 'application',
 		},
-		$TPI_P_NODE_ATNMS => [qw( schema )],
+		$TPI_P_NODE_ATNMS => [qw( schema application )],
 		$TPI_MA_ATTRS => [[qw( name )],[],[]],
 	},
 	'table' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id schema name 
+			id schema application name 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
 			'schema' => 'schema',
+			'application' => 'application',
 		},
-		$TPI_P_NODE_ATNMS => [qw( schema )],
+		$TPI_P_NODE_ATNMS => [qw( schema application )],
 		$TPI_MA_ATTRS => [[qw( name )],[],[]],
 		$TPI_CHILD_QUANTS => [
 			['table_col',1,undef],
@@ -638,8 +646,8 @@ my %NODE_TYPES = (
 	},
 	'view' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id view_type schema application routine p_view name 
-			match_all_cols compound_op distinct_rows may_write 
+			id schema application routine p_view name 
+			view_type match_all_cols compound_op distinct_rows may_write 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -682,14 +690,14 @@ my %NODE_TYPES = (
 			['ak_join_limit_one',[
 				['view_join',[],[],['rhs_src']],
 			]],
-			['ak_expr_result_col',[
-				['view_expr',[],[],['view_col']],
+			['ak_expr_set_result_col',[
+				['view_expr',[],[],['set_result_col']],
 			]],
-			['ak_expr_set_col',[
-				['view_expr',[],[],['set_view_col']],
+			['ak_expr_set_src_col',[
+				['view_expr',[],[],['set_src_col']],
 			]],
-			['ak_expr_from_src_arg',[
-				['view_expr',[],[],['view_src_arg']],
+			['ak_expr_call_src_arg',[
+				['view_expr',[],[],['call_src_arg']],
 			]],
 		],
 	},
@@ -820,15 +828,12 @@ my %NODE_TYPES = (
 	},
 	'view_hierarchy' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id view start_src_col start_expr_type 
-			start_lit_val start_view_arg start_routine_arg start_routine_var
+			id view start_src_col  
+			start_literal start_view_arg start_routine_arg start_routine_var
 			conn_src_col p_conn_src_col 
 		)],
 		$TPI_AT_LITERALS => {
-			'start_lit_val' => 'misc',
-		},
-		$TPI_AT_ENUMS => {
-			'start_expr_type' => 'basic_expr_type',
+			'start_literal' => 'misc',
 		},
 		$TPI_AT_NREFS => {
 			'view' => 'view',
@@ -842,79 +847,67 @@ my %NODE_TYPES = (
 		$TPI_P_NODE_ATNMS => [qw( view )],
 		$TPI_MA_ATTRS => [[],[],[qw( start_src_col conn_src_col p_conn_src_col )]],
 		$TPI_MUTEX_ATGPS => [
-			['start_val',[qw( start_lit_val )],[],
+			['start_val',[qw( start_literal )],[],
 				[qw( start_view_arg start_routine_arg start_routine_var )],1],
-		],
-		$TPI_LOCAL_ATDPS => [
-			[undef,'start_expr_type',undef,[
-				[[],[],['start_lit_val'],['LIT'],1],
-				[[],[],['start_view_arg'],['VARG'],1],
-				[[],[],['start_routine_arg'],['ARG'],1],
-				[[],[],['start_routine_var'],['VAR'],1],
-			]],
 		],
 	},
 	'view_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id expr_type p_expr view view_part view_col set_view_col view_src_arg 
-			domain lit_val src_col match_col view_arg routine_arg routine_var sequence 
-			call_view call_view_arg call_sfunc call_ufunc call_ufunc_arg catalog_link
+			id p_expr view view_part set_result_col set_src_col call_src_arg 
+			call_view_arg call_sroutine_arg call_uroutine_arg 
+			cont_type valf_literal domain valf_src_col valf_result_col valf_p_view_arg 
+			valf_p_routine_arg valf_p_routine_var valf_seq_next 
+			valf_call_view valf_call_sroutine valf_call_uroutine catalog_link
 		)],
 		$TPI_AT_LITERALS => {
-			'lit_val' => 'misc',
+			'valf_literal' => 'misc',
 		},
 		$TPI_AT_ENUMS => {
-			'expr_type' => 'basic_expr_type',
 			'view_part' => 'view_part',
-			'call_sfunc' => 'standard_func',
+			'call_sroutine_arg' => 'standard_routine_arg',
+			'cont_type' => 'container_type',
+			'valf_call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
 			'p_expr' => 'view_expr',
 			'view' => 'view',
-			'view_col' => 'view_col',
-			'set_view_col' => 'view_src_col',
-			'view_src_arg' => 'view_src_arg',
-			'domain' => 'domain',
-			'src_col' => 'view_src_col',
-			'match_col' => 'view_col',
-			'view_arg' => 'view_arg',
-			'routine_arg' => 'routine_arg',
-			'routine_var' => 'routine_var',
-			'sequence' => 'sequence',
-			'call_view' => 'view',
+			'set_result_col' => 'view_col',
+			'set_src_col' => 'view_src_col',
+			'call_src_arg' => 'view_src_arg',
 			'call_view_arg' => 'view_arg',
-			'call_ufunc' => 'routine',
-			'call_ufunc_arg' => 'routine_arg',
+			'call_uroutine_arg' => 'routine_arg',
+			'domain' => 'domain',
+			'valf_src_col' => 'view_src_col',
+			'valf_result_col' => 'view_col',
+			'valf_p_view_arg' => 'view_arg',
+			'valf_p_routine_arg' => 'routine_arg',
+			'valf_p_routine_var' => 'routine_var',
+			'valf_seq_next' => 'sequence',
+			'valf_call_view' => 'view',
+			'valf_call_uroutine' => 'routine',
 			'catalog_link' => 'catalog_link',
 		},
 		$TPI_P_NODE_ATNMS => [qw( p_expr view )],
-		$TPI_MA_ATTRS => [[],[qw( expr_type )],[]],
+		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_MUTEX_ATGPS => [
 			['expr_root_view_part',[],[qw( view_part )],[qw( p_expr )],1],
-			['value',[qw( lit_val )],[qw( call_sfunc )],
-				[qw( src_col match_col view_arg routine_arg routine_var sequence
-				call_view call_view_arg call_ufunc call_ufunc_arg )],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'view_part',undef,[
-				[[],[],['view_col'],['RESULT'],1],
-				[[],[],['set_view_col'],['SET'],1],
-				[[],[],['view_src_arg'],['FROM'],1],
+				[[],[],['set_result_col'],['RESULT'],1],
+				[[],[],['set_src_col'],['SET'],1],
+				[[],[],['call_src_arg'],['FROM'],1],
 			]],
-			[undef,'expr_type',undef,[
-				[[],[],['domain'],['LIT','CAST'],1],
-				[['lit_val'],[],[],['LIT'],1],
-				[[],[],['src_col'],['COL'],1],
-				[[],[],['match_col'],['MCOL'],1],
-				[[],[],['view_arg'],['VARG'],1],
-				[[],[],['routine_arg'],['ARG'],1],
-				[[],[],['routine_var'],['VAR'],1],
-				[[],[],['sequence'],['SEQN'],1],
-				[[],[],['call_view'],['CVIEW'],1],
-				[[],['call_sfunc'],[],['SFUNC'],1],
-				[[],[],['call_ufunc'],['UFUNC'],1],
+			[undef,'cont_type',undef,[
+			#	[['valf_literal'],['valf_call_sroutine'],['valf_src_col','valf_result_col',
+			#		'valf_p_view_arg','valf_p_routine_arg','valf_p_routine_var','valf_seq_next',
+			#		'valf_call_view','valf_call_uroutine'],['SCALAR','ERROR','CONN','CURSOR'],1],
+			#	[[],[],['valf_p_routine_arg','valf_p_routine_var'],['ERROR','CONN','CURSOR'],1],
 			]],
-			[undef,undef,'call_ufunc',[
+			['valf_literal',undef,undef,[
+				[[],[],['domain'],[],1],
+			]],
+			[undef,undef,'valf_call_uroutine',[
 				[[],[],['catalog_link'],[],0],
 			]],
 		],
@@ -922,14 +915,17 @@ my %NODE_TYPES = (
 			['ak_view_arg',[
 				['view_expr',[],[],['call_view_arg']],
 			]],
-			['ak_ufunc_arg',[
-				['view_expr',[],[],['call_ufunc_arg']],
+			['ak_sroutine_arg',[
+				['view_expr',[],['call_sroutine_arg'],[]],
+			]],
+			['ak_uroutine_arg',[
+				['view_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
 	},
 	'routine' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id routine_type schema application p_routine name return_var_type return_domain 
+			id schema application p_routine name routine_type return_cont_type return_domain 
 			trigger_on_table trigger_on_view trigger_event trigger_per_stmt
 		)],
 		$TPI_AT_LITERALS => {
@@ -938,7 +934,7 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_ENUMS => {
 			'routine_type' => 'routine_type',
-			'return_var_type' => 'basic_var_type',
+			'return_cont_type' => 'container_type',
 			'trigger_event' => 'basic_trigger_event',
 		},
 		$TPI_AT_NREFS => {
@@ -953,12 +949,12 @@ my %NODE_TYPES = (
 		$TPI_MA_ATTRS => [[qw( name )],[qw( routine_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'routine_type',undef,[
-				[[],['return_var_type'],[],['FUNCTION'],1],
+				[[],['return_cont_type'],[],['FUNCTION'],1],
 				[[],[],['trigger_on_table','trigger_on_view'],['TRIGGER'],1],
 				[[],['trigger_event'],[],['TRIGGER'],1],
 				[['trigger_per_stmt'],[],[],['TRIGGER'],1],
 			]],
-			[undef,'return_var_type',undef,[
+			[undef,'return_cont_type',undef,[
 				[[],[],['return_domain'],['SCALAR'],1],
 			]],
 		],
@@ -974,31 +970,34 @@ my %NODE_TYPES = (
 	},
 	'routine_arg' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id routine name var_type domain curs_view 
+			id routine name cont_type domain conn_link curs_view 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
 		},
 		$TPI_AT_ENUMS => {
-			'var_type' => 'basic_var_type',
+			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
 			'routine' => 'routine',
 			'domain' => 'domain',
+			'conn_link' => 'catalog_link',
 			'curs_view' => 'view',
 		},
 		$TPI_P_NODE_ATNMS => [qw( routine )],
-		$TPI_MA_ATTRS => [[qw( name )],[qw( var_type )],[]],
+		$TPI_MA_ATTRS => [[qw( name )],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
-			[undef,'var_type',undef,[
+			[undef,'cont_type',undef,[
 				[[],[],['domain'],['SCALAR'],1],
+				[[],[],['conn_link'],['CONN'],1],
 				[[],[],['curs_view'],['CURSOR'],1],
 			]],
 		],
 	},
 	'routine_var' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id routine name var_type domain init_lit_val is_constant curs_view curs_for_update 
+			id routine name cont_type domain init_lit_val is_constant 
+			conn_link curs_view curs_for_update 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -1007,20 +1006,22 @@ my %NODE_TYPES = (
 			'curs_for_update' => 'bool',
 		},
 		$TPI_AT_ENUMS => {
-			'var_type' => 'basic_var_type',
+			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
 			'routine' => 'routine',
 			'domain' => 'domain',
+			'conn_link' => 'catalog_link',
 			'curs_view' => 'view',
 		},
 		$TPI_P_NODE_ATNMS => [qw( routine )],
-		$TPI_MA_ATTRS => [[qw( name )],[qw( var_type )],[]],
+		$TPI_MA_ATTRS => [[qw( name )],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
-			[undef,'var_type',undef,[
+			[undef,'cont_type',undef,[
 				[[],[],['domain'],['SCALAR'],1],
 				[['init_lit_val'],[],[],['SCALAR'],0],
 				[['is_constant'],[],[],['SCALAR'],0],
+				[[],[],['conn_link'],['CONN'],1],
 				[[],[],['curs_view'],['CURSOR'],1],
 				[['curs_for_update'],[],[],['CURSOR'],0],
 			]],
@@ -1028,134 +1029,98 @@ my %NODE_TYPES = (
 	},
 	'routine_stmt' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id routine stmt_type block_routine dest_arg dest_var 
-			call_sproc curs_arg curs_var view_for_dml 
-			call_uproc catalog_link 
+			id routine block_routine assign_dest_arg assign_dest_var 
+			call_sroutine call_uroutine catalog_link 
 		)],
 		$TPI_AT_ENUMS => {
-			'stmt_type' => 'basic_stmt_type',
-			'call_sproc' => 'standard_proc',
+			'call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
 			'routine' => 'routine',
 			'block_routine' => 'routine',
-			'dest_arg' => 'routine_arg',
-			'dest_var' => 'routine_var',
-			'curs_arg' => 'routine_arg',
-			'curs_var' => 'routine_var',
-			'view_for_dml' => 'view',
-			'call_uproc' => 'routine',
+			'assign_dest_arg' => 'routine_arg',
+			'assign_dest_var' => 'routine_var',
+			'call_uroutine' => 'routine',
 			'catalog_link' => 'catalog_link',
 		},
 		$TPI_P_NODE_ATNMS => [qw( routine )],
-		$TPI_MA_ATTRS => [[],[qw( stmt_type )],[]],
+		$TPI_MUTEX_ATGPS => [
+			['stmt_type',[],[qw( call_sroutine )],
+				[qw( block_routine assign_dest_arg assign_dest_var call_uroutine )],1],
+		],
 		$TPI_LOCAL_ATDPS => [
-			[undef,'stmt_type',undef,[
-				[[],[],['block_routine'],['BLOCK'],1],
-				[[],[],['dest_arg','dest_var'],['ASSIGN'],1],
-				[[],['call_sproc'],[],['SPROC'],1],
-				[[],[],['curs_arg','curs_var'],['SPROC'],0],
-				[[],[],['view_for_dml'],['SPROC'],0],
-				[[],[],['call_uproc'],['UPROC'],1],
-			]],
-			[undef,undef,'call_uproc',[
+			[undef,undef,'call_uroutine',[
 				[[],[],['catalog_link'],[],0],
 			]],
 		],
 		$TPI_MUDI_ATGPS => [
-			['ak_uproc_arg',[
-				['routine_expr',[],[],['call_uproc_arg']],
+			['ak_sroutine_arg',[
+				['routine_expr',[],['call_sroutine_arg'],[]],
+			]],
+			['ak_uroutine_arg',[
+				['routine_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
 	},
 	'routine_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id expr_type p_expr p_stmt domain lit_val routine_arg routine_var sequence 
-			call_sfunc call_ufunc call_ufunc_arg call_uproc_arg catalog_link
+			id p_expr p_stmt call_sroutine_arg call_uroutine_arg 
+			cont_type valf_literal domain valf_p_routine_arg valf_p_routine_var 
+			valf_seq_next valf_call_sroutine valf_call_uroutine catalog_link
+			actn_catalog_link actn_schema actn_domain actn_sequence actn_table 
+			actn_view actn_routine actn_user
 		)],
 		$TPI_AT_LITERALS => {
-			'lit_val' => 'cstr',
+			'valf_literal' => 'cstr',
 		},
 		$TPI_AT_ENUMS => {
-			'expr_type' => 'basic_expr_type',
-			'call_sfunc' => 'standard_func',
+			'call_sroutine_arg' => 'standard_routine_arg',
+			'cont_type' => 'container_type',
+			'valf_call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
 			'p_expr' => 'routine_expr',
 			'p_stmt' => 'routine_stmt',
+			'call_uroutine_arg' => 'routine_arg',
 			'domain' => 'domain',
-			'routine_arg' => 'routine_arg',
-			'routine_var' => 'routine_var',
-			'sequence' => 'sequence',
-			'call_ufunc' => 'routine',
-			'call_ufunc_arg' => 'routine_arg',
-			'call_uproc_arg' => 'routine_arg',
+			'valf_p_routine_arg' => 'routine_arg',
+			'valf_p_routine_var' => 'routine_var',
+			'valf_seq_next' => 'sequence',
+			'valf_call_uroutine' => 'routine',
 			'catalog_link' => 'catalog_link',
+			'actn_catalog_link' => 'catalog_link',
+			'actn_schema' => 'schema',
+			'actn_domain' => 'domain',
+			'actn_sequence' => 'sequence',
+			'actn_table' => 'table',
+			'actn_view' => 'view',
+			'actn_routine' => 'routine',
+			'actn_user' => 'user',
 		},
 		$TPI_P_NODE_ATNMS => [qw( p_expr p_stmt )],
-		$TPI_MA_ATTRS => [[],[qw( expr_type )],[]],
-		$TPI_MUTEX_ATGPS => [
-			['value',[qw( lit_val )],[qw( call_sfunc )],
-				[qw( routine_arg routine_var sequence call_ufunc call_ufunc_arg )],1],
-		],
+		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
-			[undef,'expr_type',undef,[
-				[[],[],['domain'],['LIT','CAST'],1],
-				[['lit_val'],[],[],['LIT'],1],
-				[[],[],['routine_arg'],['ARG'],1],
-				[[],[],['routine_var'],['VAR'],1],
-				[[],[],['sequence'],['SEQN'],1],
-				[[],['call_sfunc'],[],['SFUNC'],1],
-				[[],[],['call_ufunc'],['UFUNC'],1],
+			[undef,'cont_type',undef,[
+			#	[['valf_literal'],['valf_call_sroutine'],['valf_p_routine_arg','valf_p_routine_var',
+			#		'valf_seq_next','valf_call_uroutine'],['SCALAR','ERROR','CONN','CURSOR'],1],
+			#	[[],[],['valf_p_routine_arg','valf_p_routine_var'],['ERROR','CONN','CURSOR'],1],
+				[[],[],['actn_catalog_link','actn_schema','actn_domain','actn_sequence',
+					'actn_table','actn_view','actn_routine','actn_user'],['SRT_NODE'],1],
 			]],
-			[undef,undef,'call_ufunc',[
+			['valf_literal',undef,undef,[
+				[[],[],['domain'],[],1],
+			]],
+			[undef,undef,'valf_call_uroutine',[
 				[[],[],['catalog_link'],[],0],
 			]],
 		],
 		$TPI_MUDI_ATGPS => [
-			['ak_ufunc_arg',[
-				['routine_expr',[],[],['call_ufunc_arg']],
+			['ak_sroutine_arg',[
+				['routine_expr',[],['call_sroutine_arg'],[]],
 			]],
-		],
-	},
-	'command' => {
-		$TPI_AT_SEQUENCE => [qw( 
-			id application name command_type
-		)],
-		$TPI_AT_LITERALS => {
-			'name' => 'cstr',
-		},
-		$TPI_AT_ENUMS => {
-			'command_type' => 'command_type',
-		},
-		$TPI_AT_NREFS => {
-			'application' => 'application',
-		},
-		$TPI_P_NODE_ATNMS => [qw( application )],
-		$TPI_MA_ATTRS => [[],[qw( command_type )],[]],
-		$TPI_CHILD_QUANTS => [
-			['command_arg',0,2],
-		],
-	},
-	'command_arg' => {
-		$TPI_AT_SEQUENCE => [qw( 
-			id command catalog_link schema domain sequence table view routine user
-		)],
-		$TPI_AT_NREFS => {
-			'command' => 'command',
-			'catalog_link' => 'catalog_link',
-			'schema' => 'schema',
-			'domain' => 'domain',
-			'sequence' => 'sequence',
-			'table' => 'table',
-			'view' => 'view',
-			'routine' => 'routine',
-			'user' => 'user',
-		},
-		$TPI_P_NODE_ATNMS => [qw( command )],
-		$TPI_MUTEX_ATGPS => [
-			['command_arg',[],[],
-				[qw( catalog_link schema domain sequence table view routine user )],1],
+			['ak_uroutine_arg',[
+				['routine_expr',[],[],['call_uroutine_arg']],
+			]],
 		],
 	},
 	'data_storage_product' => {
@@ -1190,7 +1155,7 @@ my %NODE_TYPES = (
 	},
 	'catalog_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id product blueprint name file_path server_ip server_domain server_port
+			id name product blueprint file_path server_ip server_domain server_port
 			local_dsn login_user login_pass
 		)],
 		$TPI_AT_LITERALS => {
@@ -1213,6 +1178,9 @@ my %NODE_TYPES = (
 			['ak_option',[
 				['catalog_instance_opt',['key'],[],[]],
 			]],
+			['ak_cat_link_inst',[
+				['catalog_link_instance',['unrealized'],[],[]],
+			]],
 			['ak_user_name',[
 				['user',['name'],[],[]],
 			]],
@@ -1234,7 +1202,7 @@ my %NODE_TYPES = (
 	},
 	'application_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id blueprint name 
+			id name blueprint 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -1244,10 +1212,15 @@ my %NODE_TYPES = (
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_SITE_PSND,
 		$TPI_MA_ATTRS => [[],[],[qw( blueprint )]],
+		$TPI_MUDI_ATGPS => [
+			['ak_cat_link_inst',[
+				['catalog_link_instance',['unrealized'],[],[]],
+			]],
+		],
 	},
 	'catalog_link_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id product p_link catalog application unrealized target local_dsn login_user login_pass
+			id p_link catalog application product unrealized target local_dsn login_user login_pass
 		)],
 		$TPI_AT_LITERALS => {
 			'local_dsn' => 'cstr',
@@ -1255,10 +1228,10 @@ my %NODE_TYPES = (
 			'login_pass' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'product' => 'data_link_product',
 			'p_link' => 'catalog_link_instance',
 			'catalog' => 'catalog_instance',
 			'application' => 'application_instance',
+			'product' => 'data_link_product',
 			'unrealized' => 'catalog_link',
 			'target' => 'catalog_instance',
 		},
@@ -1293,7 +1266,7 @@ my %NODE_TYPES = (
 	},
 	'user' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id catalog user_type match_owner name password default_schema 
+			id catalog name user_type match_owner password default_schema 
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -1311,8 +1284,8 @@ my %NODE_TYPES = (
 		$TPI_MA_ATTRS => [[],[qw( user_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'user_type',undef,[
-				[[],[],['match_owner'],['SCHEMA_OWNER'],1],
 				[['name'],[],[],['ROOT','SCHEMA_OWNER','DATA_EDITOR'],1],
+				[[],[],['match_owner'],['SCHEMA_OWNER'],1],
 				[['password'],[],[],['ROOT','SCHEMA_OWNER','DATA_EDITOR'],1],
 			]],
 		],
@@ -2614,6 +2587,10 @@ sub _assert_in_node_deferrable_constraints {
 	if( my $local_atdps_list = $type_info->{$TPI_LOCAL_ATDPS} ) {
 		foreach my $local_atdps_item (@{$local_atdps_list}) {
 			my ($dep_on_lit_nm, $dep_on_enum_nm, $dep_on_nref_nm, $dependencies) = @{$local_atdps_item};
+			my $dep_on_attr_nm = $dep_on_lit_nm || $dep_on_enum_nm || $dep_on_nref_nm;
+			my $dep_on_attr_val = $dep_on_lit_nm ? $node->{$NPROP_AT_LITERALS}->{$dep_on_lit_nm} :
+				$dep_on_enum_nm ? $node->{$NPROP_AT_ENUMS}->{$dep_on_enum_nm} :
+				$dep_on_nref_nm ? $node->{$NPROP_AT_NREFS}->{$dep_on_nref_nm} : undef;
 			foreach my $dependency (@{$dependencies}) {
 				my ($lits, $enums, $nrefs, $dep_on_enum_vals, $is_mandatory) = @{$dependency};
 				my @valued_dependents = ();
@@ -2632,78 +2609,41 @@ sub _assert_in_node_deferrable_constraints {
 						push( @valued_dependents, $attr_name );
 					}
 				}
-				if( $dep_on_lit_nm ) {
-					my $dep_on_attr_val = $node->{$NPROP_AT_LITERALS}->{$dep_on_lit_nm};
-					if( !defined( $dep_on_attr_val ) ) {
-						# The dependency is undef/null, so all dependents must be undef/null.
-						if( scalar( @valued_dependents ) > 0 ) {
-							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
-								{ 'DEP_ON' => $dep_on_lit_nm, 'NUMVALS' => scalar( @valued_dependents ), 
-								'ATNMS' => "@valued_dependents" } );
-						}
-					} else {
-						# The dependency is valued, so a dependent may be set.
-						# SHORT CUT: We know that with all of our existing config data, 
-						# @valued_dependents has only 0..1 elements, and that none are mandatory.
-						# So no more tests to do.  We will put code here later if either fact changes.
+				if( !defined( $dep_on_attr_val ) ) {
+					# The dependency is undef/null, so all dependents must be undef/null.
+					if( scalar( @valued_dependents ) > 0 ) {
+						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
+							{ 'DEP_ON' => $dep_on_attr_nm, 'NUMVALS' => scalar( @valued_dependents ), 
+							'ATNMS' => "@valued_dependents" } );
 					}
 					# If we get here, the tests have passed concerning this $dependency.
-					next;
-				}
-				if( $dep_on_enum_nm ) {
-					my $dep_on_attr_val = $node->{$NPROP_AT_ENUMS}->{$dep_on_enum_nm};
-					if( !defined( $dep_on_attr_val ) ) {
-						# The dependency is undef/null, so all dependents must be undef/null.
-						if( scalar( @valued_dependents ) > 0 ) {
-							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
-								{ 'DEP_ON' => $dep_on_enum_nm, 'NUMVALS' => scalar( @valued_dependents ), 
-								'ATNMS' => "@valued_dependents" } );
-						}
-						# If we get here, the tests have passed concerning this $dependency.
-					} elsif( !scalar( grep { $_ eq $dep_on_attr_val } @{$dep_on_enum_vals} ) ) {
-						# The dependency has the wrong value for these dependents; the latter must be undef/null.
-						if( scalar( @valued_dependents ) > 0 ) {
-							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_HAS_WRONG_VAL', 
-								{ 'DEP_ON' => $dep_on_enum_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-								'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
-						}
-						# If we get here, the tests have passed concerning this $dependency.
-					} else {
-						# The dependency has the right value for these dependents; one of them may be set.
-						if( scalar( @valued_dependents ) > 1 ) {
-							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_TOO_MANY_SET', 
-								{ 'DEP_ON' => $dep_on_enum_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-								'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
-						}
-						if( scalar( @valued_dependents ) == 0 ) {
-							if( $is_mandatory ) {
-								my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
-								$node->_throw_error_message( 'SRT_N_ASDC_LATDP_ZERO_SET', 
-									{ 'DEP_ON' => $dep_on_enum_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-									'ATNMS' => "@possible_candidates" } );
-							}
-						}
-						# If we get here, the tests have passed concerning this $dependency.
-					}
-					next;
-				}
-				if( $dep_on_nref_nm ) {
-					my $dep_on_attr_val = $node->{$NPROP_AT_NREFS}->{$dep_on_nref_nm};
-					if( !defined( $dep_on_attr_val ) ) {
-						# The dependency is undef/null, so all dependents must be undef/null.
-						if( scalar( @valued_dependents ) > 0 ) {
-							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
-								{ 'DEP_ON' => $dep_on_nref_nm, 'NUMVALS' => scalar( @valued_dependents ), 
-								'ATNMS' => "@valued_dependents" } );
-						}
-					} else {
-						# The dependency is valued, so a dependent may be set.
-						# SHORT CUT: We know that with all of our existing config data, 
-						# @valued_dependents has only 0..1 elements, and that none are mandatory.
-						# So no more tests to do.  We will put code here later if either fact changes.
+				} elsif( scalar( @{$dep_on_enum_vals} ) > 0 and 
+						!scalar( grep { $_ eq $dep_on_attr_val } @{$dep_on_enum_vals} ) ) {
+					# Not just any dependency value is acceptable for these dependents, and the
+					# dependency has the wrong value for these dependents; the latter must be undef/null.
+					if( scalar( @valued_dependents ) > 0 ) {
+						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_HAS_WRONG_VAL', 
+							{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
+							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
 					}
 					# If we get here, the tests have passed concerning this $dependency.
-					next;
+				} else {
+					# Either any dependency value is acceptable for these dependents, or the valued 
+					# dependency has the right value for these dependents; one of them may be set.
+					if( scalar( @valued_dependents ) > 1 ) {
+						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_TOO_MANY_SET', 
+							{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
+							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
+					}
+					if( scalar( @valued_dependents ) == 0 ) {
+						if( $is_mandatory ) {
+							my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
+							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_ZERO_SET', 
+								{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
+								'ATNMS' => "@possible_candidates" } );
+						}
+					}
+					# If we get here, the tests have passed concerning this $dependency.
 				}
 			}
 		}
@@ -2883,51 +2823,114 @@ __END__
 
 =head1 SYNOPSIS
 
-=head2 Model-Building Perl Code Examples
+=head2 Trivial Perl Code Example
 
 This module's native API is highly verbose / detailed and so a realistically
-complete example of its use would be too large to show here.  (In fact, most
-real uses of the module would involve user-picked wrapper functions that aren't
-included.)  However, here are a few example usage lines:
+complex example of its use would be too large to show here.  However, here is a
+trivial example that contains everything needed to define a table with two
+columns, plus two domains used by it, plus the necessary CREATE instruction:
 
 	use SQL::Routine;
+
+	sub make_a_node {
+		my ($node_type, $model) = @_;
+		my $node = $model->new_node( $node_type );
+		$node->set_node_id( $model->get_next_free_node_id( $node_type ) );
+		$node->put_in_container( $model );
+		return( $node );
+	}
+
+	sub make_a_child_node {
+		my ($node_type, $pp_node, $pp_attr) = @_;
+		my $container = $pp_node->get_container();
+		my $node = $pp_node->new_node( $node_type );
+		$node->set_node_id( $container->get_next_free_node_id( $node_type ) );
+		$node->put_in_container( $container );
+		$node->set_node_ref_attribute( $pp_attr, $pp_node );
+		$node->set_parent_node_attribute_name( $pp_attr );
+		return( $node );
+	}
 
 	eval {
 		my $model = SQL::Routine->new_container();
 
-		# ... add a few Nodes
+		##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
+
+		# Describe the database catalog blueprint that we will store our data in:
+		my $catalog_bp = make_a_node( 'catalog', $model );
+
+		# Define the unrealized database user that owns our primary schema:
+		my $owner = make_a_child_node( 'owner', $catalog_bp, 'catalog' );
+
+		# Define the primary schema that holds our data:
+		my $schema = make_a_child_node( 'schema', $catalog_bp, 'catalog' );
+		$schema->set_literal_attribute( 'name', 'gene' );
+		$schema->set_node_ref_attribute( 'owner', $owner );
 
 		# Create user-defined data type domain that our database record primary keys are:
-		my $dom_entity_id = SQL::Routine->new_node( 'domain' );
-		$dom_entity_id->set_node_id( 1 );
-		$dom_entity_id->put_in_container( $model );
-		$dom_entity_id->set_node_ref_attribute( 'schema', $schema );
-		$dom_entity_id->set_parent_node_attribute_name( 'schema' );
+		my $dom_entity_id = make_a_child_node( 'domain', $schema, 'schema' );
 		$dom_entity_id->set_literal_attribute( 'name', 'entity_id' );
 		$dom_entity_id->set_enumerated_attribute( 'base_type', 'NUM_INT' );
 		$dom_entity_id->set_literal_attribute( 'num_precision', 9 );
 
+		# Create user-defined data type domain that our person names are:
+		my $dom_pers_name = make_a_child_node( 'domain', $schema, 'schema' );
+		$dom_pers_name->set_literal_attribute( 'name', 'person_name' );
+		$dom_pers_name->set_enumerated_attribute( 'base_type', 'STR_CHAR' );
+		$dom_pers_name->set_literal_attribute( 'max_chars', 100 );
+		$dom_pers_name->set_enumerated_attribute( 'char_enc', 'UTF8' );
+
 		# Define the table that holds our data:
-		my $tb_person = $pp_node->new_node( 'table' );
-		$tb_person->set_node_id( 1 );
-		$tb_person->put_in_container( $model );
-		$tb_person->set_node_ref_attribute( 'schema', $schema );
-		$tb_person->set_parent_node_attribute_name( 'schema' );
+		my $tb_person = make_a_child_node( 'table', $schema, 'schema' );
 		$tb_person->set_literal_attribute( 'name', 'person' );
 
 		# Define the 'person id' column of that table:
-		my $tbc_person_id = $pp_node->new_node( 'table_col' );
-		$tbc_person_id->set_node_id( 1 );
-		$tbc_person_id->put_in_container( $model );
-		$tbc_person_id->set_node_ref_attribute( 'table', $tb_person );
-		$tbc_person_id->set_parent_node_attribute_name( 'table' );
+		my $tbc_person_id = make_a_child_node( 'table_col', $tb_person, 'table' );
 		$tbc_person_id->set_literal_attribute( 'name', 'person_id' );
 		$tbc_person_id->set_node_ref_attribute( 'domain', $dom_entity_id );
 		$tbc_person_id->set_literal_attribute( 'mandatory', 1 );
 		$tbc_person_id->set_literal_attribute( 'default_val', 1 );
 		$tbc_person_id->set_literal_attribute( 'auto_inc', 1 );
 
-		# ... add a lot more Nodes
+		# Define the 'person name' column of that table:
+		my $tbc_person_name = make_a_child_node( 'table_col', $tb_person, 'table' );
+		$tbc_person_name->set_literal_attribute( 'name', 'name' );
+		$tbc_person_name->set_node_ref_attribute( 'domain', $dom_pers_name );
+		$tbc_person_name->set_literal_attribute( 'mandatory', 1 );
+
+		##### NEXT SET APPLICATION BLUEPRINT-TYPE DETAILS #####
+
+		# Describe a utility application for managing our database schema:
+		my $setup_app = make_a_node( 'application', $model );
+		$setup_app->set_literal_attribute( 'name', 'Setup' );
+
+		# Describe the data link that the utility app will use to talk to the database:
+		my $setup_app_cl = make_a_child_node( 'catalog_link', $setup_app, 'application' );
+		$setup_app_cl->set_literal_attribute( 'name', 'admin_link' );
+		$setup_app_cl->set_node_ref_attribute( 'target', $catalog_bp );
+
+		# Need this domain def for generic boolean literals:
+		my $dom_boolean = make_a_child_node( 'domain', $setup_app, 'application' );
+		$dom_boolean->set_literal_attribute( 'name', 'boolean' );
+		$dom_boolean->set_enumerated_attribute( 'base_type', 'BOOLEAN' );
+
+		# Describe a routine for setting up a database with our schema:
+		my $rt_install = make_a_child_node( 'routine', $setup_app, 'application' );
+		$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+		$rt_install->set_literal_attribute( 'name', 'install_app_schema' );
+		my $rts_install = make_a_child_node( 'routine_stmt', $rt_install, 'routine' );
+		$rts_install->set_enumerated_attribute( 'call_sroutine', 'CATALOG_CREATE' );
+		my $rte_install_a1 = make_a_child_node( 'routine_expr', $rts_install, 'p_stmt' );
+		$rte_install_a1->set_enumerated_attribute( 'call_sroutine_arg', 'LINK_BP' );
+		$rte_install_a1->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
+		$rte_install_a1->set_node_ref_attribute( 'actn_catalog_link', $setup_app_cl );
+		my $rte_install_a2 = make_a_child_node( 'routine_expr', $rts_install, 'p_stmt' );
+		$rte_install_a2->set_enumerated_attribute( 'call_sroutine_arg', 'RECURSIVE' );
+		$rte_install_a2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
+		$rte_install_a2->set_literal_attribute( 'valf_literal', 1 );
+		$rte_install_a2->set_node_ref_attribute( 'domain', $dom_boolean );
+
+		##### END OF DETAILS SETTING #####
 
 		# Now check that we didn't omit something important:
 		$model->assert_deferrable_constraints();
@@ -2949,18 +2952,12 @@ included.)  However, here are a few example usage lines:
 		print "SOMETHING'S WRONG: $user_text\n";
 	}
 
-The above code sample is taken and slightly altered from a longer set of code
-in this module's test script/module: 't/SQL_Routine.t' and
-'lib/t_SQL_Routine.pm'.  Even that code is an incomplete sample, but it 
-also demonstrates the use of a couple simple wrapper functions.
+Real-life code would probably be more terse than the above example because it
+makes use of more wrapper functions (not provided here).
 
-=head2 A Complete Example Model Serialized to XML
-
-This is a serialization of the model that the test code makes, which should
-give you a better idea what kind of information is stored in a SQL::SynaxModel:
+This is the serialization of the model that the above code sample makes:
 
 	<root>
-		<elements />
 		<blueprints>
 			<catalog id="1">
 				<owner id="1" catalog="1" />
@@ -2970,130 +2967,30 @@ give you a better idea what kind of information is stored in a SQL::SynaxModel:
 					<table id="1" schema="1" name="person">
 						<table_col id="1" table="1" name="person_id" domain="1" mandatory="1" default_val="1" auto_inc="1" />
 						<table_col id="2" table="1" name="name" domain="2" mandatory="1" />
-						<table_col id="3" table="1" name="father_id" domain="1" mandatory="0" />
-						<table_col id="4" table="1" name="mother_id" domain="1" mandatory="0" />
-						<table_ind id="1" table="1" name="primary" ind_type="UNIQUE">
-							<table_ind_col id="1" table_ind="1" table_col="1" />
-						</table_ind>
-						<table_ind id="2" table="1" name="fk_father" ind_type="FOREIGN" f_table="1">
-							<table_ind_col id="2" table_ind="2" table_col="3" f_table_col="1" />
-						</table_ind>
-						<table_ind id="3" table="1" name="fk_mother" ind_type="FOREIGN" f_table="1">
-							<table_ind_col id="3" table_ind="3" table_col="4" f_table_col="1" />
-						</table_ind>
 					</table>
 				</schema>
 			</catalog>
 			<application id="1" name="Setup">
 				<catalog_link id="1" application="1" name="admin_link" target="1" />
-				<command id="1" application="1" name="install_app_schema" command_type="DB_CREATE">
-					<command_arg id="1" command="1" catalog_link="1" />
-				</command>
-				<command id="2" application="1" name="remove_app_schema" command_type="DB_DELETE">
-					<command_arg id="2" command="2" catalog_link="1" />
-				</command>
-			</application>
-			<application id="2" name="People Watcher">
-				<catalog_link id="2" application="2" name="editor_link" target="1" />
-				<routine id="1" routine_type="FUNCTION" application="2" name="fetch_all_persons" return_var_type="CURSOR">
-					<view id="1" view_type="MATCH" routine="1" name="fetch_all_persons" match_all_cols="1">
-						<view_src id="1" view="1" name="person" match_table="1" />
-					</view>
-					<routine_var id="1" routine="1" name="person_cursor" var_type="CURSOR" curs_view="1" />
-					<routine_stmt id="1" routine="1" stmt_type="SPROC" call_sproc="CURSOR_OPEN">
-						<routine_expr id="1" expr_type="VAR" p_stmt="1" routine_var="1" />
+				<domain id="3" application="1" name="boolean" base_type="BOOLEAN" />
+				<routine id="1" application="1" name="install_app_schema" routine_type="PROCEDURE">
+					<routine_stmt id="1" routine="1" call_sroutine="CATALOG_CREATE">
+						<routine_expr id="1" p_stmt="1" call_sroutine_arg="LINK_BP" cont_type="SRT_NODE" actn_catalog_link="1" />
+						<routine_expr id="2" p_stmt="1" call_sroutine_arg="RECURSIVE" cont_type="SCALAR" valf_literal="1" domain="3" />
 					</routine_stmt>
-					<routine_stmt id="2" routine="1" stmt_type="RETURN">
-						<routine_expr id="2" expr_type="VAR" p_stmt="2" routine_var="1" />
-					</routine_stmt>
-				</routine>
-				<routine id="2" routine_type="PROCEDURE" application="2" name="insert_a_person">
-					<routine_arg id="1" routine="2" name="arg_person_id" var_type="SCALAR" domain="1" />
-					<routine_arg id="2" routine="2" name="arg_person_name" var_type="SCALAR" domain="2" />
-					<routine_arg id="3" routine="2" name="arg_father_id" var_type="SCALAR" domain="1" />
-					<routine_arg id="4" routine="2" name="arg_mother_id" var_type="SCALAR" domain="1" />
-					<view id="2" view_type="MATCH" routine="2" name="insert_a_person">
-						<view_src id="2" view="2" name="person" match_table="1">
-							<view_src_col id="1" src="2" match_table_col="1" />
-							<view_src_col id="2" src="2" match_table_col="2" />
-							<view_src_col id="3" src="2" match_table_col="3" />
-							<view_src_col id="4" src="2" match_table_col="4" />
-						</view_src>
-						<view_expr id="1" expr_type="ARG" view="2" view_part="SET" set_view_col="1" routine_arg="1" />
-						<view_expr id="2" expr_type="ARG" view="2" view_part="SET" set_view_col="2" routine_arg="2" />
-						<view_expr id="3" expr_type="ARG" view="2" view_part="SET" set_view_col="3" routine_arg="3" />
-						<view_expr id="4" expr_type="ARG" view="2" view_part="SET" set_view_col="4" routine_arg="4" />
-					</view>
-					<routine_stmt id="3" routine="2" stmt_type="SPROC" call_sproc="INSERT" view_for_dml="2" />
-				</routine>
-				<routine id="3" routine_type="PROCEDURE" application="2" name="update_a_person">
-					<routine_arg id="5" routine="3" name="arg_person_id" var_type="SCALAR" domain="1" />
-					<routine_arg id="6" routine="3" name="arg_person_name" var_type="SCALAR" domain="2" />
-					<routine_arg id="7" routine="3" name="arg_father_id" var_type="SCALAR" domain="1" />
-					<routine_arg id="8" routine="3" name="arg_mother_id" var_type="SCALAR" domain="1" />
-					<view id="3" view_type="MATCH" routine="3" name="update_a_person">
-						<view_src id="3" view="3" name="person" match_table="1">
-							<view_src_col id="5" src="3" match_table_col="1" />
-							<view_src_col id="6" src="3" match_table_col="2" />
-							<view_src_col id="7" src="3" match_table_col="3" />
-							<view_src_col id="8" src="3" match_table_col="4" />
-						</view_src>
-						<view_expr id="5" expr_type="ARG" view="3" view_part="SET" set_view_col="6" routine_arg="6" />
-						<view_expr id="6" expr_type="ARG" view="3" view_part="SET" set_view_col="7" routine_arg="7" />
-						<view_expr id="7" expr_type="ARG" view="3" view_part="SET" set_view_col="8" routine_arg="8" />
-						<view_expr id="8" expr_type="SFUNC" view="3" view_part="WHERE" call_sfunc="EQ">
-							<view_expr id="9" expr_type="COL" p_expr="8" src_col="5" />
-							<view_expr id="10" expr_type="ARG" p_expr="8" routine_arg="5" />
-						</view_expr>
-					</view>
-					<routine_stmt id="4" routine="3" stmt_type="SPROC" call_sproc="UPDATE" view_for_dml="3" />
-				</routine>
-				<routine id="4" routine_type="PROCEDURE" application="2" name="delete_a_person">
-					<routine_arg id="9" routine="4" name="arg_person_id" var_type="SCALAR" domain="1" />
-					<view id="4" view_type="MATCH" routine="4" name="delete_a_person">
-						<view_src id="4" view="4" name="person" match_table="1">
-							<view_src_col id="9" src="4" match_table_col="1" />
-						</view_src>
-						<view_expr id="11" expr_type="SFUNC" view="4" view_part="WHERE" call_sfunc="EQ">
-							<view_expr id="12" expr_type="COL" p_expr="11" src_col="9" />
-							<view_expr id="13" expr_type="ARG" p_expr="11" routine_arg="9" />
-						</view_expr>
-					</view>
-					<routine_stmt id="5" routine="4" stmt_type="SPROC" call_sproc="DELETE" view_for_dml="4" />
 				</routine>
 			</application>
 		</blueprints>
-		<tools>
-			<data_storage_product id="1" product_code="SQLite_2_8_12" is_file_based="1" />
-			<data_storage_product id="2" product_code="Oracle_9_i" is_network_svc="1" />
-			<data_link_product id="1" product_code="ODBC" />
-		</tools>
-		<sites>
-			<catalog_instance id="1" product="1" blueprint="1" name="test">
-				<user id="1" catalog="1" user_type="SCHEMA_OWNER" match_owner="1" name="ronsealy" password="K34dsD" />
-				<user id="2" catalog="1" user_type="DATA_EDITOR" name="joesmith" password="fdsKJ4" />
-			</catalog_instance>
-			<application_instance id="1" blueprint="1" name="test Setup">
-				<catalog_link_instance id="1" product="1" application="1" unrealized="1" target="1" local_dsn="test" />
-			</application_instance>
-			<application_instance id="2" blueprint="2" name="test People Watcher">
-				<catalog_link_instance id="2" product="1" application="2" unrealized="2" target="1" local_dsn="test" />
-			</application_instance>
-			<catalog_instance id="2" product="2" blueprint="1" name="demo">
-				<user id="3" catalog="2" user_type="SCHEMA_OWNER" match_owner="1" name="florence" password="0sfs8G" />
-				<user id="4" catalog="2" user_type="DATA_EDITOR" name="thainuff" password="9340sd" />
-			</catalog_instance>
-			<application_instance id="3" blueprint="1" name="demo Setup">
-				<catalog_link_instance id="3" product="1" application="3" unrealized="1" target="2" local_dsn="demo" />
-			</application_instance>
-			<application_instance id="4" blueprint="2" name="demo People Watcher">
-				<catalog_link_instance id="4" product="1" application="4" unrealized="2" target="2" local_dsn="demo" />
-			</application_instance>
-		</sites>
+		<tools />
+		<sites />
 		<circumventions />
 	</root>
 
-For some additional code samples, try looking at the various modules that
+For a much larger and semi-complete example of SQL::Routine model-building
+code, and a serialization of the same, see the file t/lib/t_SQL_Routine.pm,
+which implements this distribution's main test suite.
+
+For more additional code samples, try looking at the various modules that
 sub-class or use SQL::Routine.  They tend to implement or use wrappers that
 make for much more compact code.
 
@@ -3102,7 +2999,7 @@ make for much more compact code.
 SQL::Routine works like an XML DOM except that it is restricted to holding
 specific kinds of data, which resemble SQL statements.  This part of the
 SYNOPSIS shows some actual SQL statements that can be generated from selected
-portions of the above model.
+portions of the model that is built by t/lib/t_SQL_Routine.pm .
 
 This first set of Nodes describes 2 domains and 1 table, all 3 of which are
 conceptually named schema objects.
@@ -3127,7 +3024,7 @@ conceptually named schema objects.
 
 The above Node group has all the necessary details needed by external code to
 generate the following SQL statements.  There are two versions of SQL given for
-the same task; the first one is for SQL-2003 compliant databases, that support
+the same task; the first one is for SQL:2003 compliant databases, that support
 DOMAIN schema objects; the second example is for older databases that do not. 
 (Both of them use a MySQL extension AUTO_INCREMENT, but SQL generated for other
 databases would do the same thing in a different way.)
@@ -3164,27 +3061,31 @@ named host parameter if un-named client-side SQL is generated) and performs an
 UPDATE query against one table record; the query takes 4 arguments, using one
 to match a record and 3 as new record column values to set.
 
-	<routine id="3" routine_type="PROCEDURE" application="2" name="update_a_person">
-		<routine_arg id="5" routine="3" name="arg_person_id" var_type="SCALAR" domain="1" />
-		<routine_arg id="6" routine="3" name="arg_person_name" var_type="SCALAR" domain="2" />
-		<routine_arg id="7" routine="3" name="arg_father_id" var_type="SCALAR" domain="1" />
-		<routine_arg id="8" routine="3" name="arg_mother_id" var_type="SCALAR" domain="1" />
-		<view id="3" view_type="MATCH" routine="3" name="update_a_person">
+	<routine id="6" application="2" name="update_a_person" routine_type="PROCEDURE">
+		<routine_arg id="9" routine="6" name="db_conn" cont_type="CONN" conn_link="2" />
+		<routine_arg id="10" routine="6" name="arg_person_id" cont_type="SCALAR" domain="1" />
+		<routine_arg id="11" routine="6" name="arg_person_name" cont_type="SCALAR" domain="2" />
+		<routine_arg id="12" routine="6" name="arg_father_id" cont_type="SCALAR" domain="1" />
+		<routine_arg id="13" routine="6" name="arg_mother_id" cont_type="SCALAR" domain="1" />
+		<view id="3" routine="6" name="update_a_person" view_type="MATCH">
 			<view_src id="3" view="3" name="person" match_table="1">
 				<view_src_col id="5" src="3" match_table_col="1" />
 				<view_src_col id="6" src="3" match_table_col="2" />
 				<view_src_col id="7" src="3" match_table_col="3" />
 				<view_src_col id="8" src="3" match_table_col="4" />
 			</view_src>
-			<view_expr id="5" expr_type="ARG" view="3" view_part="SET" set_view_col="6" routine_arg="6" />
-			<view_expr id="6" expr_type="ARG" view="3" view_part="SET" set_view_col="7" routine_arg="7" />
-			<view_expr id="7" expr_type="ARG" view="3" view_part="SET" set_view_col="8" routine_arg="8" />
-			<view_expr id="8" expr_type="SFUNC" view="3" view_part="WHERE" call_sfunc="EQ">
-				<view_expr id="9" expr_type="COL" p_expr="8" src_col="5" />
-				<view_expr id="10" expr_type="ARG" p_expr="8" routine_arg="5" />
+			<view_expr id="5" view="3" view_part="SET" set_src_col="6" cont_type="SCALAR" valf_p_routine_arg="11" />
+			<view_expr id="6" view="3" view_part="SET" set_src_col="7" cont_type="SCALAR" valf_p_routine_arg="12" />
+			<view_expr id="7" view="3" view_part="SET" set_src_col="8" cont_type="SCALAR" valf_p_routine_arg="13" />
+			<view_expr id="8" view="3" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+				<view_expr id="9" p_expr="8" cont_type="SCALAR" valf_src_col="5" />
+				<view_expr id="10" p_expr="8" cont_type="SCALAR" valf_p_routine_arg="10" />
 			</view_expr>
 		</view>
-		<routine_stmt id="4" routine="3" stmt_type="SPROC" call_sproc="UPDATE" view_for_dml="3" />
+		<routine_stmt id="8" routine="6" call_sroutine="UPDATE">
+			<routine_expr id="13" p_stmt="8" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="9" />
+			<routine_expr id="14" p_stmt="8" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" actn_view="3" />
+		</routine_stmt>
 	</routine>
 
 The above Node group, *together* with the previous Node group, has details to
@@ -3428,16 +3329,15 @@ the root Node of each tree which has a different Node type as its parent.
 
 Finally, any Node of certain types will always have a specific pseudo-Node as
 its single parent, which it does not reference in an attribute, and which can
-not be changed.  All 6 pseudo-Nodes have no attributes, even 'id', and only one
+not be changed.  All 5 pseudo-Nodes have no attributes, even 'id', and only one
 of each exists; they are created by default with the Container they are part
 of, forming the top 2 levels of the Node tree, and can not be removed.  They
 are: 'root' (the single level-1 Node which is parent to the other pseudo-Nodes
-but no normal Nodes), 'elements' (parent to 'domain' Nodes), 'blueprints'
-(parent to 'catalog' and 'application' Nodes), 'tools' (parent to
-'data_storage_product' and 'data_link_product' Nodes), 'sites' (parent to
-'catalog_instance' and 'application_instance' Nodes), and 'circumventions'
-(parent to 'sql_fragment' nodes).  All other Node types have normal Nodes as
-parents.
+but no normal Nodes), 'blueprints' (parent to 'catalog' and 'application'
+Nodes), 'tools' (parent to 'data_storage_product' and 'data_link_product'
+Nodes), 'sites' (parent to 'catalog_instance' and 'application_instance'
+Nodes), and 'circumventions' (parent to 'sql_fragment' nodes).  All other Node
+types have normal Nodes as parents.
 
 You should look at the POD-only file named SQL::Routine::Language, which
 comes with this distribution.  It serves to document all of the possible Node

@@ -5,6 +5,6 @@ WriteMakefile(
 	NAME	=> 'SQL::Routine',
 	VERSION_FROM => 'lib/SQL/Routine.pm', # finds $VERSION
 	PREREQ_PM => {
-		'Locale::KeyedText' => 1.00,
+		'Locale::KeyedText' => '1.00',
 	},
 );
