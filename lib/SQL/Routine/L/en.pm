@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 
 ######################################################################
 
@@ -129,6 +129,10 @@ my %text_strings = (
 	'SRT_N_SET_LIT_AT_NO_ARG_VAL' => 
 		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTR_VALUE argument",
+	'SRT_N_SET_LIT_AT_INVAL_V_IS_REF' => 
+		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"invalid ATTR_VALUE argument; this Node's literal attribute named '{ATNM}' may only be ".
+		"a scalar value; you tried to set it to a '{ARG_REF_TYPE}' reference",
 	'SRT_N_SET_LIT_AT_INVAL_V_BOOL' => 
 		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTR_VALUE argument; this Node's literal attribute named '{ATNM}' may only be ".
@@ -234,11 +238,6 @@ my %text_strings = (
 	'SRT_N_SET_ATS_NO_ARGS' => 
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTRS argument",
-	'SRT_ABSINTF_N_SET_ATS_BAD_ARGS' => 
-		"$CN.set_attributes(), $ABSINTF: concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'; ".
-		"also, Nodes of the current type have no default ".
-		"attribute to associate the given value with",
 	'SRT_N_SET_ATS_BAD_ARGS' => 
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
@@ -263,6 +262,14 @@ my %text_strings = (
 	'SRT_N_EST_PP_NODE_ATNM_BAD_ARG' => 
 		"$CN.estimate_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_PARENT argument; it is not a Node object, but rather is '{ARG}'",
+
+	'SRT_N_EXP_SI_AT_NO_SI' => 
+		"$CN.expected_surrogate_id_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"this Node type has no surrogate id attribute, so you can not do anything with it",
+
+	'SRT_N_SET_SI_AT_NO_ARGS' => 
+		"$CN.set_surrogate_id_attribute(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"missing ATTR_VALUE argument",
 
 	'SRT_N_PI_CONT_NO_ARGS' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".

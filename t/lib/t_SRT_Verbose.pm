@@ -296,7 +296,6 @@ sub create_and_populate_model {
 	$rte_fet_return_a1->set_enumerated_attribute( 'call_sroutine_arg', 'RETURN_VALUE' );
 	$rte_fet_return_a1->set_enumerated_attribute( 'cont_type', 'RW_ARY' );
 	$rte_fet_return_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_person_ary );
-	# ... The calling code would then fetch whatever rows they want and then close the cursor
 
 	# Describe a routine that inserts a record into the 'person' table:
 	my $rt_insertone = make_a_child_node( 'routine', $editor_app, 'pp_application' );
@@ -494,7 +493,7 @@ sub create_and_populate_model {
 	# Describe the data link instance that the utility app will use to talk to the test database:
 	my $test_setup_app_cl = make_a_child_node( 'catalog_link_instance', $test_setup_app, 'pp_application' );
 	$test_setup_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
-	$test_setup_app_cl->set_node_ref_attribute( 'unrealized', $setup_app_cl );
+	$test_setup_app_cl->set_node_ref_attribute( 'blueprint', $setup_app_cl );
 	$test_setup_app_cl->set_node_ref_attribute( 'target', $test_db );
 	$test_setup_app_cl->set_literal_attribute( 'local_dsn', 'test' );
 
@@ -505,7 +504,7 @@ sub create_and_populate_model {
 	# Describe the data link instance that the normal app will use to talk to the test database:
 	my $test_editor_app_cl = make_a_child_node( 'catalog_link_instance', $test_editor_app, 'pp_application' );
 	$test_editor_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
-	$test_editor_app_cl->set_node_ref_attribute( 'unrealized', $editor_app_cl );
+	$test_editor_app_cl->set_node_ref_attribute( 'blueprint', $editor_app_cl );
 	$test_editor_app_cl->set_node_ref_attribute( 'target', $test_db );
 	$test_editor_app_cl->set_literal_attribute( 'local_dsn', 'test' );
 
@@ -537,7 +536,7 @@ sub create_and_populate_model {
 	# Describe the data link instance that the utility app will use to talk to the demo database:
 	my $demo_setup_app_cl = make_a_child_node( 'catalog_link_instance', $demo_setup_app, 'pp_application' );
 	$demo_setup_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
-	$demo_setup_app_cl->set_node_ref_attribute( 'unrealized', $setup_app_cl );
+	$demo_setup_app_cl->set_node_ref_attribute( 'blueprint', $setup_app_cl );
 	$demo_setup_app_cl->set_node_ref_attribute( 'target', $demo_db );
 	$demo_setup_app_cl->set_literal_attribute( 'local_dsn', 'demo' );
 
@@ -548,7 +547,7 @@ sub create_and_populate_model {
 	# Describe the data link instance that the normal app will use to talk to the demo database:
 	my $demo_editor_app_cl = make_a_child_node( 'catalog_link_instance', $demo_editor_app, 'pp_application' );
 	$demo_editor_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
-	$demo_editor_app_cl->set_node_ref_attribute( 'unrealized', $editor_app_cl );
+	$demo_editor_app_cl->set_node_ref_attribute( 'blueprint', $editor_app_cl );
 	$demo_editor_app_cl->set_node_ref_attribute( 'target', $demo_db );
 	$demo_editor_app_cl->set_literal_attribute( 'local_dsn', 'demo' );
 
@@ -711,25 +710,25 @@ sub expected_model_xml_output {
 		<data_link_product id="1" si_name="Microsoft ODBC" product_code="ODBC" />
 	</tools>
 	<sites>
-		<catalog_instance id="1" si_name="test" product="1" blueprint="1">
+		<catalog_instance id="1" si_name="test" blueprint="1" product="1">
 			<user id="1" pp_catalog="1" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="1" password="K34dsD" />
 			<user id="2" pp_catalog="1" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
 		</catalog_instance>
 		<application_instance id="1" si_name="test Setup" blueprint="1">
-			<catalog_link_instance id="1" pp_application="1" product="1" unrealized="1" target="1" local_dsn="test" />
+			<catalog_link_instance id="1" pp_application="1" blueprint="1" product="1" target="1" local_dsn="test" />
 		</application_instance>
 		<application_instance id="2" si_name="test People Watcher" blueprint="2">
-			<catalog_link_instance id="2" pp_application="2" product="1" unrealized="2" target="1" local_dsn="test" />
+			<catalog_link_instance id="2" pp_application="2" blueprint="2" product="1" target="1" local_dsn="test" />
 		</application_instance>
-		<catalog_instance id="2" si_name="demo" product="2" blueprint="1">
+		<catalog_instance id="2" si_name="demo" blueprint="1" product="2">
 			<user id="3" pp_catalog="2" si_name="florence" user_type="SCHEMA_OWNER" match_owner="1" password="0sfs8G" />
 			<user id="4" pp_catalog="2" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
 		</catalog_instance>
 		<application_instance id="3" si_name="demo Setup" blueprint="1">
-			<catalog_link_instance id="3" pp_application="3" product="1" unrealized="1" target="2" local_dsn="demo" />
+			<catalog_link_instance id="3" pp_application="3" blueprint="1" product="1" target="2" local_dsn="demo" />
 		</application_instance>
 		<application_instance id="4" si_name="demo People Watcher" blueprint="2">
-			<catalog_link_instance id="4" pp_application="4" product="1" unrealized="2" target="2" local_dsn="demo" />
+			<catalog_link_instance id="4" pp_application="4" blueprint="2" product="1" target="2" local_dsn="demo" />
 		</application_instance>
 	</sites>
 	<circumventions />

@@ -1,3 +1,77 @@
+2004-11-23   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.50.
+
+	* New code file versions are: Routine.pm v0.50 and en.pm v0.20.
+
+	* This release takes the recently imported "SkipID" code related to the
+	"default attribute" feature and makes the support more elegant.  As a
+	side-effect, this functionality is now divorced from the "abstract
+	interface", and will be used regardless of whether the "use abstracts" flag
+	is set.
+
+	* Added new node_types_with_surrogate_id_attributes() information function.
+
+	* Added 4 new Routine.pm methods: expected_surrogate_id_attribute_name(),
+	[get|clear|set]_surrogate_id_attribute(); also added 2 related en.pm
+	messages: SRT_N_EXP_SI_AT_NO_SI, SRT_N_SET_SI_AT_NO_ARGS.  They allow you
+	to work with a Node's surrogate id attribute, if it has one, as easily as
+	you can work with the normal Node id.  Reverted set_attributes() to its
+	v0.47 state, such that it does not accept anything except a hash ref as
+	input; removed the en.pm message 'SRT_ABSINTF_N_SET_ATS_BAD_ARGS'.  Updated
+	the private method _build_node_is_child_or_not() and the public method
+	build_lonely_node() so that, if either detects a non-hash but defined ATTRS
+	argument, it builds a new one having a single element, where the value is
+	ATTRS and the key is either 'id' or the new Node's surrogate id attribute
+	name, depending on whether the value looks like a valid Node id.  Added new
+	private method _build_node_normalize_attrs() which both previous methods
+	now call.  Given these combined changes, the build*() methods still behave
+	the same as v0.49 with respect to non-hash ATTRS arguments, except that the
+	fallback action when not given a Hash ref is now always performed; there is
+	no switch to turn it on or off.
+
+	* Changed build_container() so that it is like build_child_node_trees()
+	aside from also building the Container, instead of being like
+	build_child_node_tree(); therefore, the main arguments have changed.  Also,
+	there are 3 new optional arguments to build_container() which will set the
+	corresponding 3 flag properties of the new Container.  As a result of the
+	change, build_container() will take all of the varieties of Node descriptor
+	input that you can use in other situations.
+
+	* Rewrote part of the Routine.pm SYNOPSIS Trivial Example to better
+	demonstrate the module's multi-layered API, using both build*() methods and
+	set_*() methods; the serialization is identical to the old one.  Also
+	updated the t_SRT_Circular.pm test module to use the build*() methods.
+
+	* Updated set_literal_attribute() to add a new input validation test that
+	prevents acceptance of non-scalar Perl reference values in the ATTR_VALUE
+	argument when the literal attribute type was a 'cstr' or 'misc'; also added
+	a corresponding user message to en.pm, SRT_N_SET_LIT_AT_INVAL_V_IS_REF.
+
+	* Added a couple DESCRIPTION paragraphs, one on how easy this distro is to
+	install, and one that mentions the module's multi-layered API.
+
+	* Added a CAVEATS paragraph to Routine.pm that warns against setting Node
+	surrogate id values that look like normal Node id values, since some
+	methods won't do what you expect when given such values.
+
+	* Corrected a bug present in most Routine.pm information functions such
+	that each returned nothing instead of a list; also a few other small fixes
+	to these functions.
+
+	* Multiple corresponding data-dictionary updates in Language.pod and
+	Routine.pm; these are the only changes in Language.pod.  Renamed the
+	'unrealized' attribute of 'catalog_link_instance' Nodes to 'blueprint'.  In
+	that Node type and 'catalog_instance', moved the 'blueprint' attribute
+	above 'product'.  In 'catalog_instance', deleted these 3 attributes since
+	link Nodes handle them instead: local_dsn, login_name, login_pass.  Removed
+	a comment saying some of these attributes may be replaced by *_opt Nodes;
+	they won't be, and in fact only those attributes should be used.  Removed
+	the 'standard_routine' enumerated value 'SOME', which is a synonym for
+	'ANY'.  Corresponding minor updates to t_SRT_Verbose.pm.
+
+	* Small hyperlink documentation fixes in Language.pod.
+
 2004-11-10   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.49.

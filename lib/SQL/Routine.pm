@@ -10,7 +10,7 @@ package SQL::Routine;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.49';
+our $VERSION = '0.50';
 
 use Locale::KeyedText '1.00';
 
@@ -206,7 +206,7 @@ my %ENUMERATED_TYPES = (
 		EQ NE LT GT LE GE IS_NULL NOT_NULL COALESCE SWITCH LIKE
 		ADD SUB MUL DIV DIVI MOD ROUND ABS POWER LOG
 		SCONCAT SLENGTH SINDEX SUBSTR SREPEAT STRIM SPAD SPADL LC UC
-		COUNT MIN MAX SUM AVG CONCAT EVERY ANY SOME EXISTS
+		COUNT MIN MAX SUM AVG CONCAT EVERY ANY EXISTS
 		GB_SETS GB_RLUP GB_CUBE
 	) },
 	'standard_routine_context' => { map { ($_ => 1) } qw(
@@ -1279,8 +1279,7 @@ my %NODE_TYPES = (
 	},
 	'catalog_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id si_name product blueprint file_path server_ip server_domain server_port
-			local_dsn login_name login_pass
+			id si_name blueprint product file_path server_ip server_domain server_port
 		)],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
@@ -1288,20 +1287,17 @@ my %NODE_TYPES = (
 			'server_ip' => 'cstr',
 			'server_domain' => 'cstr',
 			'server_port' => 'uint',
-			'local_dsn' => 'cstr',
-			'login_name' => 'cstr',
-			'login_pass' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'product' => 'data_storage_product',
 			'blueprint' => 'catalog',
+			'product' => 'data_storage_product',
 		},
 		$TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
 		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( product blueprint )]],
+		$TPI_MA_ATTRS => [[],[],[qw( blueprint product )]],
 		$TPI_MUDI_ATGPS => [
 			['ak_cat_link_inst',[
-				['catalog_link_instance',['unrealized'],[],[]],
+				['catalog_link_instance',['blueprint'],[],[]],
 			]],
 		],
 	},
@@ -1335,13 +1331,13 @@ my %NODE_TYPES = (
 		$TPI_MA_ATTRS => [[],[],[qw( blueprint )]],
 		$TPI_MUDI_ATGPS => [
 			['ak_cat_link_inst',[
-				['catalog_link_instance',['unrealized'],[],[]],
+				['catalog_link_instance',['blueprint'],[],[]],
 			]],
 		],
 	},
 	'catalog_link_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id pp_link pp_catalog pp_application product unrealized target local_dsn login_name login_pass
+			id pp_link pp_catalog pp_application blueprint product target local_dsn login_name login_pass
 		)],
 		$TPI_AT_LITERALS => {
 			'local_dsn' => 'cstr',
@@ -1352,14 +1348,14 @@ my %NODE_TYPES = (
 			'pp_link' => 'catalog_link_instance',
 			'pp_catalog' => 'catalog_instance',
 			'pp_application' => 'application_instance',
+			'blueprint' => 'catalog_link',
 			'product' => 'data_link_product',
-			'unrealized' => 'catalog_link',
 			'target' => 'catalog_instance',
 		},
 		$TPI_PP_NODE_ATNMS => [qw( pp_link pp_catalog pp_application )],
 		$TPI_MA_ATTRS => [[],[],[qw( product )]],
 		$TPI_MUTEX_ATGPS => [
-			['link_root_unrealized',[],[],[qw( pp_link unrealized )],1],
+			['link_root_unrealized',[],[],[qw( pp_link blueprint )],1],
 			['link_root_target',[],[],[qw( pp_link target )],1],
 		],
 		$TPI_CHILD_QUANTS => [
@@ -1563,7 +1559,7 @@ sub valid_enumerated_types {
 
 sub valid_enumerated_type_values {
 	my ($self, $type, $value) = @_;
-	($type and exists( $ENUMERATED_TYPES{$type} )) or return( undef );
+	$type and (exists( $ENUMERATED_TYPES{$type} ) or return( undef ));
 	$value and return( exists( $ENUMERATED_TYPES{$type}->{$value} ) );
 	return( {%{$ENUMERATED_TYPES{$type}}} );
 }
@@ -1576,7 +1572,7 @@ sub valid_node_types {
 
 sub valid_node_type_literal_attributes {
 	my ($self, $type, $attr) = @_;
-	($type and exists( $NODE_TYPES{$type} )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	exists( $NODE_TYPES{$type}->{$TPI_AT_LITERALS} ) or return( undef );
 	$attr and return( $NODE_TYPES{$type}->{$TPI_AT_LITERALS}->{$attr} );
 	return( {%{$NODE_TYPES{$type}->{$TPI_AT_LITERALS}}} );
@@ -1584,7 +1580,7 @@ sub valid_node_type_literal_attributes {
 
 sub valid_node_type_enumerated_attributes {
 	my ($self, $type, $attr) = @_;
-	($type and exists( $NODE_TYPES{$type} )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	exists( $NODE_TYPES{$type}->{$TPI_AT_ENUMS} ) or return( undef );
 	$attr and return( $NODE_TYPES{$type}->{$TPI_AT_ENUMS}->{$attr} );
 	return( {%{$NODE_TYPES{$type}->{$TPI_AT_ENUMS}}} );
@@ -1592,7 +1588,7 @@ sub valid_node_type_enumerated_attributes {
 
 sub valid_node_type_node_ref_attributes {
 	my ($self, $type, $attr) = @_;
-	($type and exists( $NODE_TYPES{$type} )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	exists( $NODE_TYPES{$type}->{$TPI_AT_NREFS} ) or return( undef );
 	$attr and return( $NODE_TYPES{$type}->{$TPI_AT_NREFS}->{$attr} );
 	return( {%{$NODE_TYPES{$type}->{$TPI_AT_NREFS}}} );
@@ -1600,7 +1596,7 @@ sub valid_node_type_node_ref_attributes {
 
 sub major_type_of_node_type_attribute {
 	my ($self, $type, $attr) = @_;
-	($type and $self->valid_node_types( $type )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	defined( $attr ) or return( undef );
 	$attr eq $ATTR_ID and return( $NAMT_ID );
 	if( $self->valid_node_type_literal_attributes( $type, $attr ) ) {
@@ -1617,7 +1613,7 @@ sub major_type_of_node_type_attribute {
 
 sub valid_node_type_parent_attribute_names {
 	my ($self, $type, $attr) = @_;
-	($type and exists( $NODE_TYPES{$type} )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	exists( $NODE_TYPES{$type}->{$TPI_PP_NODE_ATNMS} ) or return( undef );
 	$attr and return( grep { $_ eq $attr } @{$NODE_TYPES{$type}->{$TPI_PP_NODE_ATNMS}} );
 	return( [@{$NODE_TYPES{$type}->{$TPI_PP_NODE_ATNMS}}] );
@@ -1625,10 +1621,22 @@ sub valid_node_type_parent_attribute_names {
 
 sub node_types_with_pseudonode_parents {
 	my ($self, $type) = @_;
-	($type and exists( $NODE_TYPES{$type} )) or return( undef );
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	$type and return( $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE} );
-	return( {map { ($_ => $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE}) } 
-		grep { $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES} );
+	return( {map { ($_ => $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE}) } 
+		grep { $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES} );
+}
+
+sub node_types_with_surrogate_id_attributes {
+	my ($self, $type) = @_;
+	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
+	if( $type ) {
+		if( my $si_atnm = $NODE_TYPES{$type}->{$TPI_SI_ATNM} ) {
+			return( (grep { $_ } @{$si_atnm})[0] );
+		}
+	}
+	return( {map { ($_ => (grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}})[0]) } 
+		grep { $NODE_TYPES{$_}->{$TPI_SI_ATNM} } keys %NODE_TYPES} );
 }
 
 ######################################################################
@@ -1732,16 +1740,37 @@ sub build_lonely_node {
 		($node_type, $attrs, $pp_atnm) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_PP_ATNM};
 	}
 	my $node = $self->new_node( $node_type );
-	defined( $attrs ) and $node->set_attributes( $attrs );
+	$attrs = $self->_build_node_normalize_attrs( $node, $attrs );
+	$node->set_attributes( $attrs );
 	defined( $pp_atnm ) or $pp_atnm = $node->get_first_candidate_pp_node_attribute_name();
 	defined( $pp_atnm ) and $node->set_pp_node_attribute_name( $pp_atnm );
 	return( $node );
 }
 
+sub _build_node_normalize_attrs {
+	my ($self, $node, $attrs) = @_;
+	if( ref($attrs) eq 'HASH' ) {
+		$attrs = {%{$attrs}}; # copy this, to preserve caller environment
+	} elsif( defined($attrs) ) {
+		if( $attrs =~ /\D/ or $attrs < 1 or int($attrs) ne $attrs ) { # does not look like node id
+			# The regexp above should suppress warnings about non-numerical arguments to '<'
+			$attrs = { $node->expected_surrogate_id_attribute_name() => $attrs }; # dies if no SI
+		} else { # looks like a node id
+			$attrs = { $ATTR_ID => $attrs };
+		}
+	} else {
+		$attrs = {};
+	}
+	return( $attrs );
+}
+
 sub build_container {
-	my ($self, @args) = @_;
+	my ($self, $list, $auto_assert, $auto_ids, $use_abstracts) = @_;
 	my $container = $self->new_container();
-	$container->build_child_node_tree( @args );
+	$auto_assert and $container->auto_assert_deferrable_constraints( 1 );
+	$auto_ids and $container->auto_set_node_ids( 1 );
+	$use_abstracts and $container->use_abstract_interface( 1 );
+	$container->build_child_node_trees( $list );
 	return( $container );
 }
 
@@ -1935,35 +1964,29 @@ sub build_node {
 sub _build_node_is_child_or_not {
 	my ($container, $node_type, $attrs, $pp_node, $pp_atnm) = @_;
 	my $node = $container->new_node( $node_type );
-	if( ref($attrs) eq 'HASH' ) {
-		$attrs = {%{$attrs}}; # copy this, to preserve caller environment
-		if( my $node_id = delete( $attrs->{$ATTR_ID} ) ) {
-			$node->set_node_id( $node_id );
-		}
+	$attrs = $container->_build_node_normalize_attrs( $node, $attrs );
+	if( my $node_id = delete( $attrs->{$ATTR_ID} ) ) {
+		$node->set_node_id( $node_id );
 	}
 	$node->put_in_container( $container );
 	if( $pp_node ) {
 		$pp_node->add_child_node( $node );
 	} elsif( defined( $pp_atnm ) ) {
 		$node->set_pp_node_attribute_name( $pp_atnm );
-		if( ref($attrs) eq 'HASH' ) {
-			if( my $pp_atvl = delete( $attrs->{$pp_atnm} ) ) {
-				$node->set_node_ref_attribute( $pp_atnm, $pp_atvl );
-			}
+		if( my $pp_atvl = delete( $attrs->{$pp_atnm} ) ) {
+			$node->set_node_ref_attribute( $pp_atnm, $pp_atvl );
 		}
 	} else {
-		if( ref($attrs) eq 'HASH' ) {
-			if( my $pp_node_atnms = $NODE_TYPES{$node_type}->{$TPI_PP_NODE_ATNMS} ) {
-				foreach my $attr_name (@{$pp_node_atnms}) {
-					if( my $attr_val = delete( $attrs->{$attr_name} ) ) {
-						$node->set_pp_node_attribute_name( $attr_name );
-						$node->set_node_ref_attribute( $attr_name, $attr_val );
-					}
+		if( my $pp_node_atnms = $NODE_TYPES{$node_type}->{$TPI_PP_NODE_ATNMS} ) {
+			foreach my $attr_name (@{$pp_node_atnms}) {
+				if( my $attr_val = delete( $attrs->{$attr_name} ) ) {
+					$node->set_pp_node_attribute_name( $attr_name );
+					$node->set_node_ref_attribute( $attr_name, $attr_val );
 				}
 			}
 		}
 	}
-	defined( $attrs ) and $node->set_attributes( $attrs ); # throws exception if attrs is bad data
+	$node->set_attributes( $attrs );
 	if( $container->{$CPROP_AUTO_ASS_DEF_CON} ) {
 		eval {
 			$node->assert_deferrable_constraints(); # check that this Node's own attrs are correct
@@ -2184,6 +2207,11 @@ sub set_literal_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	my $exp_lit_type = $node->expected_literal_attribute_type( $attr_name ); # dies if bad arg
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL' );
+
+	if( ref($attr_value) ) {
+		$node->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_IS_REF', 
+			{ 'ATNM' => $attr_name, 'ARG_REF_TYPE' => ref($attr_value) } );
+	}
 
 	my $node_type = $node->{$NPROP_NODE_TYPE};
 
@@ -2643,18 +2671,8 @@ sub set_attribute {
 sub set_attributes {
 	my ($node, $attrs) = @_;
 	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARGS' );
-	if( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_USE_ABSTRACTS} ) {
-		unless( ref($attrs) eq 'HASH' ) {
-			my $def_attr = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM};
-			unless( $def_attr ) {
-				$node->_throw_error_message( 'SRT_ABSINTF_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-			}
-			$attrs = { (grep { $_ } @{$def_attr})[0] => $attrs };
-		}
-	} else {
-		unless( ref($attrs) eq 'HASH' ) {
-			$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-		}
+	unless( ref($attrs) eq 'HASH' ) {
+		$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
 	}
 	foreach my $attr_name (sort keys %{$attrs}) {
 		my $attr_value = $attrs->{$attr_name};
@@ -2769,6 +2787,36 @@ sub estimate_pp_node_attribute_name {
 		}
 	}
 	return( undef ); # given Node wrong type or competitor for primary parent of current Node
+}
+
+######################################################################
+
+sub expected_surrogate_id_attribute_name {
+	my ($node) = @_;
+	my $si_atnm = $node->node_types_with_surrogate_id_attributes( $node->{$NPROP_NODE_TYPE} );
+	unless( $si_atnm ) {
+		$node->_throw_error_message( 'SRT_N_EXP_SI_AT_NO_SI', { 'ATNM' => $si_atnm } );
+	}
+	return( $si_atnm );
+}
+
+sub get_surrogate_id_attribute {
+	my ($node) = @_;
+	my $si_atnm = $node->expected_surrogate_id_attribute();
+	return( $node->get_attribute( $si_atnm ) );
+}
+
+sub clear_surrogate_id_attribute {
+	my ($node) = @_;
+	my $si_atnm = $node->expected_surrogate_id_attribute();
+	$node->clear_attribute( $si_atnm );
+}
+
+sub set_surrogate_id_attribute {
+	my ($node, $attr_value) = @_;
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
+	my $si_atnm = $node->expected_surrogate_id_attribute();
+	$node->set_attribute( $si_atnm, $attr_value );
 }
 
 ######################################################################
@@ -3454,124 +3502,94 @@ __END__
 
 =head2 Trivial Perl Code Example
 
-This module's native API is highly verbose / detailed and so a realistically
-complex example of its use would be too large to show here.  However, here is a
-trivial example that contains everything needed to define a table with two
-columns, plus two domains used by it, plus the necessary CREATE instruction:
+This module has a multi-layered API that lets you choose between writing fairly
+verbose code that performs faster, or fairly terse code that performs slower.
+The following example uses aspects of each, but a realistically complete
+program example is too large to show here.  However, this trivial example
+contains everything needed to define a table with two columns, plus two scalar
+data types and a row data type used by it, plus the necessary CREATE statement:
 
 	use SQL::Routine;
 
-	sub make_a_node {
-		my ($node_type, $model) = @_;
-		my $node = $model->new_node( $node_type );
-		$node->set_node_id( $model->get_next_free_node_id( $node_type ) );
-		$node->put_in_container( $model );
-		return( $node );
-	}
-
-	sub make_a_child_node {
-		my ($node_type, $pp_node, $pp_attr) = @_;
-		my $container = $pp_node->get_container();
-		my $node = $pp_node->new_node( $node_type );
-		$node->set_node_id( $container->get_next_free_node_id( $node_type ) );
-		$node->put_in_container( $container );
-		$node->set_node_ref_attribute( $pp_attr, $pp_node );
-		$node->set_pp_node_attribute_name( $pp_attr );
-		return( $node );
-	}
-
 	eval {
 		my $model = SQL::Routine->new_container();
+		$model->auto_set_node_ids( 1 );
 
 		##### NEXT SET CATALOG ELEMENT-TYPE DETAILS #####
 
 		# Create user-defined scalar data type that our database record primary keys are:
-		my $sdt_entity_id = make_a_node( 'scalar_data_type', $model );
-		$sdt_entity_id->set_literal_attribute( 'si_name', 'entity_id' );
+		my $sdt_entity_id = $model->build_child_node( 'scalar_data_type', 'entity_id' );
 		$sdt_entity_id->set_enumerated_attribute( 'base_type', 'NUM_INT' );
 		$sdt_entity_id->set_literal_attribute( 'num_precision', 9 );
 
 		# Create user-defined scalar data type that our person names are:
-		my $sdt_pers_name = make_a_node( 'scalar_data_type', $model );
-		$sdt_pers_name->set_literal_attribute( 'si_name', 'person_name' );
+		my $sdt_pers_name = $model->build_child_node( 'scalar_data_type', 'person_name' );
 		$sdt_pers_name->set_enumerated_attribute( 'base_type', 'STR_CHAR' );
 		$sdt_pers_name->set_literal_attribute( 'max_chars', 100 );
 		$sdt_pers_name->set_enumerated_attribute( 'char_enc', 'UTF8' );
 
 		# Create u-d row data type that describes the columns of the table that holds our data:
-		my $rdt_person = make_a_node( 'row_data_type', $model );
-		$rdt_person->set_literal_attribute( 'si_name', 'person' );
+		my $rdt_person = $model->build_child_node( 'row_data_type', 'person' );
 
 		# Define the 'person id' field/column of that row/table:
-		my $rdtf_person_id = make_a_child_node( 'row_data_type_field', $rdt_person, 'pp_row_data_type' );
-		$rdtf_person_id->set_literal_attribute( 'si_name', 'person_id' );
+		my $rdtf_person_id = $rdt_person->build_child_node( 'row_data_type_field', 'person_id' );
 		$rdtf_person_id->set_node_ref_attribute( 'scalar_data_type', $sdt_entity_id );
 
 		# Define the 'person si_name' field/column of that row/table:
-		my $rdtf_person_name = make_a_child_node( 'row_data_type_field', $rdt_person, 'pp_row_data_type' );
-		$rdtf_person_name->set_literal_attribute( 'si_name', 'si_name' );
+		my $rdtf_person_name = $rdt_person->build_child_node( 'row_data_type_field', 'si_name' );
 		$rdtf_person_name->set_node_ref_attribute( 'scalar_data_type', $sdt_pers_name );
 
 		##### NEXT SET APPLICATION ELEMENT-TYPE DETAILS #####
 
 		# Create user-defined data type for generic boolean literals:
-		my $sdt_boolean = make_a_node( 'scalar_data_type', $model );
-		$sdt_boolean->set_literal_attribute( 'si_name', 'boolean' );
+		my $sdt_boolean = $model->build_child_node( 'scalar_data_type', 'boolean' );
 		$sdt_boolean->set_enumerated_attribute( 'base_type', 'BOOLEAN' );
 
 		##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
 
 		# Describe the database catalog blueprint that we will store our data in:
-		my $catalog_bp = make_a_node( 'catalog', $model );
-		$catalog_bp->set_literal_attribute( 'si_name', 'The Catalog Blueprint' );
+		my $catalog_bp = $model->build_child_node( 'catalog', 'The Catalog Blueprint' );
 
 		# Define the unrealized database user that owns our primary schema:
-		my $owner = make_a_child_node( 'owner', $catalog_bp, 'pp_catalog' );
+		my $owner = $catalog_bp->build_child_node( 'owner' );
 
 		# Define the primary schema that holds our data:
-		my $schema = make_a_child_node( 'schema', $catalog_bp, 'pp_catalog' );
-		$schema->set_literal_attribute( 'si_name', 'gene' );
+		my $schema = $catalog_bp->build_child_node( 'schema', 'gene' );
 		$schema->set_node_ref_attribute( 'owner', $owner );
 
 		# Define the table that holds our data:
-		my $tb_person = make_a_child_node( 'table', $schema, 'pp_schema' );
-		$tb_person->set_literal_attribute( 'si_name', 'person' );
+		my $tb_person = $schema->build_child_node( 'table', 'person' );
 		$tb_person->set_node_ref_attribute( 'row_data_type', $rdt_person );
 
 		# Add more attributes to the 'person id' column of that table:
-		my $tbf_person_id = make_a_child_node( 'table_field', $tb_person, 'pp_table' );
-		$tbf_person_id->set_node_ref_attribute( 'si_row_field', $rdtf_person_id );
+		my $tbf_person_id = $tb_person->build_child_node( 'table_field', $rdtf_person_id );
 		$tbf_person_id->set_literal_attribute( 'mandatory', 1 );
 		$tbf_person_id->set_literal_attribute( 'default_val', 1 );
 		$tbf_person_id->set_literal_attribute( 'auto_inc', 1 );
 
 		# Add more attributes to the 'person si_name' column of that table:
-		my $tbf_person_name = make_a_child_node( 'table_field', $tb_person, 'pp_table' );
-		$tbf_person_name->set_node_ref_attribute( 'si_row_field', $rdtf_person_name );
+		my $tbf_person_name = $tb_person->build_child_node( 'table_field', $rdtf_person_name );
 		$tbf_person_name->set_literal_attribute( 'mandatory', 1 );
 
 		##### NEXT SET APPLICATION BLUEPRINT-TYPE DETAILS #####
 
 		# Describe a utility application for managing our database schema:
-		my $setup_app = make_a_node( 'application', $model );
-		$setup_app->set_literal_attribute( 'si_name', 'Setup' );
+		my $setup_app = $model->build_child_node( 'application', 'Setup' );
 
 		# Describe the data link that the utility app will use to talk to the database:
-		my $setup_app_cl = make_a_child_node( 'catalog_link', $setup_app, 'pp_application' );
-		$setup_app_cl->set_literal_attribute( 'si_name', 'admin_link' );
+		my $setup_app_cl = $setup_app->build_child_node( 'catalog_link', 'admin_link' );
 		$setup_app_cl->set_node_ref_attribute( 'target', $catalog_bp );
 
 		# Describe a routine for setting up a database with our schema:
-		my $rt_install = make_a_child_node( 'routine', $setup_app, 'pp_application' );
-		$rt_install->set_literal_attribute( 'si_name', 'install_app_schema' );
+		my $rt_install = $setup_app->build_child_node( 'routine', 'install_app_schema' );
 		$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
-		my $rts_install = make_a_child_node( 'routine_stmt', $rt_install, 'pp_routine' );
+		my $rts_install = $rt_install->build_child_node( 'routine_stmt' );
 		$rts_install->set_enumerated_attribute( 'call_sroutine', 'CATALOG_CREATE' );
-		my $rte_install_a1 = make_a_child_node( 'routine_expr', $rts_install, 'pp_stmt' );
+		my $rte_install_a1 = $rts_install->build_child_node( 'routine_expr' );
 		$rte_install_a1->set_enumerated_attribute( 'call_sroutine_arg', 'LINK_BP' );
 		$rte_install_a1->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
 		$rte_install_a1->set_node_ref_attribute( 'actn_catalog_link', $setup_app_cl );
-		my $rte_install_a2 = make_a_child_node( 'routine_expr', $rts_install, 'pp_stmt' );
+		my $rte_install_a2 = $rts_install->build_child_node( 'routine_expr' );
 		$rte_install_a2->set_enumerated_attribute( 'call_sroutine_arg', 'RECURSIVE' );
 		$rte_install_a2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 		$rte_install_a2->set_literal_attribute( 'valf_literal', 1 );
@@ -3606,9 +3624,6 @@ columns, plus two domains used by it, plus the necessary CREATE instruction:
 		}
 		print "SOMETHING'S WRONG: $user_text\n";
 	}
-
-Real-life code would probably be more terse than the above example because it
-makes use of more wrapper functions (not provided here).
 
 This is the serialization of the model that the above code sample makes:
 
@@ -3647,12 +3662,12 @@ This is the serialization of the model that the above code sample makes:
 		<circumventions />
 	</root>
 
-For a much larger and semi-complete example of SQL::Routine model-building
-code, and a serialization of the same, see the file t/lib/t_SQL_Routine.pm,
-which implements this distribution's main test suite.
+For much larger examples of SQL::Routine model-building code, and a
+serialization of the same, see the file t/lib/t_SRT_*.pm files, which implement
+this distribution's main test suite.
 
-For more additional code samples, try looking at the various modules that
-sub-class or use SQL::Routine.  They tend to implement or use wrappers that
+For more additional code samples, try looking at the various modules that use
+SQL::Routine, such as "Rosetta".  They tend to implement or use wrappers that
 make for much more compact code.
 
 =head2 Comparative SQL Code Examples Generated From a Model
@@ -3660,7 +3675,7 @@ make for much more compact code.
 SQL::Routine works like an XML DOM except that it is restricted to holding
 specific kinds of data, which resemble SQL statements.  This part of the
 SYNOPSIS shows some actual SQL statements that can be generated from selected
-portions of the model that is built by t/lib/t_SQL_Routine.pm .
+portions of the model that is built by t/lib/t_SRT_Verbose.pm .
 
 This first set of Nodes describes 3 data types, 1 domain and 1 table, the
 latter 2 of which are conceptually named schema objects.
@@ -3823,6 +3838,9 @@ you to create specifications for any type of database task or activity (eg:
 queries, DML, DDL, connection management) that look like ordinary routines
 (procedures or functions) to your programs; all routine arguments are named.
 
+SQL::Routine is trivially easy to install, since it is written in pure Perl and
+its whole dependency chain consists of just 1 other pure Perl module.
+
 Typical usage of this module involves creating or loading a single
 SQL::Routine::Container object when your program starts up; this Container
 would hold a complete representation of each database catalog that your program
@@ -3830,13 +3848,16 @@ uses (including details of all schema objects), plus complete representations
 of all database invocations by your program; your program then typically just
 reads from the Container while active to help determine its actions.
 
-SQL::Routine can broadly represent, as an abstract syntax tree, code for any
-programming language, but many of its concepts are only applicable to
-relational databases, particularly SQL understanding databases.  It is
-reasonable to expect that a SQL:2003 compliant database should be able to
-implement nearly all SQL::Routine concepts in its SQL stored procedures and
-functions, though SQL:2003 specifies some of these concepts as optional
-features rather than core features.
+SQL::Routine can broadly represent, as an abstract syntax tree (a
+cross-referenced hierarchy of nodes), code for any programming language, but
+many of its concepts are only applicable to relational databases, particularly
+SQL understanding databases.  It is reasonable to expect that a SQL:2003
+compliant database should be able to implement nearly all SQL::Routine concepts
+in its SQL stored procedures and functions, though SQL:2003 specifies some of
+these concepts as optional features rather than core features.
+
+This module has a multi-layered API that lets you choose between writing fairly
+verbose code that performs faster, or fairly terse code that performs slower.
 
 SQL::Routine is intended to be used by an application in place of using actual
 SQL strings (including support for placeholders).  You define any desired
@@ -4635,6 +4656,26 @@ returned.  By default, the current value of the found attribute is ignored; but
 if the optional argument ONLY_NOT_VALUED is true, then an otherwise acceptible
 attribute name will not be returned if it already has a value.
 
+=head2 expected_surrogate_id_attribute_name()
+
+This "getter" method will return the name of this Node's surrogate id
+attribute, if it has one; it will throw an exception if there isn't.
+
+=head2 get_surrogate_id_attribute()
+
+This "getter" method will return the value for this Node's surrogate id
+attribute, if it has one.
+
+=head2 clear_surrogate_id_attribute()
+
+This "setter" method will clear this Node's surrogate id attribute value, if it
+has one.
+
+=head2 set_surrogate_id_attribute( ATTR_VALUE )
+
+This "setter" method will set or replace this Node's surrogate id attribute
+value, if it has one, giving it the new value specified in ATTR_VALUE.
+
 =head2 get_container()
 
 	my $model = $node->get_container();
@@ -4791,12 +4832,16 @@ called a "method", it can only be invoked off of Container or Node objects.
 		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
 
 This function will create and return a new Node that is "Alone" (not in a
-Container), whose type is specified in NODE_TYPE, and also set its attributes. 
+Container), whose type is specified in NODE_TYPE, and also set its attributes.
 The ATTRS argument is processed by Node.set_attributes() if it is provided; a
-Node id can also be provided this way, or the Node id won't be set.  The
-PP_ATNM is processed by Node.set_pp_node_attribute_name() if provided; if not,
-then Node.get_first_candidate_pp_node_attribute_name() will be called to find a
-suitable parent from the newly set ATTRS, and then set the PP if one is found.
+Node id can also be provided this way, or the Node id won't be set.  If ATTRS
+is defined but not a Hash ref, then this method will build a new one having a
+single element, where the value is ATTRS and the key is either 'id' or the new
+Node's surrogate id attribute name, depending on whether the value looks like a
+valid Node id.  The PP_ATNM is processed by Node.set_pp_node_attribute_name()
+if provided; if not, then Node.get_first_candidate_pp_node_attribute_name()
+will be called to find a suitable parent from the newly set ATTRS, and then set
+the PP if one is found.
 
 =head2 build_node( NODE_TYPE[, ATTRS][, PP_ATNM] )
 
@@ -4842,11 +4887,13 @@ build_child_node_tree() for each element found in it; if LIST is not an array
 ref, then one is constructed with LIST as its single element.  This method does
 not return anything.
 
-=head2 build_container( NODE_TYPE[, ATTRS][, CHILDREN] )
+=head2 build_container( LIST[, AUTO_ASSERT[, AUTO_IDS[, USE_ABSTRACT]]] )
 
-This function is like build_child_node_tree() except that it will create a new
-Container object, which is returned, and populate it with new Node objects that
-are generated from its arguments.  This function is the exact opposite of
+This function is like build_child_node_trees( LIST ) except that it will also
+create and return a new Container object that holds the newly built Nodes.  If
+any of the optional boolean arguments [AUTO_ASSERT, AUTO_IDS, USE_ABSTRACT] are
+true, then the corresponding flag properties of the new Container will be set
+to true prior to creating any Nodes.  This function is the exact opposite of
 Container.get_all_properties(); you should be able to take the Hash-ref output
 of Container.get_all_properties(), give it to build_container(), and end up
 with a clone of the original Container.
@@ -4929,6 +4976,13 @@ Node Types whose primary parents can only be pseudo-Nodes, and where the values
 name the pseudo-Nodes they are the children of; if the optional NODE_TYPE
 argument is given, it just returns the pseudo-Node for that Node Type.
 
+=head2 node_types_with_surrogate_id_attributes([ NODE_TYPE ])
+
+This function by default returns a Hash ref where the keys are the names of the
+Node Types that have a surrogate id attribute, and where the values are the
+names of that attribute; if the optional NODE_TYPE argument is given, it just
+returns the surrogate id attribute for that Node Type.
+
 =head1 ABOUT THE OPTIONAL ABSTRACT INTERFACE
 
 If you set certain boolean properties on a Container object to true (they all
@@ -5006,6 +5060,18 @@ used.  Note that some early versions of SQL::Routine had wrapped the actual
 Container object in a second object that was auto-destroyed when it went out of
 scope, but this cludge was later removed due to adding worse problems than it
 solved, such as Containers being destroyed too early.
+
+You can not use surrogate id values that look like valid Node ids (that are
+positive integers) since some methods won't do what you expect when given such
+values.  Nodes having such surrogate id values won't be matched by values
+passed to set_node_ref_attribute(), directly or indirectly.  That method only
+tries to lookup a Node by its surrogate id if its argument doesn't look like a
+Node ref or a Node id.  Similarly, the build*() methods will decide whether to
+interpret a defined but non-Node-ref ATTRS argument as a Node id or a surrogate
+id based on its looking like a valid Node id or not.  You should rarely
+encounter this caveat, though, since you would never use a number as a "SQL
+identifier" in normal cases, and that is only technically possible with a
+"delimited SQL identifier".
 
 =head1 SEE ALSO
 

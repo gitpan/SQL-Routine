@@ -108,19 +108,19 @@ particularly useful:
 
 =item
 
-http://www.wiscorp.com/SQLStandards.html
+L<http://www.wiscorp.com/SQLStandards.html>
 
 =item
 
-http://www.wiscorp.com/sql/sql1999_c3.zip (warning, large file)
+L<http://www.wiscorp.com/sql/sql1999_c3.zip> (warning, large file)
 
 =item
 
-http://www.wiscorp.com/sql/sql_2003_standard.zip (warning, large file)
+L<http://www.wiscorp.com/sql/sql_2003_standard.zip> (warning, large file)
 
 =item
 
-http://www.sql-scripts.com/BookExcerpts/SQL99.zip (warning, large file)
+L<http://www.sql-scripts.com/BookExcerpts/SQL99.zip> (warning, large file)
 
 =back
 
@@ -1114,8 +1114,7 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 	EVERY   - aggregate - is true when all rec values in one col are true
 		FACTOR(1) - the table col or sub-query whose return values we aggregate
 	ANY     - aggregate - is true when at least one rec value in one col is true
-		FACTOR(1) - the table col or sub-query whose return values we aggregate
-	SOME    - aggregate - is true when some rec values are true
+				- 'SOME' is a synonym for 'ANY', according to MySQL
 		FACTOR(1) - the table col or sub-query whose return values we aggregate
 	EXISTS  - aggregate - is true when if there are > 0 rows
 		FACTOR(1) - the table col or sub-query whose return values we aggregate
@@ -2997,20 +2996,17 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	si_name - L.cstr - SI - lets you label the instance if you want; this isn't used when making SQL
-	product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
 	blueprint - N.catalog - MA - what catalog blueprint describes this instance
+	product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
 	file_path - L.cstr - Path on a file system for a file-based database, if applicable
 	server_ip - L.cstr - Internet IP address of the database server, if applicable
 	server_domain - L.cstr - Internet domain name of the database server, if applicable
 	server_port - L.uint - TCP/IP port the database listens to, if applicable
-	local_dsn - L.cstr - locally known driver-generic name for the catalog link (to cat or ch prox)
-	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
-	login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
 Distinct Child Groups List:
 
 	ak_cat_link_inst:
-		catalog_link_instance - unrealized
+		catalog_link_instance - blueprint
 
 Example List:
 
@@ -3064,7 +3060,7 @@ Attribute List:
 Distinct Child Groups List:
 
 	ak_cat_link_inst:
-		catalog_link_instance - unrealized
+		catalog_link_instance - blueprint
 
 =head2 catalog_link_instance
 
@@ -3073,8 +3069,7 @@ This mainly holds client install specific details, like what catalog instance
 to talk to, what its local DSN is, such as would be registered with ODBC or in
 tsnames.ora, or would be a filename, or stuff like that.  Also connect string
 details perhaps, such as username and password, lest they be run-time arguments
-instead.  I<Some of these attributes will probably be removed shortly, with 
-catalog_link_instance_opt Nodes storing their details instead.>
+instead.
 
 Note: There can only be a single catalog_link_instance per distinct
 catalog_link + [catalog|application]_instance, so it is safe for the
@@ -3099,8 +3094,8 @@ Attribute List:
 	pp_link - N.catalog_link_instance - PP - parent link of this one (that which calls this), if any
 	pp_catalog - N.catalog_instance - PP - the schema in this instance may use the actual catalog link
 	pp_application - N.application_instance - PP - the routines in this app inst may use the actual catalog link
+	blueprint - N.catalog_link - the unrealized catalog link that we are 'implementing'
 	product - N.data_link_product - MA - what product implements this; determines driver to use
-	unrealized - N.catalog_link - the unrealized catalog link that we are 'implementing'
 	target - N.catalog_instance - this is what the link connects to
 	local_dsn - L.cstr - locally known driver-specific name for the catalog link (to cat or ch prox)
 	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
@@ -3108,7 +3103,7 @@ Attribute List:
 
 Exclusive Attribute Groups List:
 
-	link_root_unrealized - pp_link,unrealized - MA
+	link_root_blueprint - pp_link,blueprint - MA
 	link_root_target - pp_link,target - MA
 
 Child Quantity List:
@@ -3121,9 +3116,8 @@ The attributes in catalog_link_instance_opt Nodes mainly just have meaning to
 external code that is associated with the link product you are using to
 implement this current catalog_link_instance.  (Each one is like an associative
 array element, having a distinct key name and a value.)  These Nodes are
-intended for use in customizing how the link product is used for this link;
-examples of this include a DSN to use, or whether user/pass are provided in the
-model or at runtime host parameters.
+intended for use in customizing how the link product is used for this link, in
+ways other than what the dsn and login name/pass are.
 
 Attribute List:
 

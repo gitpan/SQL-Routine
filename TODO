@@ -1,5 +1,7 @@
 TODO
 
+- Rewrite the "abstract interface" code and associated data dictionary.
+
 - Continue fleshing out the standard_routine enumerated type documentation.
 
 - Add more deferred constraints to reduce erroneous models.
