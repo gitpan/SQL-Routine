@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 ######################################################################
 
@@ -74,20 +74,11 @@ my $CN = 'SQL::Routine::Node';
 my $ABSINTF = 'using abstract interface';
 
 my %text_strings = (
-	'SRT_C_GET_NODE_NO_ARG_TYPE' => 
-		"$CC.get_node(): missing NODE_TYPE argument",
 	'SRT_C_GET_NODE_NO_ARG_ID' => 
 		"$CC.get_node(): missing NODE_ID argument",
-	'SRT_C_GET_NODE_BAD_TYPE' => 
-		"$CC.get_node(): invalid NODE_TYPE argument; there is no Node Type named '{ARGNTYPE}'",
 
 	'SRT_C_GET_CH_NODES_BAD_TYPE' => 
 		"$CC.get_child_nodes(): invalid NODE_TYPE argument; there is no Node Type named '{ARGNTYPE}'",
-
-	'SRT_C_GET_NFNI_NO_ARG_TYPE' => 
-		"$CC.get_next_free_node_id(): missing NODE_TYPE argument",
-	'SRT_C_GET_NFNI_BAD_TYPE' => 
-		"$CC.get_next_free_node_id(): invalid NODE_TYPE argument; there is no Node Type named '{ARGNTYPE}'",
 
 	'SRT_C_BUILD_CH_ND_NO_PSND' => 
 		"$CC.build_child_node(): invalid NODE_TYPE argument; a '{ARGNTYPE}' Node does not ".
@@ -117,7 +108,7 @@ my %text_strings = (
 	'SRT_N_SET_NODE_ID_DUPL_ID' => 
 		"$CN.set_node_id(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_ID argument; the Node Id value of '{ARG}' you tried to set ".
-		"is already in use by another '{NTYPE}' Node in the same Container; it must be unique",
+		"is already in use by another Node in the same Container; it must be distinct",
 
 	'SRT_N_EXP_LIT_AT_NO_ARGS' => 
 		"$CN.expected_literal_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
@@ -288,7 +279,7 @@ my %text_strings = (
 	'SRT_N_PI_CONT_DUPL_ID' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"this Node can not be put into the given Container ".
-		"because it has the same Node Id value as another '{NTYPE}' Node already ".
+		"because it has the same Node Id value as another Node already ".
 		"in the same Container; one of these Node Ids needs to be changed first",
 	'SRT_N_PI_CONT_NONEX_AT_NREF' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".

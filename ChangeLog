@@ -1,3 +1,57 @@
+2004-11-26   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.51.
+
+	* New code file versions are: Routine.pm v0.51 and en.pm v0.21.
+
+	* The primary purpose of this release is to revise the handling of Node
+	Ids, such that every Node in a Container has an Id value that is distinct
+	from every other Node in the Container, regardless of Node Type.  Prior to
+	this release, each Node's Id only had to be distinct among Nodes of the
+	same Node Type.  One side-effect of this change is that almost any external
+	code base that uses SQL::Routine will need a few changes to avoid breaking
+	after this update, especially if the code specifies a Node Id value for
+	each new Node rather than using the generator functionality.  Another
+	side-effect is that you can now reference any Node by its Id only; you do
+	not need to specify both a Node Type and a Node Id.
+
+	* Removed all of the "Example List" documentation in the NODE TYPES
+	sub-sections of Language.pod.  They have become increasingly out-dated over
+	time, and t_SRT_Terse.pm provides a nearly identical example set.  This
+	removal shaved about 17K from Language.pod, taking it down to about 145K.
+
+	* Updated Routine.pm so that its NEXT_FREE_NID Container property is now
+	just an integer, rather than a Hash of integers looked up by Node Type; the
+	property name was also renamed to remove the trailing 'S'.  Updated the
+	following methods to handle the altered property correctly:
+	Container.new(), Container.get_next_free_node_id(), Node.set_node_id,
+	Node.put_in_container().  Simplified the get_next_free_node_id() method so
+	it no longer takes a NODE_TYPE argument; also removed 2 en.pm messages that
+	were used by that method, SRT_C_GET_NFNI_[NO_ARG|BAD]_TYPE.
+
+	* Updated Routine.pm so that its ALL_NODES Container property is now just a
+	Hash of Nodes looked up by Id, rather than a Hash of Hashes looked up by
+	Node Type + Node Id.  Updated the following methods to handle the altered
+	property correctly: Container.new(), Container.destroy(),
+	Container.get_node(), Node.set_node_id(), set_node_ref_attribute(),
+	_set_node_ref_attribute__find_node_by_link_search_attr(),
+	put_in_container(), take_from_container().  Simplified the get_node()
+	method so it no longer takes a NODE_TYPE argument; also removed 2 en.pm
+	messages that were used by that method, SRT_C_GET_NODE_[NO_ARG|BAD]_TYPE.
+	Also altered the user text of these en.pm messages:
+	SRT_N_SET_NODE_ID_DUPL_ID, SRT_N_PI_CONT_DUPL_ID.  Minor update in
+	API_C.pod to the sqlrt_dt_container struct definition documentation.
+
+	* Minor update to set_surrogate_id_attribute() in Routine.pm.
+
+	* Large updates to the expected XML output strings of t_SRT_Verbose.pm,
+	t_SRT_Abstract.pm, t_SRT_Terse.pm; the count and types and relations of the
+	Node sets are identical to before, but the "id" of almost every Node has
+	changed.  Minor code updates in t_SRT_Abstract.pm that remove the only 3
+	"id" value definitions.  In t_SRT_Verbose.pm, minor code updates to the two
+	get_next_free_node_id() invocations.  Large code updates in t_SRT_Terse.pm
+	where of "id" explicit values were replaced, and to one get_node() call.
+
 2004-11-23   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.50.

@@ -1394,7 +1394,7 @@ parents go, because those details are explained in terms of "child Nodes".
 
 For each Node Type, there are several detail lists: B<Attribute List>,
 B<Exclusive Attribute Groups List>, B<Local Attribute Dependencies List>,
-B<Child Quantity List>, B<Distinct Child Groups List>, B<Example List>.
+B<Child Quantity List>, B<Distinct Child Groups List>.
 
 The B<Attribute List> says what all of the attributes are, in order, along with
 each one's major+minor type, an indicator of whether it is a primary parent
@@ -1529,10 +1529,6 @@ eliminate undefined values when they are a problem).  The implicit distinct-id
 constraints all have a mudi-name of 'primary'.  All "Distinct Child Groups
 List" constraints are deferrable and can only be tested on "Well Known" Nodes.
 
-The B<Example List> is a list of example Nodes for the Node type, formatted
-like a table, one row per Node, one column per attribute.  Note that the order
-in which "Example List" rows/Nodes appear is significant.
-
 =head2 root
 
 This pseudo-Node is the root of a SQL::Routine and has as its children the
@@ -1623,38 +1619,6 @@ Local Attribute Dependencies List:
 	num_precision:
 		num_scale
 
-Example List:
-
-	|id|si_name |base     |np |ns|no|nu|mxoct|mxch|fx|chenc|tw|uc|pc|tp|cal|
-	|--|--------|---------|---|--|--|--|-----|----|--|-----|--|--|--|--|---|
-	| 1|bin1k   |STR_BIT  |   |  |  |  | 1000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 1000 octets
-	| 2|bin32k  |STR_BIT  |   |  |  |  |32000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 32000 octets
-	| 3|str4    |STR_CHAR |   |  |  |  |     |   4|1 |ASCII|1 |1 |20|1 |   | - a fix-w 4 char ascii cstr, uppercased, spc-pad
-	| 4|str10   |STR_CHAR |   |  |  |  |     |  10|1 |ASCII|1 |  |20|1 |   | - a fix-w 10 char ascii cstr, case-preserve, spc-pad
-	| 5|str30   |STR_CHAR |   |  |  |  |     |  30|  |ASCII|1 |  |  |  |   | - a fix-w 30 char ascii cstr, case-preserving
-	| 6|str2k   |STR_CHAR |   |  |  |  |     |2000|  |UTF8 |  |  |  |  |   | - a var-w 2000 char unicode cstr, case-preserving
-	| 7|byte    |NUM_INT  |   |  | 1|  |     |    |  |     |  |  |  |  |   | - an 8-bit precise int btwn           -128 and           +127
-	| 8|short   |NUM_INT  |   |  | 2|  |     |    |  |     |  |  |  |  |   | - a 16-bit precise int btwn        -32,768 and        +32,767
-	| 9|int     |NUM_INT  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit precise int btwn -2,147,483,648 and +2,147,483,647
-	|10|long    |NUM_INT  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit precise int btwn        -(2^63) and      +(2^63)-1
-	|11|ubyte   |NUM_INT  |   |  | 1|1 |     |    |  |     |  |  |  |  |   | - an 8-bit precise integer between 0 and           +255
-	|12|ushort  |NUM_INT  |   |  | 2|1 |     |    |  |     |  |  |  |  |   | - a 16-bit precise integer between 0 and        +65,535
-	|13|uint    |NUM_INT  |   |  | 4|1 |     |    |  |     |  |  |  |  |   | - a 32-bit precise integer between 0 and +4,294,967,295
-	|14|ulong   |NUM_INT  |   |  | 8|1 |     |    |  |     |  |  |  |  |   | - a 64-bit precise integer between 0 and      +(2^64)-1
-	|15|float   |NUM_APR  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit imprecise fractional number
-	|16|double  |NUM_APR  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit imprecise fractional number
-	|17|dec10p2 |NUM_EXA  | 10| 2|  |  |     |    |  |     |  |  |  |  |   | - a precise 10-digit num with hundredths scale
-	|18|dec255  |NUM_EXA  |255|  |  |  |     |    |  |     |  |  |  |  |   | - a precise 255-digit num with arbitrary scale
-	|19|boolean |BOOLEAN  |   |  |  |  |     |    |  |     |  |  |  |  |   | - a boolean; only 2 values of false or true
-	|20|datetime|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |ABS| - a date and time or date, non-calendar specific
-	|21|dtchines|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |CHI| - a date and time or date, in the Chinese calendar
-	|22|sex     |STR_CHAR |   |  |  |  |     |   1|  |     |  |  |  |  |   | - a 1-char string, constrained to 'M' and 'F'
-	|23|str20   |STR_CHAR |   |  |  |  |     |  20|  |     |  |  |  |  |   | - a 20-char string
-	|24|str100  |STR_CHAR |   |  |  |  |     | 100|  |     |  |  |  |  |   | - a 100-char string
-	|25|str250  |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a 250-char string
-	|26|entitynm|STR_CHAR |   |  |  |  |     |  30|  |     |  |  |  |  |   | - a short string suitable for naming things
-	|27|generic |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a longer string that most kinds of data will fit in
-
 =head2 scalar_data_type_opt
 
 When a "scalar_data_type" Node is meant to impose an enumerated list
@@ -1668,13 +1632,6 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_scalar_data_type - N.scalar_data_type - PP - what "scalar_data_type" Node this option is associated with
 	si_value - L.misc - SI - this is the actual enumerated value that the scalar_data_type_opt Node represents
-
-Example List:
-
-	|id|dt|v|
-	|--|--|-|
-	| 1|22|M| - "sex" is "Male"
-	| 2|22|F| - "sex" is "Female"
 
 =head2 row_data_type
 
@@ -1747,13 +1704,6 @@ Distinct Child Groups List:
 		schema - si_name
 		role - si_name
 
-Example List:
-
-	|id|si  |
-	|--|----|
-	| 1|    | - a default database/catalog, usually just used if it is the only database
-	| 2|gene| - a multi-schema genealogy database/catalog that you manage
-
 =head2 application
 
 This type of Node collects information that is specific to a database-using
@@ -1799,13 +1749,6 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog - PP - the catalog that this user is in
-
-Example List:
-
-	|id|ca|
-	|--|--|
-	| 1| 1|
-	| 2| 2|
 
 =head2 catalog_link
 
@@ -1876,14 +1819,6 @@ Distinct Child Groups List:
 		table - si_name
 		view - si_name
 		routine - si_name
-
-Example List:
-
-	|id|ca|si  |ow|
-	|--|--|----|--|
-	| 1| 1|foo | 1| - a default schema/namespace
-	| 2| 2|gene| 2| - store all the normal app data that constitutes a genealogy database
-	| 3| 2|dd  | 2| - store a data dictionary describing an application for editing gene data
 
 =head2 role
 
@@ -2008,15 +1943,6 @@ Exclusive Attribute Groups List:
 
 	row_data_type - row_data_type,row_domain - MA
 
-Example List:
-
-	|id|sc|si_name     |
-	|--|--|------------|
-	| 1| 1|user_auth   | - authentication related details for application users
-	| 2| 1|user_profile| - public personal details for application users
-	| 3| 1|user_pref   | - application preference values for users
-	| 4| 1|person      | - core data node in a genealogical program
-
 =head2 table_field
 
 This type of Node describes a single table column, and has details that are
@@ -2037,38 +1963,6 @@ Attribute List:
 Exclusive Attribute Groups List:
 
 	default - default_val,default_seq
-
-Example List:
-
-	Note: The rows below are actually a join where table_field = row_data_type_field.
-
-	|id|tb|si_name      |dt|ma|def|inc|
-	|--|--|-------------|--|--|---|---|
-	| 1| 1|user_id      | 9|1 |1  |1  | - unique internal id for user, not changeable
-	| 2| 1|login_name   |23|1 |   |   | - who user authenticates into app as
-	| 3| 1|login_pass   |23|1 |   |   | - also used with authentication
-	| 4| 1|private_name |24|1 |   |   | - real name that app service provider can know
-	| 5| 1|private_email|24|1 |   |   | - email that service provider can contact user with
-	| 6| 1|may_login    |19|1 |   |   | - true when user may use app at all
-	| 7| 1|max_sessions | 7|1 |3  |   | - max concurrent app logins user may have
-	| 8| 2|user_id      | 9|1 |   |   | - unique internal id for user, not changeable
-	| 9| 2|public_name  |25|1 |   |   | - public name or pen name or public alias
-	|10| 2|public_email |25|0 |   |   | - email address the public may use for contact
-	|11| 2|web_url      |25|0 |   |   | - personal/business website address of user
-	|12| 2|contact_net  |25|0 |   |   | - info like ICQ number or other internet handles
-	|13| 2|contact_phy  |25|0 |   |   | - physical address or city or telephone number
-	|14| 2|bio          |25|0 |   |   | - brief description of the person
-	|15| 2|plan         |25|0 |   |   | - what the person plans to do next
-	|16| 2|comments     |25|0 |   |   | - other comments
-	|17| 3|user_id      | 9|1 |   |   | - unique internal id for user, not changeable
-	|18| 3|pref_name    |26|1 |   |   | - app-specific preference name
-	|19| 3|pref_value   |27|0 |   |   | - preference value for this user
-	|20| 4|person_id    | 9|1 |1  |1  | - unique actual id for person, not changeable
-	|21| 4|alternate_id |23|0 |   |   | - user's own way of ident people, if wanted
-	|22| 4|name         |24|1 |   |   | - actual name of the person they are called by
-	|23| 4|sex          |22|0 |   |   | - sex of the person, if known
-	|24| 4|father_id    | 9|0 |   |   | - person_id of this person's father, if known
-	|25| 4|mother_id    | 9|0 |   |   | - person_id of this person's mother, if known
 
 =head2 table_index
 
@@ -2101,23 +1995,6 @@ Distinct Child Groups List:
 	ak_f_table_field:
 		table_index_field - f_field
 
-Example List:
-
-	|id|tb|si_name         |type   |ftbl|
-	|--|--|----------------|-------|----|
-	| 1| 1|primary         |UNIQUE |    | - ensure all [user_id] are unique
-	| 2| 1|ak_login_name   |UNIQUE |    | - ensure all [login_name] are unique
-	| 3| 1|ak_private_email|UNIQUE |    | - ensure all [private_email] are unique
-	| 4| 2|primary         |UNIQUE |    | - ensure all [user_id] are unique
-	| 5| 2|ak_public_name  |UNIQUE |    | - ensure all [public_name] are unique
-	| 6| 2|fk_user         |FOREIGN|   1| - ensure user_profile matches user_auth
-	| 7| 3|primary         |UNIQUE |    | - ensure all [user_id,pref_name] are unique
-	| 8| 3|fk_user         |FOREIGN|   1| - ensure user_pref matches user_auth
-	| 9| 4|primary         |UNIQUE |    | - ensure all [person_id] are unique
-	|10| 4|ak_alternate_id |UNIQUE |    | - ensure all [alternate_id] are unique
-	|11| 4|fk_father       |FOREIGN|   4| - link child to father
-	|12| 4|fk_mother       |FOREIGN|   4| - link child to mother
-
 =head2 table_index_field
 
 This type of Node intersects between a table_index and a table field/col; it
@@ -2129,24 +2006,6 @@ Attribute List:
 	pp_table_index - N.table_index - PP - unique identifier for index within table
 	si_field - N.row_data_type_field - SI - unique identifier for column within table
 	f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
-
-Example List:
-
-	|id|ind|fld|ffld|
-	|--|---|---|----|
-	| 1|  1|  1|    | - ensure all [user_id] are unique
-	| 2|  2|  2|    | - ensure all [login_name] are unique
-	| 3|  3|  5|    | - ensure all [private_email] are unique
-	| 4|  4|  8|    | - ensure all [user_id] are unique
-	| 5|  5|  9|    | - ensure all [login_name] are unique
-	| 6|  6|  8|   1| - ensure user_profile matches user_auth
-	| 7|  7| 17|    | - ensure all [user_id,pref_name] are unique
-	| 8|  7| 18|    | - ensure all [user_id,pref_name] are unique
-	| 9|  8| 17|   1| - ensure user_pref matches user_auth
-	|10|  9| 20|    | - ensure all [person_id] are unique
-	|11| 10| 21|    | - ensure all [alternate_id] are unique
-	|12| 11| 24|  20| - link child to father
-	|13| 12| 25|  20| - link child to mother
 
 =head2 view
 
@@ -2260,18 +2119,6 @@ Distinct Child Groups List:
 	ak_expr_call_src_arg:
 		view_expr - call_src_arg
 
-Example List:
-
-	|id|type   |
-	|--|-------|
-	| 1|JOINED | - user - joins the "user_auth" and "user_profile" tables
-	| 2|JOINED | - person_with_parents - joins the "person" table with itself twice
-	| 3|GROUPED| - user_theme - shows how many users use each theme pref value
-	| 4|ALIAS  | - get_person - simply the "person" table
-	| 5|JOINED | - get_user - simply the "user" view
-	| 6|JOINED | - get_pwp - simply the "person_with_parents" view
-	| 7|ALIAS  | - get_theme - simply the "user_theme" view
-
 =head2 view_arg
 
 When this view is a correlated subquery, then it takes one or more arguments to
@@ -2341,21 +2188,6 @@ Exclusive Attribute Groups List:
 
 	match - match_table,match_view,match_p_view_arg,match_p_routine_arg,match_p_routine_var - MA
 
-Example List:
-
-	|id|vw|si_name     |mtb|mvw|
-	|--|--|------------|---|---|
-	| 1| 1|user_auth   |  1|   | - match "user_auth" table
-	| 2| 1|user_profile|  2|   | - match "user_profile" table
-	| 3| 2|self        |  4|   | - match "person" table
-	| 4| 2|father      |  4|   | - match "person" table
-	| 5| 2|mother      |  4|   | - match "person" table
-	| 6| 3|user_pref   |  3|   | - match "user_pref" table
-	| 7| 4|person      |  4|   | - match "person" table
-	| 8| 5|m           |   |  1| - match "user" view
-	| 9| 6|m           |   |  2| - match "person_with_parents" view
-	|10| 7|m           |   |  3| - match "user_theme" view
-
 =head2 view_src_arg
 
 When a view_src matches a named correlated subquery (has arguments), a
@@ -2380,44 +2212,6 @@ Attribute List:
 	pp_src - N.view_src - PP - which view source this column is associated with
 	si_match_field - N.row_data_type_field - SI - which field from the source table/view/var is represented
 
-Example List:
-
-	Note: This example is out of date, based on a time when there were separate col Nodes for tables/views.
-
-	|id|vs|mtc|mvc|
-	|--|--|---|---|
-	| 1| 1|  1|   | - "user_auth"."user_id"
-	| 2| 1|  2|   | - "user_auth"."login_name"
-	| 3| 1|  3|   | - "user_auth"."login_pass"
-	| 4| 1|  4|   | - "user_auth"."private_name"
-	| 5| 1|  5|   | - "user_auth"."private_email"
-	| 6| 1|  6|   | - "user_auth"."may_login"
-	| 7| 1|  7|   | - "user_auth"."max_sessions"
-	| 8| 2|  8|   | - "user_profile"."user_id"
-	| 9| 2|  9|   | - "user_profile"."public_name"
-	|10| 2| 10|   | - "user_profile"."public_email"
-	|11| 2| 11|   | - "user_profile"."web_url"
-	|12| 2| 12|   | - "user_profile"."contact_net"
-	|13| 2| 13|   | - "user_profile"."contact_phy"
-	|14| 2| 14|   | - "user_profile"."bio"
-	|15| 2| 15|   | - "user_profile"."plan"
-	|16| 2| 16|   | - "user_profile"."comments"
-	|17| 3| 20|   | - "self"."person_id"
-	|18| 3| 22|   | - "self"."name"
-	|19| 4| 20|   | - "father"."person_id"
-	|20| 4| 22|   | - "father"."name"
-	|21| 5| 20|   | - "mother"."person_id"
-	|22| 5| 22|   | - "mother"."name"
-	|23| 6| 18|   | - "user_pref"."pref_name"
-	|24| 6| 19|   | - "user_pref"."pref_value"
-	|25| 3| 24|   | - "self"."father_id"
-	|26| 3| 25|   | - "self"."mother_id"
-	|27| 9|   | 17| - "m"."self_name"
-	|28| 9|   | 19| - "m"."father_name"
-	|29| 9|   | 21| - "m"."mother_name"
-	|30| 8|   |  1| - "m"."user_id"
-	|31| 8|   |  2| - "m"."login_name"
-
 =head2 view_field
 
 This type of Node describes a single view column public interface, and has
@@ -2434,36 +2228,6 @@ Attribute List:
 	is_writeable - L.bool - true when enough info is known to write changes to this column
 	mandatory - L.bool - true when corresponding value must always be populated
 	is_key - L.bool - true when this column is a part of unique id for source table or for view row
-
-Example List:
-
-	Note: The rows below are actually a join where view_field = row_data_type_field.
-
-	|id|vw|si_name      |dt|src|
-	|--|--|-------------|--|---|
-	| 1| 1|user_id      | 9|  1| - unique internal id for user, not changeable
-	| 2| 1|login_name   |23|  2| - who user authenticates into app as
-	| 3| 1|login_pass   |23|  3| - also used with authentication
-	| 4| 1|private_name |24|  4| - real name that app service provider can know
-	| 5| 1|private_email|24|  5| - email that service provider can contact user with
-	| 6| 1|may_login    |19|  6| - true when user may use app at all
-	| 7| 1|max_sessions | 7|  7| - max concurrent app logins user may have
-	| 8| 1|public_name  |25|  9| - public name or pen name or public alias
-	| 9| 1|public_email |25| 10| - email address the public may use for contact
-	|10| 1|web_url      |25| 11| - personal/business website address of user
-	|11| 1|contact_net  |25| 12| - info like ICQ number or other internet handles
-	|12| 1|contact_phy  |25| 13| - physical address or city or telephone number
-	|13| 1|bio          |25| 14| - brief description of the person
-	|14| 1|plan         |25| 15| - what the person plans to do next
-	|15| 1|comments     |25| 16| - other comments
-	|16| 2|self_id      | 9| 17| - unique actual id for person, not changeable
-	|17| 2|self_name    |24| 18| - actual name of the person they are called by
-	|18| 2|father_id    | 9| 19| - person_id of this person's father, if known
-	|19| 2|father_name  |24| 20| - actual name of the person's father
-	|20| 2|mother_id    | 9| 21| - person_id of this person's mother, if known
-	|21| 2|mother_name  |24| 22| - actual name of the person's mother
-	|22| 3|theme_name   |27|   | - name of a user theme
-	|23| 3|theme_count  | 9|   | - count of users that use this theme
 
 =head2 view_join
 
@@ -2494,14 +2258,6 @@ Distinct Child Groups List:
 	ak_rhs_field:
 		view_join_field - rhs_src_field
 
-Example List:
-
-	|id|vw|lhs|rhs|op  |
-	|--|--|---|---|----|
-	| 1| 1|  1|  2|LEFT| - "user_auth" left join "user_profile"
-	| 2| 2|  3|  4|LEFT| - "self" left join "father"
-	| 3| 2|  3|  5|LEFT| - "self" left join "mother"
-
 =head2 view_join_field
 
 This type of Node intersects between a view_src and a table/view/var field/col;
@@ -2516,14 +2272,6 @@ Attribute List:
 	pp_join - N.view_join - PP - which view join this column is associated with
 	lhs_src_field - N.view_src_field - MA - which column from the left source is being matched on
 	rhs_src_field - N.view_src_field - MA - which column from the right source is being matched on
-
-Example List:
-
-	|id|vj|lhc|rhc|
-	|--|--|---|---|
-	| 1| 1|  1|  8| - on "user_profile"."user_id" = "user_auth"."user_id"
-	| 2| 2| 25| 19| - on "father"."person_id" = "self"."father_id"
-	| 3| 3| 26| 21| - on "mother"."person_id" = "self"."mother_id"
 
 =head2 view_compound_elem
 
@@ -2616,46 +2364,6 @@ Distinct Child Groups List:
 	ak_uroutine_arg:
 		view_expr - call_uroutine_cxt
 		view_expr - call_uroutine_arg
-
-Example List:
-
-	|id|cl|vw|part  |pe|lit  |blv|rta     |src|mtc|sf   |uf|
-	|--|--|--|------|--|-----|---|--------|---|---|-----|--|
-	| 1|  | 5|WHERE |  |     |   |        |   |   |EQ   |  | - standard function of "eq(a,b)"
-	| 2|  |  |      | 1|     |   |        | 30|   |     |  | - match column "user_auth"."user_id"
-	| 3|  |  |      | 1|     |   |curr_uid|   |   |     |  | - value of host param "curr_uid"
-	| 4|  | 6|WHERE |  |     |   |        |   |   |AND  |  | - standard function of "and(a,b)"
-	| 5|  |  |      | 4|     |   |        |   |   |LIKE |  | - standard function of "like(a,b)"
-	| 6|  |  |      | 5|     |   |        | 28|   |     |  | - match column "m"."father_name"
-	| 7|  |  |      | 5|     |   |srchw_fa|   |   |     |  | - value of host param "srchw_fa"
-	| 8|  |  |      | 4|     |   |        |   |   |LIKE |  | - standard function of "like(a,b)"
-	| 9|  |  |      | 8|     |   |        | 29|   |     |  | - match column "m"."mother_name"
-	|10|  |  |      | 8|     |   |srchw_mo|   |   |     |  | - value of host param "srchw_mo"
-	|11|  | 3|WHERE |  |     |   |        |   |   |EQ   |  | - standard function of "eq(a,b)"
-	|12|  |  |      |11|     |   |        | 23|   |     |  | - match column "user_pref"."pref_name"
-	|13|  |  |      |11|theme|   |        |   |   |     |  | - match literal value of "theme"
-	|14|  | 3|GROUP |  |     |   |        | 24|   |     |  | - group by "user_pref"."pref_value"
-	|15|  | 3|HAVING|  |     |   |        |   |   |GT   |  | - standard function of "gt(a,b)"
-	|16|  |  |      |15|     |   |        |   |   |COUNT|  | - standard function of "count(col)"
-	|17|  |  |      |15|    1|   |        |   |   |     |  | - match literal value of "theme"
-	|42|22| 3|RESULT|  |     |   |        | 24|   |     |  |
-	|43|23| 3|RESULT|  |     |   |        |   |   |COUNT|  |
-	|44|  |  |      |43|     |   |        | 24|   |     |  |
-	|51|  | 5|ORDER |  |     |   |        | 31|   |     |  |
-	|52|  | 6|ORDER |  |     |   |        | 27|   |     |  |
-	|53|  | 6|ORDER |  |     |   |        | 28|   |     |  |
-	|54|  | 6|ORDER |  |     |   |        | 29|   |     |  |
-	|55|  | 3|ORDER |  |     |   |        |   | 23|     |  |
-	|56|  | 3|ORDER |  |     |   |        |   | 22|     |  |
-
-	Notes: In Oracle notation: the first view says match where
-	"user_auth.user_id = :curr_uid", the second says match where "father.name
-	like '%'||:srchw_fa||'%' and mother.name like '%'||:srchw_mo||'%'", the
-	third says match where "user_pref.pref_name = 'theme'".
-
-	Notes: In Oracle notation: the third view says match having "count(*) > 1" ("count" has no args).
-
-	Notes: The example 'routine_var' values are actually incorrect and will be changed to id numbers.
 
 =head2 routine
 
@@ -3008,14 +2716,6 @@ Distinct Child Groups List:
 	ak_cat_link_inst:
 		catalog_link_instance - blueprint
 
-Example List:
-
-	|id|bp|si  |
-	|--|--|----|
-	| 1| 1|    | - a default database/catalog, usually just used if it is the only database
-	| 2| 2|site| - a multi-schema genealogy database/catalog that you manage
-	| 3| 2|dist| - a similar database/catalog that someone else manages
-
 =head2 catalog_instance_opt
 
 The attributes in catalog_instance_opt Nodes mainly just have meaning to
@@ -3166,16 +2866,6 @@ Local Attribute Dependencies List:
 		password - ROOT,SCHEMA_OWNER,DATA_EDITOR - MA
 
 	Note: In other words to the above, all user types *except* ANONYMOUS have a user name and password.
-
-Example List:
-
-	|id|ci|ow|si_name |pass  |sc|
-	|--|--|--|--------|------|--|
-	| 1| 1| 1|        |      | 1| - a default and/or 'public' user, or for db without 'users'
-	| 2| 2| 2|ronsealy|K34dsD| 2| - Ron Sealy, owns all schemas in instance 2
-	| 3| 2|  |joesmith|fdsKJ4| 3| - Joe Smith is a normal user in instance 2
-	| 4| 3| 2|florence|0sfs8G| 2| - Florence, owns all schemas in instance 3
-	| 5| 3|  |thainuff|9340sd| 3| - Thainuff is a normal user in instance 3
 
 =head2 user_role
 

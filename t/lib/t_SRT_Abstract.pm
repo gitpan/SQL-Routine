@@ -153,11 +153,12 @@ sub create_and_populate_model {
 	##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
 
 	my $catalog = $model->build_child_node_tree( 
-		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, 'si_name' => 'The Catalog Blueprint' }, 
-		'CHILDREN' => [ { 'NODE_TYPE' => 'owner', 'ATTRS' => { 'id' =>  1, } } ] } ); 
+		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'si_name' => 'The Catalog Blueprint' } } ); 
+
+	my $owner = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'owner' } ); 
 
 	my $schema = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'schema', 
-		'ATTRS' => { 'id' => 1, 'si_name' => 'gene', 'owner' => 1, } } ); 
+		'ATTRS' => { 'si_name' => 'gene', 'owner' => $owner, } } ); 
 
 	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
 			'ATTRS' => { 'si_name' => 'person', 'row_data_type' => 'person', }, 'CHILDREN' => [ 
@@ -403,230 +404,230 @@ sub expected_model_xml_output {
 		<scalar_data_type id="25" si_name="str250" base_type="STR_CHAR" max_chars="250" char_enc="ASCII" />
 		<scalar_data_type id="26" si_name="entitynm" base_type="STR_CHAR" max_chars="30" char_enc="ASCII" />
 		<scalar_data_type id="27" si_name="generic" base_type="STR_CHAR" max_chars="250" char_enc="ASCII" />
-		<row_data_type id="1" si_name="person">
-			<row_data_type_field id="1" pp_row_data_type="1" si_name="person_id" scalar_data_type="9" />
-			<row_data_type_field id="2" pp_row_data_type="1" si_name="alternate_id" scalar_data_type="23" />
-			<row_data_type_field id="3" pp_row_data_type="1" si_name="name" scalar_data_type="24" />
-			<row_data_type_field id="4" pp_row_data_type="1" si_name="sex" scalar_data_type="22" />
-			<row_data_type_field id="5" pp_row_data_type="1" si_name="father_id" scalar_data_type="9" />
-			<row_data_type_field id="6" pp_row_data_type="1" si_name="mother_id" scalar_data_type="9" />
+		<row_data_type id="28" si_name="person">
+			<row_data_type_field id="29" pp_row_data_type="28" si_name="person_id" scalar_data_type="9" />
+			<row_data_type_field id="30" pp_row_data_type="28" si_name="alternate_id" scalar_data_type="23" />
+			<row_data_type_field id="31" pp_row_data_type="28" si_name="name" scalar_data_type="24" />
+			<row_data_type_field id="32" pp_row_data_type="28" si_name="sex" scalar_data_type="22" />
+			<row_data_type_field id="33" pp_row_data_type="28" si_name="father_id" scalar_data_type="9" />
+			<row_data_type_field id="34" pp_row_data_type="28" si_name="mother_id" scalar_data_type="9" />
 		</row_data_type>
-		<row_data_type id="2" si_name="person_with_parents">
-			<row_data_type_field id="7" pp_row_data_type="2" si_name="self_id" scalar_data_type="9" />
-			<row_data_type_field id="8" pp_row_data_type="2" si_name="self_name" scalar_data_type="24" />
-			<row_data_type_field id="9" pp_row_data_type="2" si_name="father_id" scalar_data_type="9" />
-			<row_data_type_field id="10" pp_row_data_type="2" si_name="father_name" scalar_data_type="24" />
-			<row_data_type_field id="11" pp_row_data_type="2" si_name="mother_id" scalar_data_type="9" />
-			<row_data_type_field id="12" pp_row_data_type="2" si_name="mother_name" scalar_data_type="24" />
+		<row_data_type id="35" si_name="person_with_parents">
+			<row_data_type_field id="36" pp_row_data_type="35" si_name="self_id" scalar_data_type="9" />
+			<row_data_type_field id="37" pp_row_data_type="35" si_name="self_name" scalar_data_type="24" />
+			<row_data_type_field id="38" pp_row_data_type="35" si_name="father_id" scalar_data_type="9" />
+			<row_data_type_field id="39" pp_row_data_type="35" si_name="father_name" scalar_data_type="24" />
+			<row_data_type_field id="40" pp_row_data_type="35" si_name="mother_id" scalar_data_type="9" />
+			<row_data_type_field id="41" pp_row_data_type="35" si_name="mother_name" scalar_data_type="24" />
 		</row_data_type>
-		<row_data_type id="3" si_name="user_auth">
-			<row_data_type_field id="13" pp_row_data_type="3" si_name="user_id" scalar_data_type="9" />
-			<row_data_type_field id="14" pp_row_data_type="3" si_name="login_name" scalar_data_type="23" />
-			<row_data_type_field id="15" pp_row_data_type="3" si_name="login_pass" scalar_data_type="23" />
-			<row_data_type_field id="16" pp_row_data_type="3" si_name="private_name" scalar_data_type="24" />
-			<row_data_type_field id="17" pp_row_data_type="3" si_name="private_email" scalar_data_type="24" />
-			<row_data_type_field id="18" pp_row_data_type="3" si_name="may_login" scalar_data_type="19" />
-			<row_data_type_field id="19" pp_row_data_type="3" si_name="max_sessions" scalar_data_type="7" />
+		<row_data_type id="42" si_name="user_auth">
+			<row_data_type_field id="43" pp_row_data_type="42" si_name="user_id" scalar_data_type="9" />
+			<row_data_type_field id="44" pp_row_data_type="42" si_name="login_name" scalar_data_type="23" />
+			<row_data_type_field id="45" pp_row_data_type="42" si_name="login_pass" scalar_data_type="23" />
+			<row_data_type_field id="46" pp_row_data_type="42" si_name="private_name" scalar_data_type="24" />
+			<row_data_type_field id="47" pp_row_data_type="42" si_name="private_email" scalar_data_type="24" />
+			<row_data_type_field id="48" pp_row_data_type="42" si_name="may_login" scalar_data_type="19" />
+			<row_data_type_field id="49" pp_row_data_type="42" si_name="max_sessions" scalar_data_type="7" />
 		</row_data_type>
-		<row_data_type id="4" si_name="user_profile">
-			<row_data_type_field id="20" pp_row_data_type="4" si_name="user_id" scalar_data_type="9" />
-			<row_data_type_field id="21" pp_row_data_type="4" si_name="public_name" scalar_data_type="25" />
-			<row_data_type_field id="22" pp_row_data_type="4" si_name="public_email" scalar_data_type="25" />
-			<row_data_type_field id="23" pp_row_data_type="4" si_name="web_url" scalar_data_type="25" />
-			<row_data_type_field id="24" pp_row_data_type="4" si_name="contact_net" scalar_data_type="25" />
-			<row_data_type_field id="25" pp_row_data_type="4" si_name="contact_phy" scalar_data_type="25" />
-			<row_data_type_field id="26" pp_row_data_type="4" si_name="bio" scalar_data_type="25" />
-			<row_data_type_field id="27" pp_row_data_type="4" si_name="plan" scalar_data_type="25" />
-			<row_data_type_field id="28" pp_row_data_type="4" si_name="comments" scalar_data_type="25" />
+		<row_data_type id="50" si_name="user_profile">
+			<row_data_type_field id="51" pp_row_data_type="50" si_name="user_id" scalar_data_type="9" />
+			<row_data_type_field id="52" pp_row_data_type="50" si_name="public_name" scalar_data_type="25" />
+			<row_data_type_field id="53" pp_row_data_type="50" si_name="public_email" scalar_data_type="25" />
+			<row_data_type_field id="54" pp_row_data_type="50" si_name="web_url" scalar_data_type="25" />
+			<row_data_type_field id="55" pp_row_data_type="50" si_name="contact_net" scalar_data_type="25" />
+			<row_data_type_field id="56" pp_row_data_type="50" si_name="contact_phy" scalar_data_type="25" />
+			<row_data_type_field id="57" pp_row_data_type="50" si_name="bio" scalar_data_type="25" />
+			<row_data_type_field id="58" pp_row_data_type="50" si_name="plan" scalar_data_type="25" />
+			<row_data_type_field id="59" pp_row_data_type="50" si_name="comments" scalar_data_type="25" />
 		</row_data_type>
-		<row_data_type id="5" si_name="user">
-			<row_data_type_field id="29" pp_row_data_type="5" si_name="user_id" scalar_data_type="9" />
-			<row_data_type_field id="30" pp_row_data_type="5" si_name="login_name" scalar_data_type="23" />
-			<row_data_type_field id="31" pp_row_data_type="5" si_name="login_pass" scalar_data_type="23" />
-			<row_data_type_field id="32" pp_row_data_type="5" si_name="private_name" scalar_data_type="24" />
-			<row_data_type_field id="33" pp_row_data_type="5" si_name="private_email" scalar_data_type="24" />
-			<row_data_type_field id="34" pp_row_data_type="5" si_name="may_login" scalar_data_type="19" />
-			<row_data_type_field id="35" pp_row_data_type="5" si_name="max_sessions" scalar_data_type="7" />
-			<row_data_type_field id="36" pp_row_data_type="5" si_name="public_name" scalar_data_type="25" />
-			<row_data_type_field id="37" pp_row_data_type="5" si_name="public_email" scalar_data_type="25" />
-			<row_data_type_field id="38" pp_row_data_type="5" si_name="web_url" scalar_data_type="25" />
-			<row_data_type_field id="39" pp_row_data_type="5" si_name="contact_net" scalar_data_type="25" />
-			<row_data_type_field id="40" pp_row_data_type="5" si_name="contact_phy" scalar_data_type="25" />
-			<row_data_type_field id="41" pp_row_data_type="5" si_name="bio" scalar_data_type="25" />
-			<row_data_type_field id="42" pp_row_data_type="5" si_name="plan" scalar_data_type="25" />
-			<row_data_type_field id="43" pp_row_data_type="5" si_name="comments" scalar_data_type="25" />
+		<row_data_type id="60" si_name="user">
+			<row_data_type_field id="61" pp_row_data_type="60" si_name="user_id" scalar_data_type="9" />
+			<row_data_type_field id="62" pp_row_data_type="60" si_name="login_name" scalar_data_type="23" />
+			<row_data_type_field id="63" pp_row_data_type="60" si_name="login_pass" scalar_data_type="23" />
+			<row_data_type_field id="64" pp_row_data_type="60" si_name="private_name" scalar_data_type="24" />
+			<row_data_type_field id="65" pp_row_data_type="60" si_name="private_email" scalar_data_type="24" />
+			<row_data_type_field id="66" pp_row_data_type="60" si_name="may_login" scalar_data_type="19" />
+			<row_data_type_field id="67" pp_row_data_type="60" si_name="max_sessions" scalar_data_type="7" />
+			<row_data_type_field id="68" pp_row_data_type="60" si_name="public_name" scalar_data_type="25" />
+			<row_data_type_field id="69" pp_row_data_type="60" si_name="public_email" scalar_data_type="25" />
+			<row_data_type_field id="70" pp_row_data_type="60" si_name="web_url" scalar_data_type="25" />
+			<row_data_type_field id="71" pp_row_data_type="60" si_name="contact_net" scalar_data_type="25" />
+			<row_data_type_field id="72" pp_row_data_type="60" si_name="contact_phy" scalar_data_type="25" />
+			<row_data_type_field id="73" pp_row_data_type="60" si_name="bio" scalar_data_type="25" />
+			<row_data_type_field id="74" pp_row_data_type="60" si_name="plan" scalar_data_type="25" />
+			<row_data_type_field id="75" pp_row_data_type="60" si_name="comments" scalar_data_type="25" />
 		</row_data_type>
-		<row_data_type id="6" si_name="user_pref">
-			<row_data_type_field id="44" pp_row_data_type="6" si_name="user_id" scalar_data_type="9" />
-			<row_data_type_field id="45" pp_row_data_type="6" si_name="pref_name" scalar_data_type="26" />
-			<row_data_type_field id="46" pp_row_data_type="6" si_name="pref_value" scalar_data_type="27" />
+		<row_data_type id="76" si_name="user_pref">
+			<row_data_type_field id="77" pp_row_data_type="76" si_name="user_id" scalar_data_type="9" />
+			<row_data_type_field id="78" pp_row_data_type="76" si_name="pref_name" scalar_data_type="26" />
+			<row_data_type_field id="79" pp_row_data_type="76" si_name="pref_value" scalar_data_type="27" />
 		</row_data_type>
-		<row_data_type id="7" si_name="user_theme">
-			<row_data_type_field id="47" pp_row_data_type="7" si_name="theme_name" scalar_data_type="27" />
-			<row_data_type_field id="48" pp_row_data_type="7" si_name="theme_count" scalar_data_type="9" />
+		<row_data_type id="80" si_name="user_theme">
+			<row_data_type_field id="81" pp_row_data_type="80" si_name="theme_name" scalar_data_type="27" />
+			<row_data_type_field id="82" pp_row_data_type="80" si_name="theme_count" scalar_data_type="9" />
 		</row_data_type>
 	</elements>
 	<blueprints>
-		<catalog id="1" si_name="The Catalog Blueprint">
-			<owner id="1" pp_catalog="1" />
-			<schema id="1" pp_catalog="1" si_name="gene" owner="1">
-				<table id="1" pp_schema="1" si_name="person" row_data_type="1">
-					<table_field id="1" pp_table="1" si_row_field="1" mandatory="1" default_val="1" auto_inc="1" />
-					<table_field id="2" pp_table="1" si_row_field="3" mandatory="1" />
-					<table_index id="1" pp_table="1" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="1" pp_table_index="1" si_field="1" />
+		<catalog id="83" si_name="The Catalog Blueprint">
+			<owner id="84" pp_catalog="83" />
+			<schema id="85" pp_catalog="83" si_name="gene" owner="84">
+				<table id="86" pp_schema="85" si_name="person" row_data_type="28">
+					<table_field id="87" pp_table="86" si_row_field="29" mandatory="1" default_val="1" auto_inc="1" />
+					<table_field id="88" pp_table="86" si_row_field="31" mandatory="1" />
+					<table_index id="89" pp_table="86" si_name="primary" index_type="UNIQUE">
+						<table_index_field id="90" pp_table_index="89" si_field="29" />
 					</table_index>
-					<table_index id="2" pp_table="1" si_name="ak_alternate_id" index_type="UNIQUE">
-						<table_index_field id="2" pp_table_index="2" si_field="2" />
+					<table_index id="91" pp_table="86" si_name="ak_alternate_id" index_type="UNIQUE">
+						<table_index_field id="92" pp_table_index="91" si_field="30" />
 					</table_index>
-					<table_index id="3" pp_table="1" si_name="fk_father" index_type="FOREIGN" f_table="1">
-						<table_index_field id="3" pp_table_index="3" si_field="5" f_field="1" />
+					<table_index id="93" pp_table="86" si_name="fk_father" index_type="FOREIGN" f_table="86">
+						<table_index_field id="94" pp_table_index="93" si_field="33" f_field="29" />
 					</table_index>
-					<table_index id="4" pp_table="1" si_name="fk_mother" index_type="FOREIGN" f_table="1">
-						<table_index_field id="4" pp_table_index="4" si_field="6" f_field="1" />
+					<table_index id="95" pp_table="86" si_name="fk_mother" index_type="FOREIGN" f_table="86">
+						<table_index_field id="96" pp_table_index="95" si_field="34" f_field="29" />
 					</table_index>
 				</table>
-				<view id="1" pp_schema="1" si_name="person_vw" view_type="ALIAS" row_data_type="1" may_write="1">
-					<view_src id="1" pp_view="1" si_name="person" match_table="1" />
+				<view id="97" pp_schema="85" si_name="person_vw" view_type="ALIAS" row_data_type="28" may_write="1">
+					<view_src id="98" pp_view="97" si_name="person" match_table="86" />
 				</view>
-				<view id="2" pp_schema="1" si_name="person_with_parents" view_type="JOINED" row_data_type="2" may_write="0">
-					<view_src id="2" pp_view="2" si_name="self" match_table="1">
-						<view_src_field id="1" pp_src="2" si_match_field="1" />
-						<view_src_field id="2" pp_src="2" si_match_field="3" />
-						<view_src_field id="3" pp_src="2" si_match_field="5" />
-						<view_src_field id="4" pp_src="2" si_match_field="6" />
+				<view id="99" pp_schema="85" si_name="person_with_parents" view_type="JOINED" row_data_type="35" may_write="0">
+					<view_src id="100" pp_view="99" si_name="self" match_table="86">
+						<view_src_field id="101" pp_src="100" si_match_field="29" />
+						<view_src_field id="102" pp_src="100" si_match_field="31" />
+						<view_src_field id="103" pp_src="100" si_match_field="33" />
+						<view_src_field id="104" pp_src="100" si_match_field="34" />
 					</view_src>
-					<view_src id="3" pp_view="2" si_name="father" match_table="1">
-						<view_src_field id="5" pp_src="3" si_match_field="1" />
-						<view_src_field id="6" pp_src="3" si_match_field="3" />
+					<view_src id="105" pp_view="99" si_name="father" match_table="86">
+						<view_src_field id="106" pp_src="105" si_match_field="29" />
+						<view_src_field id="107" pp_src="105" si_match_field="31" />
 					</view_src>
-					<view_src id="4" pp_view="2" si_name="mother" match_table="1">
-						<view_src_field id="7" pp_src="4" si_match_field="1" />
-						<view_src_field id="8" pp_src="4" si_match_field="3" />
+					<view_src id="108" pp_view="99" si_name="mother" match_table="86">
+						<view_src_field id="109" pp_src="108" si_match_field="29" />
+						<view_src_field id="110" pp_src="108" si_match_field="31" />
 					</view_src>
-					<view_join id="1" pp_view="2" lhs_src="2" rhs_src="3" join_op="LEFT">
-						<view_join_field id="1" pp_join="1" lhs_src_field="3" rhs_src_field="5" />
+					<view_join id="111" pp_view="99" lhs_src="100" rhs_src="105" join_op="LEFT">
+						<view_join_field id="112" pp_join="111" lhs_src_field="103" rhs_src_field="106" />
 					</view_join>
-					<view_join id="2" pp_view="2" lhs_src="2" rhs_src="4" join_op="LEFT">
-						<view_join_field id="2" pp_join="2" lhs_src_field="4" rhs_src_field="7" />
+					<view_join id="113" pp_view="99" lhs_src="100" rhs_src="108" join_op="LEFT">
+						<view_join_field id="114" pp_join="113" lhs_src_field="104" rhs_src_field="109" />
 					</view_join>
-					<view_expr id="1" pp_view="2" view_part="RESULT" set_result_field="7" cont_type="SCALAR" valf_src_field="1" />
-					<view_expr id="2" pp_view="2" view_part="RESULT" set_result_field="8" cont_type="SCALAR" valf_src_field="2" />
-					<view_expr id="3" pp_view="2" view_part="RESULT" set_result_field="9" cont_type="SCALAR" valf_src_field="5" />
-					<view_expr id="4" pp_view="2" view_part="RESULT" set_result_field="10" cont_type="SCALAR" valf_src_field="6" />
-					<view_expr id="5" pp_view="2" view_part="RESULT" set_result_field="11" cont_type="SCALAR" valf_src_field="7" />
-					<view_expr id="6" pp_view="2" view_part="RESULT" set_result_field="12" cont_type="SCALAR" valf_src_field="8" />
-					<view_expr id="7" pp_view="2" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
-						<view_expr id="8" pp_expr="7" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="9" pp_expr="8" cont_type="SCALAR" valf_src_field="6" />
+					<view_expr id="115" pp_view="99" view_part="RESULT" set_result_field="36" cont_type="SCALAR" valf_src_field="101" />
+					<view_expr id="116" pp_view="99" view_part="RESULT" set_result_field="37" cont_type="SCALAR" valf_src_field="102" />
+					<view_expr id="117" pp_view="99" view_part="RESULT" set_result_field="38" cont_type="SCALAR" valf_src_field="106" />
+					<view_expr id="118" pp_view="99" view_part="RESULT" set_result_field="39" cont_type="SCALAR" valf_src_field="107" />
+					<view_expr id="119" pp_view="99" view_part="RESULT" set_result_field="40" cont_type="SCALAR" valf_src_field="109" />
+					<view_expr id="120" pp_view="99" view_part="RESULT" set_result_field="41" cont_type="SCALAR" valf_src_field="110" />
+					<view_expr id="121" pp_view="99" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
+						<view_expr id="122" pp_expr="121" cont_type="SCALAR" valf_call_sroutine="LIKE">
+							<view_expr id="123" pp_expr="122" cont_type="SCALAR" valf_src_field="107" />
 						</view_expr>
-						<view_expr id="10" pp_expr="7" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="11" pp_expr="10" cont_type="SCALAR" valf_src_field="8" />
+						<view_expr id="124" pp_expr="121" cont_type="SCALAR" valf_call_sroutine="LIKE">
+							<view_expr id="125" pp_expr="124" cont_type="SCALAR" valf_src_field="110" />
 						</view_expr>
 					</view_expr>
 				</view>
-				<table id="2" pp_schema="1" si_name="user_auth" row_data_type="3">
-					<table_field id="3" pp_table="2" si_row_field="13" mandatory="1" default_val="1" auto_inc="1" />
-					<table_field id="4" pp_table="2" si_row_field="14" mandatory="1" />
-					<table_field id="5" pp_table="2" si_row_field="15" mandatory="1" />
-					<table_field id="6" pp_table="2" si_row_field="16" mandatory="1" />
-					<table_field id="7" pp_table="2" si_row_field="17" mandatory="1" />
-					<table_field id="8" pp_table="2" si_row_field="18" mandatory="1" />
-					<table_field id="9" pp_table="2" si_row_field="19" mandatory="1" default_val="3" />
-					<table_index id="5" pp_table="2" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="5" pp_table_index="5" si_field="13" />
+				<table id="126" pp_schema="85" si_name="user_auth" row_data_type="42">
+					<table_field id="127" pp_table="126" si_row_field="43" mandatory="1" default_val="1" auto_inc="1" />
+					<table_field id="128" pp_table="126" si_row_field="44" mandatory="1" />
+					<table_field id="129" pp_table="126" si_row_field="45" mandatory="1" />
+					<table_field id="130" pp_table="126" si_row_field="46" mandatory="1" />
+					<table_field id="131" pp_table="126" si_row_field="47" mandatory="1" />
+					<table_field id="132" pp_table="126" si_row_field="48" mandatory="1" />
+					<table_field id="133" pp_table="126" si_row_field="49" mandatory="1" default_val="3" />
+					<table_index id="134" pp_table="126" si_name="primary" index_type="UNIQUE">
+						<table_index_field id="135" pp_table_index="134" si_field="43" />
 					</table_index>
-					<table_index id="6" pp_table="2" si_name="ak_login_name" index_type="UNIQUE">
-						<table_index_field id="6" pp_table_index="6" si_field="14" />
+					<table_index id="136" pp_table="126" si_name="ak_login_name" index_type="UNIQUE">
+						<table_index_field id="137" pp_table_index="136" si_field="44" />
 					</table_index>
-					<table_index id="7" pp_table="2" si_name="ak_private_email" index_type="UNIQUE">
-						<table_index_field id="7" pp_table_index="7" si_field="17" />
-					</table_index>
-				</table>
-				<table id="3" pp_schema="1" si_name="user_profile" row_data_type="4">
-					<table_field id="10" pp_table="3" si_row_field="20" mandatory="1" />
-					<table_field id="11" pp_table="3" si_row_field="21" mandatory="1" />
-					<table_index id="8" pp_table="3" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="8" pp_table_index="8" si_field="20" />
-					</table_index>
-					<table_index id="9" pp_table="3" si_name="ak_public_name" index_type="UNIQUE">
-						<table_index_field id="9" pp_table_index="9" si_field="21" />
-					</table_index>
-					<table_index id="10" pp_table="3" si_name="fk_user" index_type="FOREIGN" f_table="2">
-						<table_index_field id="10" pp_table_index="10" si_field="20" f_field="13" />
+					<table_index id="138" pp_table="126" si_name="ak_private_email" index_type="UNIQUE">
+						<table_index_field id="139" pp_table_index="138" si_field="47" />
 					</table_index>
 				</table>
-				<view id="3" pp_schema="1" si_name="user" view_type="JOINED" row_data_type="5" may_write="1">
-					<view_src id="5" pp_view="3" si_name="user_auth" match_table="2">
-						<view_src_field id="9" pp_src="5" si_match_field="13" />
-						<view_src_field id="10" pp_src="5" si_match_field="14" />
-						<view_src_field id="11" pp_src="5" si_match_field="15" />
-						<view_src_field id="12" pp_src="5" si_match_field="16" />
-						<view_src_field id="13" pp_src="5" si_match_field="17" />
-						<view_src_field id="14" pp_src="5" si_match_field="18" />
-						<view_src_field id="15" pp_src="5" si_match_field="19" />
+				<table id="140" pp_schema="85" si_name="user_profile" row_data_type="50">
+					<table_field id="141" pp_table="140" si_row_field="51" mandatory="1" />
+					<table_field id="142" pp_table="140" si_row_field="52" mandatory="1" />
+					<table_index id="143" pp_table="140" si_name="primary" index_type="UNIQUE">
+						<table_index_field id="144" pp_table_index="143" si_field="51" />
+					</table_index>
+					<table_index id="145" pp_table="140" si_name="ak_public_name" index_type="UNIQUE">
+						<table_index_field id="146" pp_table_index="145" si_field="52" />
+					</table_index>
+					<table_index id="147" pp_table="140" si_name="fk_user" index_type="FOREIGN" f_table="126">
+						<table_index_field id="148" pp_table_index="147" si_field="51" f_field="43" />
+					</table_index>
+				</table>
+				<view id="149" pp_schema="85" si_name="user" view_type="JOINED" row_data_type="60" may_write="1">
+					<view_src id="150" pp_view="149" si_name="user_auth" match_table="126">
+						<view_src_field id="151" pp_src="150" si_match_field="43" />
+						<view_src_field id="152" pp_src="150" si_match_field="44" />
+						<view_src_field id="153" pp_src="150" si_match_field="45" />
+						<view_src_field id="154" pp_src="150" si_match_field="46" />
+						<view_src_field id="155" pp_src="150" si_match_field="47" />
+						<view_src_field id="156" pp_src="150" si_match_field="48" />
+						<view_src_field id="157" pp_src="150" si_match_field="49" />
 					</view_src>
-					<view_src id="6" pp_view="3" si_name="user_profile" match_table="3">
-						<view_src_field id="16" pp_src="6" si_match_field="20" />
-						<view_src_field id="17" pp_src="6" si_match_field="21" />
-						<view_src_field id="18" pp_src="6" si_match_field="22" />
-						<view_src_field id="19" pp_src="6" si_match_field="23" />
-						<view_src_field id="20" pp_src="6" si_match_field="24" />
-						<view_src_field id="21" pp_src="6" si_match_field="25" />
-						<view_src_field id="22" pp_src="6" si_match_field="26" />
-						<view_src_field id="23" pp_src="6" si_match_field="27" />
-						<view_src_field id="24" pp_src="6" si_match_field="28" />
+					<view_src id="158" pp_view="149" si_name="user_profile" match_table="140">
+						<view_src_field id="159" pp_src="158" si_match_field="51" />
+						<view_src_field id="160" pp_src="158" si_match_field="52" />
+						<view_src_field id="161" pp_src="158" si_match_field="53" />
+						<view_src_field id="162" pp_src="158" si_match_field="54" />
+						<view_src_field id="163" pp_src="158" si_match_field="55" />
+						<view_src_field id="164" pp_src="158" si_match_field="56" />
+						<view_src_field id="165" pp_src="158" si_match_field="57" />
+						<view_src_field id="166" pp_src="158" si_match_field="58" />
+						<view_src_field id="167" pp_src="158" si_match_field="59" />
 					</view_src>
-					<view_join id="3" pp_view="3" lhs_src="5" rhs_src="6" join_op="LEFT">
-						<view_join_field id="3" pp_join="3" lhs_src_field="9" rhs_src_field="16" />
+					<view_join id="168" pp_view="149" lhs_src="150" rhs_src="158" join_op="LEFT">
+						<view_join_field id="169" pp_join="168" lhs_src_field="151" rhs_src_field="159" />
 					</view_join>
-					<view_expr id="12" pp_view="3" view_part="RESULT" set_result_field="29" cont_type="SCALAR" valf_src_field="9" />
-					<view_expr id="13" pp_view="3" view_part="RESULT" set_result_field="30" cont_type="SCALAR" valf_src_field="10" />
-					<view_expr id="14" pp_view="3" view_part="RESULT" set_result_field="31" cont_type="SCALAR" valf_src_field="11" />
-					<view_expr id="15" pp_view="3" view_part="RESULT" set_result_field="32" cont_type="SCALAR" valf_src_field="12" />
-					<view_expr id="16" pp_view="3" view_part="RESULT" set_result_field="33" cont_type="SCALAR" valf_src_field="13" />
-					<view_expr id="17" pp_view="3" view_part="RESULT" set_result_field="34" cont_type="SCALAR" valf_src_field="14" />
-					<view_expr id="18" pp_view="3" view_part="RESULT" set_result_field="35" cont_type="SCALAR" valf_src_field="15" />
-					<view_expr id="19" pp_view="3" view_part="RESULT" set_result_field="36" cont_type="SCALAR" valf_src_field="17" />
-					<view_expr id="20" pp_view="3" view_part="RESULT" set_result_field="37" cont_type="SCALAR" valf_src_field="18" />
-					<view_expr id="21" pp_view="3" view_part="RESULT" set_result_field="38" cont_type="SCALAR" valf_src_field="19" />
-					<view_expr id="22" pp_view="3" view_part="RESULT" set_result_field="39" cont_type="SCALAR" valf_src_field="20" />
-					<view_expr id="23" pp_view="3" view_part="RESULT" set_result_field="40" cont_type="SCALAR" valf_src_field="21" />
-					<view_expr id="24" pp_view="3" view_part="RESULT" set_result_field="41" cont_type="SCALAR" valf_src_field="22" />
-					<view_expr id="25" pp_view="3" view_part="RESULT" set_result_field="42" cont_type="SCALAR" valf_src_field="23" />
-					<view_expr id="26" pp_view="3" view_part="RESULT" set_result_field="43" cont_type="SCALAR" valf_src_field="24" />
-					<view_expr id="27" pp_view="3" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="28" pp_expr="27" cont_type="SCALAR" valf_src_field="9" />
+					<view_expr id="170" pp_view="149" view_part="RESULT" set_result_field="61" cont_type="SCALAR" valf_src_field="151" />
+					<view_expr id="171" pp_view="149" view_part="RESULT" set_result_field="62" cont_type="SCALAR" valf_src_field="152" />
+					<view_expr id="172" pp_view="149" view_part="RESULT" set_result_field="63" cont_type="SCALAR" valf_src_field="153" />
+					<view_expr id="173" pp_view="149" view_part="RESULT" set_result_field="64" cont_type="SCALAR" valf_src_field="154" />
+					<view_expr id="174" pp_view="149" view_part="RESULT" set_result_field="65" cont_type="SCALAR" valf_src_field="155" />
+					<view_expr id="175" pp_view="149" view_part="RESULT" set_result_field="66" cont_type="SCALAR" valf_src_field="156" />
+					<view_expr id="176" pp_view="149" view_part="RESULT" set_result_field="67" cont_type="SCALAR" valf_src_field="157" />
+					<view_expr id="177" pp_view="149" view_part="RESULT" set_result_field="68" cont_type="SCALAR" valf_src_field="160" />
+					<view_expr id="178" pp_view="149" view_part="RESULT" set_result_field="69" cont_type="SCALAR" valf_src_field="161" />
+					<view_expr id="179" pp_view="149" view_part="RESULT" set_result_field="70" cont_type="SCALAR" valf_src_field="162" />
+					<view_expr id="180" pp_view="149" view_part="RESULT" set_result_field="71" cont_type="SCALAR" valf_src_field="163" />
+					<view_expr id="181" pp_view="149" view_part="RESULT" set_result_field="72" cont_type="SCALAR" valf_src_field="164" />
+					<view_expr id="182" pp_view="149" view_part="RESULT" set_result_field="73" cont_type="SCALAR" valf_src_field="165" />
+					<view_expr id="183" pp_view="149" view_part="RESULT" set_result_field="74" cont_type="SCALAR" valf_src_field="166" />
+					<view_expr id="184" pp_view="149" view_part="RESULT" set_result_field="75" cont_type="SCALAR" valf_src_field="167" />
+					<view_expr id="185" pp_view="149" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="186" pp_expr="185" cont_type="SCALAR" valf_src_field="151" />
 					</view_expr>
 				</view>
-				<table id="4" pp_schema="1" si_name="user_pref" row_data_type="6">
-					<table_field id="12" pp_table="4" si_row_field="44" mandatory="1" />
-					<table_field id="13" pp_table="4" si_row_field="45" mandatory="1" />
-					<table_index id="11" pp_table="4" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="11" pp_table_index="11" si_field="44" />
-						<table_index_field id="12" pp_table_index="11" si_field="45" />
+				<table id="187" pp_schema="85" si_name="user_pref" row_data_type="76">
+					<table_field id="188" pp_table="187" si_row_field="77" mandatory="1" />
+					<table_field id="189" pp_table="187" si_row_field="78" mandatory="1" />
+					<table_index id="190" pp_table="187" si_name="primary" index_type="UNIQUE">
+						<table_index_field id="191" pp_table_index="190" si_field="77" />
+						<table_index_field id="192" pp_table_index="190" si_field="78" />
 					</table_index>
-					<table_index id="12" pp_table="4" si_name="fk_user" index_type="FOREIGN" f_table="2">
-						<table_index_field id="13" pp_table_index="12" si_field="44" f_field="13" />
+					<table_index id="193" pp_table="187" si_name="fk_user" index_type="FOREIGN" f_table="126">
+						<table_index_field id="194" pp_table_index="193" si_field="77" f_field="43" />
 					</table_index>
 				</table>
-				<view id="4" pp_schema="1" si_name="user_theme" view_type="JOINED" row_data_type="7" may_write="0">
-					<view_src id="7" pp_view="4" si_name="user_pref" match_table="4">
-						<view_src_field id="25" pp_src="7" si_match_field="45" />
-						<view_src_field id="26" pp_src="7" si_match_field="46" />
+				<view id="195" pp_schema="85" si_name="user_theme" view_type="JOINED" row_data_type="80" may_write="0">
+					<view_src id="196" pp_view="195" si_name="user_pref" match_table="187">
+						<view_src_field id="197" pp_src="196" si_match_field="78" />
+						<view_src_field id="198" pp_src="196" si_match_field="79" />
 					</view_src>
-					<view_expr id="29" pp_view="4" view_part="RESULT" set_result_field="47" cont_type="SCALAR" valf_src_field="26" />
-					<view_expr id="30" pp_view="4" view_part="RESULT" set_result_field="48" cont_type="SCALAR" valf_call_sroutine="COUNT">
-						<view_expr id="31" pp_expr="30" cont_type="SCALAR" valf_src_field="26" />
+					<view_expr id="199" pp_view="195" view_part="RESULT" set_result_field="81" cont_type="SCALAR" valf_src_field="198" />
+					<view_expr id="200" pp_view="195" view_part="RESULT" set_result_field="82" cont_type="SCALAR" valf_call_sroutine="COUNT">
+						<view_expr id="201" pp_expr="200" cont_type="SCALAR" valf_src_field="198" />
 					</view_expr>
-					<view_expr id="32" pp_view="4" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="33" pp_expr="32" cont_type="SCALAR" valf_src_field="25" />
-						<view_expr id="34" pp_expr="32" cont_type="SCALAR" valf_literal="theme" scalar_data_type="5" />
+					<view_expr id="202" pp_view="195" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="203" pp_expr="202" cont_type="SCALAR" valf_src_field="197" />
+						<view_expr id="204" pp_expr="202" cont_type="SCALAR" valf_literal="theme" scalar_data_type="5" />
 					</view_expr>
-					<view_expr id="35" pp_view="4" view_part="GROUP" cont_type="SCALAR" valf_src_field="26" />
-					<view_expr id="36" pp_view="4" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
-						<view_expr id="37" pp_expr="36" cont_type="SCALAR" valf_call_sroutine="COUNT" />
-						<view_expr id="38" pp_expr="36" cont_type="SCALAR" valf_literal="1" scalar_data_type="9" />
+					<view_expr id="205" pp_view="195" view_part="GROUP" cont_type="SCALAR" valf_src_field="198" />
+					<view_expr id="206" pp_view="195" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
+						<view_expr id="207" pp_expr="206" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+						<view_expr id="208" pp_expr="206" cont_type="SCALAR" valf_literal="1" scalar_data_type="9" />
 					</view_expr>
 				</view>
 			</schema>

@@ -196,11 +196,7 @@ instead of C.
 	} sqlrt_dt_node_dll; /* doubly-linked-list; use when number of list items not known in advance */
 
 	typedef struct {
-		sqlrt_dt_node_dll** all_nodes; /* (array of list of refs) all Nodes in this Container */
-			/* first dimension has one array element per allowed Node Type */
-			/* second dimension is a doubly-linked-list of all Nodes having that Node Type */
-			/* that list will probably get replaced with something more efficient at */
-			/* making sure each Node Id is only used once; and list order doesn't matter here */
+		sqlrt_dt_node_dll* all_nodes; /* (list of refs) all Nodes in this Container */
 	} sqlrt_dt_container;
 
 	/************************************************************************/

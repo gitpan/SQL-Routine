@@ -10,7 +10,7 @@ package SQL::Routine;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.50';
+our $VERSION = '0.51';
 
 use Locale::KeyedText '1.00';
 
@@ -88,12 +88,11 @@ my $CPROP_USE_ABSTRACTS = 'use_abstracts'; # boolean - false by def
 	# Node ref attribute values, beyond Node object references and integers representing Node ids to 
 	# look up; if other types of values are provided, SQL::Routine will try to look up Nodes based 
 	# on other attributes than the Id, usually 'si_name', before giving up on finding a Node to link.
-my $CPROP_ALL_NODES = 'all_nodes'; # hash of hashes of Node refs; find any Node by node_type:node_id quickly
+my $CPROP_ALL_NODES = 'all_nodes'; # hash of Node refs; find any Node by its node_id quickly
 my $CPROP_PSEUDONODES = 'pseudonodes'; # hash of arrays of Node refs
 	# This property is for remembering the insert order of Nodes having hardwired pseudonode parents
-my $CPROP_NEXT_FREE_NIDS = 'next_free_nids'; # hash (enum,id); next free node ids per node type
-	# Each property key is a valid node type, and the associated value is an integer that 
-	# is one higher than the highest Node ID that is or was in use by a Node in this Container.
+my $CPROP_NEXT_FREE_NID = 'next_free_nid'; # uint; next free node id
+	# Value is one higher than the highest Node ID that is or was in use by a Node in this Container.
 my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when changes made
 	# This property is a status flag which says there have been no changes to the Nodes 
 	# in this Container since the last time assert_deferrable_constraints() passed its tests, 
@@ -1788,9 +1787,9 @@ sub new {
 	$container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
 	$container->{$CPROP_AUTO_SET_NIDS} = 0;
 	$container->{$CPROP_USE_ABSTRACTS} = 0;
-	$container->{$CPROP_ALL_NODES} = { map { ($_ => {}) } keys %NODE_TYPES };
+	$container->{$CPROP_ALL_NODES} = {};
 	$container->{$CPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
-	$container->{$CPROP_NEXT_FREE_NIDS} = { map { ($_ => 1) } keys %NODE_TYPES };
+	$container->{$CPROP_NEXT_FREE_NID} = 1;
 	$container->{$CPROP_DEF_CON_TESTED} = 1;
 	return( $container );
 }
@@ -1800,10 +1799,8 @@ sub new {
 sub destroy {
 	# Since we probably have circular refs, we must explicitly be destroyed.
 	my ($container) = @_;
-	foreach my $nodes_by_type (values %{$container->{$CPROP_ALL_NODES}}) {
-		foreach my $node (values %{$nodes_by_type}) {
-			%{$node} = ();
-		}
+	foreach my $node (values %{$container->{$CPROP_ALL_NODES}}) {
+		%{$node} = ();
 	}
 	%{$container} = ();
 }
@@ -1841,13 +1838,9 @@ sub use_abstract_interface {
 ######################################################################
 
 sub get_node {
-	my ($container, $node_type, $node_id) = @_;
-	defined( $node_type ) or $container->_throw_error_message( 'SRT_C_GET_NODE_NO_ARG_TYPE' );
+	my ($container, $node_id) = @_;
 	defined( $node_id ) or $container->_throw_error_message( 'SRT_C_GET_NODE_NO_ARG_ID' );
-	unless( $NODE_TYPES{$node_type} ) {
-		$container->_throw_error_message( 'SRT_C_GET_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
-	}
-	return( $container->{$CPROP_ALL_NODES}->{$node_type}->{$node_id} );
+	return( $container->{$CPROP_ALL_NODES}->{$node_id} );
 }
 
 ######################################################################
@@ -1869,12 +1862,8 @@ sub get_child_nodes {
 ######################################################################
 
 sub get_next_free_node_id {
-	my ($container, $node_type) = @_;
-	defined( $node_type ) or $container->_throw_error_message( 'SRT_C_GET_NFNI_NO_ARG_TYPE' );
-	unless( $NODE_TYPES{$node_type} ) {
-		$container->_throw_error_message( 'SRT_C_GET_NFNI_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
-	}
-	return( $container->{$CPROP_NEXT_FREE_NIDS}->{$node_type} );
+	my ($container) = @_;
+	return( $container->{$CPROP_NEXT_FREE_NID} );
 }
 
 ######################################################################
@@ -2140,25 +2129,23 @@ sub set_node_id {
 	if( $new_id == $old_id ) {
 		return( 1 ); # no-op; new id same as old
 	}
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	my $rh_cnl_ft = $node->{$NPROP_CONTAINER}->{$CPROP_ALL_NODES}->{$node_type};
+	my $rh_cal = $node->{$NPROP_CONTAINER}->{$CPROP_ALL_NODES};
 
-	if( $rh_cnl_ft->{$new_id} ) {
+	if( $rh_cal->{$new_id} ) {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID', { 'ARG' => $new_id } );
 	}
 
 	# The following seq should leave state consistant or recoverable if the thread dies
-	$rh_cnl_ft->{$new_id} = $node; # temp reserve new+old
+	$rh_cal->{$new_id} = $node; # temp reserve new+old
 	$node->{$NPROP_NODE_ID} = $new_id; # change self from old to new
-	delete( $rh_cnl_ft->{$old_id} ); # now only new reserved
+	delete( $rh_cal->{$old_id} ); # now only new reserved
 	if( $node->{$NPROP_CONTAINER} ) {
 		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
 	}
 
 	# Now adjust our "next free node id" counter if appropriate
-	my $rh_cnfni = $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NIDS};
-	if( $new_id >= $rh_cnfni->{$node_type} ) {
-		$rh_cnfni->{$node_type} = 1 + $new_id;
+	if( $new_id >= $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} ) {
+		$node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} = 1 + $new_id;
 	}
 }
 
@@ -2427,11 +2414,12 @@ sub set_node_ref_attribute {
 		}
 
 		if( my $container = $node->{$NPROP_CONTAINER} ) {
-			$attr_value = $container->{$CPROP_ALL_NODES}->{$exp_node_type}->{$attr_value};
-			unless( $attr_value ) {
+			my $searched_attr_value = $container->{$CPROP_ALL_NODES}->{$attr_value};
+			unless( $searched_attr_value and $searched_attr_value->{$NPROP_NODE_TYPE} eq $exp_node_type ) {
 				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_NID', 
 					{ 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_type } );
 			}
+			$attr_value = $searched_attr_value;
 		}
 	}
 
@@ -2511,8 +2499,9 @@ sub _set_node_ref_attribute__find_node_by_link_search_attr {
 	my $container = $self->get_container();
 	my $link_search_attr = $NODE_TYPES{$exp_node_type}->{$TPI_SI_ATNM};
 	$link_search_attr and ($link_search_attr) = grep { $_ } @{$link_search_attr};
-	foreach my $scn (values %{$container->{$CPROP_ALL_NODES}->{$exp_node_type}}) {
-		if( $scn->get_attribute( $link_search_attr ) eq $attr_value ) {
+	foreach my $scn (values %{$container->{$CPROP_ALL_NODES}}) {
+		if( $scn->{$NPROP_NODE_TYPE} eq $exp_node_type and 
+				$scn->get_attribute( $link_search_attr ) eq $attr_value ) {
 			return( $scn );
 		}
 	}
@@ -2814,8 +2803,8 @@ sub clear_surrogate_id_attribute {
 
 sub set_surrogate_id_attribute {
 	my ($node, $attr_value) = @_;
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
 	my $si_atnm = $node->expected_surrogate_id_attribute();
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
 	$node->set_attribute( $si_atnm, $attr_value );
 }
 
@@ -2844,13 +2833,13 @@ sub put_in_container {
 	my $node_id = $node->{$NPROP_NODE_ID};
 	unless( $node_id ) {
 		if( $new_container->{$CPROP_AUTO_SET_NIDS} ) {
-			$node_id = $node->{$NPROP_NODE_ID} = $new_container->get_next_free_node_id( $node_type );
+			$node_id = $node->{$NPROP_NODE_ID} = $new_container->get_next_free_node_id();
 		} else {
 			$node->_throw_error_message( 'SRT_N_PI_CONT_NO_NODE_ID' );
 		}
 	}
 
-	if( $new_container->{$CPROP_ALL_NODES}->{$node_type}->{$node_id} ) {
+	if( $new_container->{$CPROP_ALL_NODES}->{$node_id} ) {
 		$node->_throw_error_message( 'SRT_N_PI_CONT_DUPL_ID' );
 	}
 
@@ -2860,16 +2849,16 @@ sub put_in_container {
 
 	my $tpi_at_nodes = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS};
 	my $rh_at_nodes_nids = $node->{$NPROP_AT_NREFS}; # all values should be node ids now
-	my $rh_cnl_bt = $new_container->{$CPROP_ALL_NODES};
+	my $rh_can = $new_container->{$CPROP_ALL_NODES};
 
 	my %at_nodes_refs = (); # values put in here will be actual references
 	foreach my $at_nodes_atnm (keys %{$rh_at_nodes_nids}) {
 		# We need to make sure that when an attribute value is cleared, its key is deleted
 		# Note that if $tpi_at_nodes is undefined, expect that this foreach loop will not run
 		my $at_nodes_nid = $rh_at_nodes_nids->{$at_nodes_atnm};
-		my $at_node_type = $tpi_at_nodes->{$at_nodes_atnm};
-		my $at_nodes_ref = $rh_cnl_bt->{$at_node_type}->{$at_nodes_nid};
+		my $at_nodes_ref = $rh_can->{$at_nodes_nid};
 		unless( $at_nodes_ref ) {
+			my $at_node_type = $tpi_at_nodes->{$at_nodes_atnm};
 			$node->_throw_error_message( 'SRT_N_PI_CONT_NONEX_AT_NREF', 
 				{ 'ATNM' => $at_nodes_atnm, 'EXPNTYPE' => $at_node_type, 'EXPNID' => $at_nodes_nid } );
 		}
@@ -2877,7 +2866,7 @@ sub put_in_container {
 	}
 	$node->{$NPROP_CONTAINER} = $new_container;
 	$node->{$NPROP_AT_NREFS} = \%at_nodes_refs;
-	$rh_cnl_bt->{$node_type}->{$node_id} = $node;
+	$rh_can->{$node_id} = $node;
 
 	# Now get our parent Nodes to link back to us.
 	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
@@ -2888,9 +2877,8 @@ sub put_in_container {
 	}
 
 	# Now adjust our "next free node id" counter if appropriate
-	my $rh_cnfni = $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NIDS};
-	if( $node_id >= $rh_cnfni->{$node_type} ) {
-		$rh_cnfni->{$node_type} = 1 + $node_id;
+	if( $node_id >= $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} ) {
+		$node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} = 1 + $node_id;
 	}
 
 	$new_container->{$CPROP_DEF_CON_TESTED} = 0; # A Node has become "Well Known".
@@ -2923,7 +2911,7 @@ sub take_from_container {
 		$at_nodes_nids{$at_nodes_atnm} = $rh_at_nodes_refs->{$at_nodes_atnm}->{$NPROP_NODE_ID};
 	}
 
-	delete( $container->{$CPROP_ALL_NODES}->{$node_type}->{$node->{$NPROP_NODE_ID}} );
+	delete( $container->{$CPROP_ALL_NODES}->{$node->{$NPROP_NODE_ID}} );
 	$node->{$NPROP_AT_NREFS} = \%at_nodes_nids;
 	$node->{$NPROP_CONTAINER} = undef;
 
@@ -4321,13 +4309,13 @@ Node ids to look up; if other types of values are provided, SQL::Routine will
 try to look up Nodes based on other attributes than the Id, usually 'si_name',
 before giving up on finding a Node to link.
 
-=head2 get_node( NODE_TYPE, NODE_ID )
+=head2 get_node( NODE_ID )
 
-	my $catalog_node = $model->get_node( 'catalog', 1 );
+	my $node = $model->get_node( 1 );
 
 This "getter" method returns a reference to one of this Container's member
-Nodes, which has a Node Type of NODE_TYPE, and a Node Id of NODE_ID.  You may
-not request a pseudo-Node (it doesn't actually exist).
+Nodes, which has a Node Id of NODE_ID.  You may not request a pseudo-Node (it
+doesn't actually exist).
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
@@ -4341,18 +4329,17 @@ If the optional argument NODE_TYPE is defined, then only child Nodes of that
 Node Type are returned; otherwise, all child Nodes are returned.  All Nodes are
 returned in the same order they were added.
 
-=head2 get_next_free_node_id( NODE_TYPE )
+=head2 get_next_free_node_id()
 
-	my $node_id = $model->get_next_free_node_id( 'catalog' );
+	my $node_id = $model->get_next_free_node_id();
 
 This "getter" method returns an integer which is valid for use as the Node ID
-of a new Node, which has a Node Type of NODE_TYPE, that is going to be put in
-this Container.  Its value is 1 higher than the highest Node ID for the same
-Node Type that is already in the Container, or had been before.  You can use
-this method like a sequence generator to produce Node Ids for you rather than
-you producing them in some other way.  An example situation when this method
-would be useful is if you are building a SQL::Routine by scanning the
-schema of an existing database.
+of a new Node that is going to be put in this Container.  Its value is 1 higher
+than the highest Node ID for any Node that is already in the Container, or had
+been before.  You can use this method like a sequence generator to produce Node
+Ids for you rather than you producing them in some other way.  An example
+situation when this method might be useful is if you are building a
+SQL::Routine by scanning the schema of an existing database.
 
 =head2 deferrable_constraints_are_tested()
 
