@@ -39,11 +39,13 @@ DEPENDENCIES
 
 Perl Version: 5.008001
 
-Core Modules: none
+Core Modules:
+
+	Test::More 0.47 (but only for the test suite)
 
 Non-Core Modules: 
 
-	Locale::KeyedText 1.02 (for error messages)
+	Locale::KeyedText 1.03 (for error messages)
 
 This module doesn't require anything else.
 
@@ -54,9 +56,19 @@ or otherwise.  Feel free to ask me if you can't figure things out on your own, o
 another person whom you know has used this.  I may start a mailing list for 
 support issues later, so that users of my modules can help each other with them.
 
-CREDITS
+=head1 CREDITS
 
-None besides myself so far.
+Besides myself as the creator ...
+
+* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu) for
+inspiring me to add some concrete SYNOPSIS documentation examples to this
+module, which demonstrate actual SQL statements that can be generated from parts
+of a model, when he wrote me asking for examples of how to use this module.
+
+* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
+towards improving this module's documentation, particularly towards using a much
+shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
+a glance, and not be intimidated by large amounts of detailed information.
 
 COPYRIGHT AND LICENSE
 

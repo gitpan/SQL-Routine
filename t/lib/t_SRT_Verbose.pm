@@ -1,5 +1,4 @@
 #!perl
-
 use 5.008001; use utf8; use strict; use warnings;
 
 # This module is used when testing SQL::Routine.
@@ -735,7 +734,7 @@ sub expected_model_nid_xml_output {
 
 ######################################################################
 
-sub expected_model_sid_xml_output {
+sub expected_model_sid_long_xml_output {
 	return
 '<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -885,25 +884,204 @@ sub expected_model_sid_xml_output {
 		<data_link_product id="103" si_name="Microsoft ODBC" product_code="ODBC" />
 	</tools>
 	<sites>
-		<catalog_instance id="104" si_name="test" blueprint="The Catalog Blueprint" product="101">
+		<catalog_instance id="104" si_name="test" blueprint="The Catalog Blueprint" product="SQLite v2.8.12">
 			<user id="105" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="K34dsD" />
 			<user id="106" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
 		</catalog_instance>
 		<application_instance id="107" si_name="test Setup" blueprint="Setup">
-			<catalog_link_instance id="108" blueprint="admin_link" product="103" target="test" local_dsn="test" />
+			<catalog_link_instance id="108" blueprint="admin_link" product="Microsoft ODBC" target="test" local_dsn="test" />
 		</application_instance>
 		<application_instance id="109" si_name="test People Watcher" blueprint="People Watcher">
-			<catalog_link_instance id="110" blueprint="editor_link" product="103" target="test" local_dsn="test" />
+			<catalog_link_instance id="110" blueprint="editor_link" product="Microsoft ODBC" target="test" local_dsn="test" />
 		</application_instance>
-		<catalog_instance id="111" si_name="demo" blueprint="The Catalog Blueprint" product="102">
+		<catalog_instance id="111" si_name="demo" blueprint="The Catalog Blueprint" product="Oracle v9i">
 			<user id="112" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="0sfs8G" />
 			<user id="113" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
 		</catalog_instance>
 		<application_instance id="114" si_name="demo Setup" blueprint="Setup">
-			<catalog_link_instance id="115" blueprint="admin_link" product="103" target="demo" local_dsn="demo" />
+			<catalog_link_instance id="115" blueprint="admin_link" product="Microsoft ODBC" target="demo" local_dsn="demo" />
 		</application_instance>
 		<application_instance id="116" si_name="demo People Watcher" blueprint="People Watcher">
-			<catalog_link_instance id="117" blueprint="editor_link" product="103" target="demo" local_dsn="demo" />
+			<catalog_link_instance id="117" blueprint="editor_link" product="Microsoft ODBC" target="demo" local_dsn="demo" />
+		</application_instance>
+	</sites>
+	<circumventions />
+</root>
+'
+	;
+}
+
+######################################################################
+
+sub expected_model_sid_short_xml_output {
+	return
+'<?xml version="1.0" encoding="UTF-8"?>
+<root>
+	<elements>
+		<scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
+		<scalar_data_type id="2" si_name="person_name" base_type="STR_CHAR" max_chars="100" char_enc="UTF8" />
+		<row_data_type id="3" si_name="person">
+			<row_data_type_field id="4" si_name="person_id" scalar_data_type="entity_id" />
+			<row_data_type_field id="5" si_name="name" scalar_data_type="person_name" />
+			<row_data_type_field id="6" si_name="father_id" scalar_data_type="entity_id" />
+			<row_data_type_field id="7" si_name="mother_id" scalar_data_type="entity_id" />
+		</row_data_type>
+		<scalar_data_type id="8" si_name="boolean" base_type="BOOLEAN" />
+		<scalar_data_type id="9" si_name="loginauth" base_type="STR_CHAR" max_chars="20" char_enc="UTF8" />
+	</elements>
+	<blueprints>
+		<catalog id="10" si_name="The Catalog Blueprint">
+			<owner id="11" si_name="Gene\'s Owner" />
+			<schema id="12" si_name="gene" owner="Gene\'s Owner">
+				<row_domain id="13" si_name="person_type" data_type="person" />
+				<table id="14" si_name="person" row_data_type="person_type">
+					<table_field id="15" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
+					<table_field id="16" si_row_field="name" mandatory="1" />
+					<table_index id="17" si_name="primary" index_type="UNIQUE">
+						<table_index_field id="18" si_field="person_id" />
+					</table_index>
+					<table_index id="19" si_name="fk_father" index_type="FOREIGN" f_table="person">
+						<table_index_field id="20" si_field="father_id" f_field="person_id" />
+					</table_index>
+					<table_index id="21" si_name="fk_mother" index_type="FOREIGN" f_table="person">
+						<table_index_field id="22" si_field="mother_id" f_field="person_id" />
+					</table_index>
+				</table>
+			</schema>
+		</catalog>
+		<application id="23" si_name="Setup">
+			<catalog_link id="24" si_name="admin_link" target="The Catalog Blueprint" />
+			<routine id="25" si_name="install_app_schema" routine_type="PROCEDURE">
+				<routine_stmt id="26" call_sroutine="CATALOG_CREATE">
+					<routine_expr id="27" call_sroutine_arg="LINK_BP" cont_type="SRT_NODE" act_on="admin_link" />
+					<routine_expr id="28" call_sroutine_arg="RECURSIVE" cont_type="SCALAR" valf_literal="1" scalar_data_type="boolean" />
+				</routine_stmt>
+			</routine>
+			<routine id="29" si_name="remove_app_schema" routine_type="PROCEDURE">
+				<routine_stmt id="30" call_sroutine="CATALOG_DELETE">
+					<routine_expr id="31" call_sroutine_arg="LINK_BP" cont_type="SRT_NODE" act_on="admin_link" />
+				</routine_stmt>
+			</routine>
+		</application>
+		<application id="32" si_name="People Watcher">
+			<catalog_link id="33" si_name="editor_link" target="The Catalog Blueprint" />
+			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
+				<routine_var id="35" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_stmt id="36" call_sroutine="RETURN">
+					<routine_expr id="37" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_item="conn_cx" />
+				</routine_stmt>
+			</routine>
+			<routine id="38" si_name="open_db_conn" routine_type="PROCEDURE">
+				<routine_context id="39" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_arg id="40" si_name="login_name" cont_type="SCALAR" scalar_data_type="loginauth" />
+				<routine_arg id="41" si_name="login_pass" cont_type="SCALAR" scalar_data_type="loginauth" />
+				<routine_stmt id="42" call_sroutine="CATALOG_OPEN">
+					<routine_expr id="43" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_expr id="44" call_sroutine_arg="LOGIN_NAME" cont_type="SCALAR" valf_p_routine_item="login_name" />
+					<routine_expr id="45" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
+				</routine_stmt>
+			</routine>
+			<routine id="46" si_name="close_db_conn" routine_type="PROCEDURE">
+				<routine_context id="47" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_stmt id="48" call_sroutine="CATALOG_CLOSE">
+					<routine_expr id="49" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+				</routine_stmt>
+			</routine>
+			<routine id="50" si_name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="RW_ARY" return_row_data_type="person_type">
+				<routine_context id="51" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_var id="52" si_name="person_ary" cont_type="RW_ARY" row_data_type="person_type" />
+				<view id="53" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="person_type" set_p_routine_item="person_ary">
+					<view_src id="54" si_name="person" match="person" />
+				</view>
+				<routine_stmt id="55" call_sroutine="SELECT">
+					<routine_expr id="56" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_expr id="57" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="fetch_all_persons" />
+				</routine_stmt>
+				<routine_stmt id="58" call_sroutine="RETURN">
+					<routine_expr id="59" call_sroutine_arg="RETURN_VALUE" cont_type="RW_ARY" valf_p_routine_item="person_ary" />
+				</routine_stmt>
+			</routine>
+			<routine id="60" si_name="insert_a_person" routine_type="PROCEDURE">
+				<routine_context id="61" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_arg id="62" si_name="person" cont_type="ROW" row_data_type="person_type" />
+				<view id="63" si_name="insert_a_person" view_type="INSERT" row_data_type="person_type" ins_p_routine_item="person">
+					<view_src id="64" si_name="person" match="person" />
+				</view>
+				<routine_stmt id="65" call_sroutine="INSERT">
+					<routine_expr id="66" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_expr id="67" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_a_person" />
+				</routine_stmt>
+			</routine>
+			<routine id="68" si_name="update_a_person" routine_type="PROCEDURE">
+				<routine_context id="69" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_arg id="70" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+				<routine_arg id="71" si_name="arg_person_name" cont_type="SCALAR" scalar_data_type="person_name" />
+				<routine_arg id="72" si_name="arg_father_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+				<routine_arg id="73" si_name="arg_mother_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+				<view id="74" si_name="update_a_person" view_type="UPDATE">
+					<view_src id="75" si_name="person" match="person">
+						<view_src_field id="76" si_match_field="person_id" />
+						<view_src_field id="77" si_match_field="name" />
+						<view_src_field id="78" si_match_field="father_id" />
+						<view_src_field id="79" si_match_field="mother_id" />
+					</view_src>
+					<view_expr id="80" view_part="SET" set_src_field="name" cont_type="SCALAR" valf_p_routine_item="arg_person_name" />
+					<view_expr id="81" view_part="SET" set_src_field="father_id" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
+					<view_expr id="82" view_part="SET" set_src_field="mother_id" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
+					<view_expr id="83" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="84" cont_type="SCALAR" valf_src_field="person_id" />
+						<view_expr id="85" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+					</view_expr>
+				</view>
+				<routine_stmt id="86" call_sroutine="UPDATE">
+					<routine_expr id="87" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_expr id="88" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" act_on="update_a_person" />
+				</routine_stmt>
+			</routine>
+			<routine id="89" si_name="delete_a_person" routine_type="PROCEDURE">
+				<routine_context id="90" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+				<routine_arg id="91" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+				<view id="92" si_name="delete_a_person" view_type="DELETE">
+					<view_src id="93" si_name="person" match="person">
+						<view_src_field id="94" si_match_field="person_id" />
+					</view_src>
+					<view_expr id="95" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="96" cont_type="SCALAR" valf_src_field="person_id" />
+						<view_expr id="97" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+					</view_expr>
+				</view>
+				<routine_stmt id="98" call_sroutine="DELETE">
+					<routine_expr id="99" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_expr id="100" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" act_on="delete_a_person" />
+				</routine_stmt>
+			</routine>
+		</application>
+	</blueprints>
+	<tools>
+		<data_storage_product id="101" si_name="SQLite v2.8.12" product_code="SQLite_2_8_12" is_file_based="1" />
+		<data_storage_product id="102" si_name="Oracle v9i" product_code="Oracle_9_i" is_network_svc="1" />
+		<data_link_product id="103" si_name="Microsoft ODBC" product_code="ODBC" />
+	</tools>
+	<sites>
+		<catalog_instance id="104" si_name="test" blueprint="The Catalog Blueprint" product="SQLite v2.8.12">
+			<user id="105" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="K34dsD" />
+			<user id="106" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
+		</catalog_instance>
+		<application_instance id="107" si_name="test Setup" blueprint="Setup">
+			<catalog_link_instance id="108" blueprint="admin_link" product="Microsoft ODBC" target="test" local_dsn="test" />
+		</application_instance>
+		<application_instance id="109" si_name="test People Watcher" blueprint="People Watcher">
+			<catalog_link_instance id="110" blueprint="editor_link" product="Microsoft ODBC" target="test" local_dsn="test" />
+		</application_instance>
+		<catalog_instance id="111" si_name="demo" blueprint="The Catalog Blueprint" product="Oracle v9i">
+			<user id="112" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="0sfs8G" />
+			<user id="113" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
+		</catalog_instance>
+		<application_instance id="114" si_name="demo Setup" blueprint="Setup">
+			<catalog_link_instance id="115" blueprint="admin_link" product="Microsoft ODBC" target="demo" local_dsn="demo" />
+		</application_instance>
+		<application_instance id="116" si_name="demo People Watcher" blueprint="People Watcher">
+			<catalog_link_instance id="117" blueprint="editor_link" product="Microsoft ODBC" target="demo" local_dsn="demo" />
 		</application_instance>
 	</sites>
 	<circumventions />

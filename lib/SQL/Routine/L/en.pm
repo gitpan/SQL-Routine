@@ -1,9 +1,8 @@
 #!perl
-
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.26';
+our $VERSION = '0.27';
 
 ######################################################################
 
@@ -148,15 +147,15 @@ my %text_strings = (
 		$CN.'.set_primary_parent_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument; the given Node '.
 		'lacks a Node Id, and one is required to link to it from this one',
+	'SRT_N_SET_PP_AT_NONEX_NID' => 
+		$CN.'.set_primary_parent_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; "{ARG}" looks like a Node Id but '.
+		'it does not match the Id of any "{EXPNTYPE}" Node in this Node\'s Container',
 	'SRT_N_SET_PP_AT_NO_ALLOW_SID_FOR_PP' => 
 		$CN.'.set_primary_parent_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument; "{ARG}" looks like a Surrogate Id but '.
 		'you may not use Surrogate Ids to match Nodes when setting the primary parent attribute; '.
 		'ATTR_VALUE must be either a Node ref or a positive integer Node Id',
-	'SRT_N_SET_PP_AT_NONEX_NID' => 
-		$CN.'.set_primary_parent_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; "{ARG}" looks like a Node Id but '.
-		'it does not match the Id of any "{EXPNTYPE}" Node in this Node"s Container',
 
 	'SRT_N_GET_LIT_AT_NO_ARGS' => 
 		$CN.'.get_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -183,19 +182,19 @@ my %text_strings = (
 		'missing ATTR_VALUE argument when setting "{ATNM}"',
 	'SRT_N_SET_LIT_AT_INVAL_V_IS_REF' => 
 		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node"s literal attribute named "{ATNM}" may only be '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
 		'a scalar value; you tried to set it to a "{ARG_REF_TYPE}" reference',
 	'SRT_N_SET_LIT_AT_INVAL_V_BOOL' => 
 		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node"s literal attribute named "{ATNM}" may only be '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
 		'a boolean value, as expressed by "0" or "1"; you tried to set it to "{ARG}"',
 	'SRT_N_SET_LIT_AT_INVAL_V_UINT' => 
 		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node"s literal attribute named "{ATNM}" may only be '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
 		'a non-negative integer; you tried to set it to "{ARG}"',
 	'SRT_N_SET_LIT_AT_INVAL_V_SINT' => 
 		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node"s literal attribute named "{ATNM}" may only be '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
 		'an integer; you tried to set it to "{ARG}"',
 
 	'SRT_N_SET_LIT_ATS_NO_ARGS' => 
@@ -230,7 +229,7 @@ my %text_strings = (
 		'missing ATTR_VALUE argument when setting "{ATNM}"',
 	'SRT_N_SET_ENUM_AT_INVAL_V' => 
 		$CN.'.set_enumerated_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node"s enumerated attribute named "{ATNM}" may only be '.
+		'invalid ATTR_VALUE argument; this Node\'s enumerated attribute named "{ATNM}" may only be '.
 		'a "{ENUMTYPE}" value; you tried to set it to "{ARG}"',
 
 	'SRT_N_SET_ENUM_ATS_NO_ARGS' => 
@@ -280,6 +279,10 @@ my %text_strings = (
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument when setting "{ATNM}"; the given Node '.
 		'lacks a Node Id, and one is required to link to it from this one',
+	'SRT_N_SET_NREF_AT_NONEX_NID' => 
+		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Node Id but '.
+		'it does not match the Id of any "{EXPNTYPE}" Node in this Node\'s Container',
 	'SRT_N_SET_NREF_AT_NO_ALLOW_SID' => 
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
@@ -289,12 +292,12 @@ my %text_strings = (
 	'SRT_N_SET_NREF_AT_NONEX_SID' => 
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
-		'it does not match the Surrogate Id of any "{EXPNTYPE}" Node in this Node"s Container; either no matching Nodes '.
-		'were found, or more than one was found in the same scope and "{ARG}" is too ambiguous to pick one',
-	'SRT_N_SET_NREF_AT_NONEX_NID' => 
+		'it does not match the Surrogate Id of any "{EXPNTYPE}" Node in this Node\'s Container',
+	'SRT_N_SET_NREF_AT_AMBIG_SID' => 
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Node Id but '.
-		'it does not match the Id of any "{EXPNTYPE}" Node in this Node"s Container',
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
+		'it is too ambiguous to match the Surrogate Id of any single "{EXPNTYPE}" Node in this Node\'s Container; '.
+		'all of these Nodes are equally qualified to match, but only one is allowed to: "{CANDIDATES}"',
 
 	'SRT_N_SET_NREF_ATS_NO_ARGS' => 
 		$CN.'.set_node_ref_attributes(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -443,6 +446,10 @@ my %text_strings = (
 		$CN.'.find_node_by_surrogate_id(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'missing TARGET_ATTR_VALUE argument for the Node-ref attribute named "{ATNM}"; '.
 		'either the argument itself is undefined, or it is a Perl array ref which contains an undefined element',
+	'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR' => 
+		$CN.'.find_node_by_surrogate_id(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid TARGET_ATTR_VALUE argument for the Node-ref attribute named "{ATNM}"; '.
+		'"{ATVL}" contains multiple elements but the allowable target Node types can only be addressed using a single element',
 
 	'SRT_N_FIND_CH_ND_BY_SID_NOT_IN_CONT' => 
 		$CN.'.find_child_node_by_surrogate_id(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -472,7 +479,7 @@ my %text_strings = (
 	'SRT_N_ASDC_SI_VAL_NO_SET' => 
 		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'a deferrable constraint was violated; '.
-		'this Node"s surrogate id attribute named "{ATNM}" must always be given a value',
+		'this Node\'s surrogate id attribute named "{ATNM}" must always be given a value',
 	'SRT_N_ASDC_MA_VAL_NO_SET' => 
 		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'a deferrable constraint was violated; the "{ATNM}" attribute must always be given a value',
@@ -515,8 +522,7 @@ my %text_strings = (
 		'a deferrable constraint was violated; the Node-ref attribute "{ATNM}" is currently '.
 		'linked to the "{PNTYPE}" Node with Id "{PNID}" and Surrogate Id Chain "{PSIDCH}"; '.
 		'that parent Node is not within the visible scope of the current child '.
-		'(when searching with the target surrogate id "{PSID}") so the child may not link to it; either no matching Nodes '.
-		'were found, or more than one was found in the same scope and "{PSID}" is too ambiguous to pick one',
+		'(when searching with the target surrogate id "{PSID}") so the child may not link to it',
 
 	'SRT_N_ASDC_SI_NON_DISTINCT' => 
 		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -561,7 +567,8 @@ my %text_strings = (
 ######################################################################
 
 sub get_text_by_key {
-	return $text_strings{$_[1]};
+	my (undef, $msg_key) = @_;
+	return $text_strings{$msg_key};
 }
 
 ######################################################################

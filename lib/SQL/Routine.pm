@@ -1,11 +1,10 @@
 #!perl
-
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.57';
+our $VERSION = '0.58';
 
-use Locale::KeyedText '1.02';
+use Locale::KeyedText 1.03;
 
 ######################################################################
 
@@ -23,7 +22,7 @@ Core Modules: I<none>
 
 Non-Core Modules: 
 
-	Locale::KeyedText 1.02 (for error messages)
+	Locale::KeyedText 1.03 (for error messages)
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -1165,7 +1164,7 @@ my %NODE_TYPES = (
 			'is_local_proc' => 'bool',
 			'is_network_svc' => 'bool',
 		},
-		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_MA_ATNMS => [['si_name','product_code'],[],[]],
 		$TPI_MUTEX_ATGPS => [
 			['type',['is_memory_based','is_file_based','is_local_proc','is_network_svc'],[],[],1],
@@ -1181,7 +1180,7 @@ my %NODE_TYPES = (
 			'product_code' => 'cstr',
 			'is_proxy' => 'bool',
 		},
-		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_MA_ATNMS => [['si_name','product_code'],[],[]],
 	},
 	'catalog_instance' => {
@@ -1372,26 +1371,26 @@ my $ATTR_PP         = 'pp'; # attribute name to use for the node's primary paren
 ######################################################################
 
 sub valid_enumerated_types {
-	my ($self, $type) = @_;
+	my (undef, $type) = @_;
 	$type and return exists( $ENUMERATED_TYPES{$type} );
 	return {map { ($_ => 1) } keys %ENUMERATED_TYPES};
 }
 
 sub valid_enumerated_type_values {
-	my ($self, $type, $value) = @_;
+	my (undef, $type, $value) = @_;
 	$type and (exists( $ENUMERATED_TYPES{$type} ) or return);
 	$value and return exists( $ENUMERATED_TYPES{$type}->{$value} );
 	return {%{$ENUMERATED_TYPES{$type}}};
 }
 
 sub valid_node_types {
-	my ($self, $type) = @_;
+	my (undef, $type) = @_;
 	$type and return exists( $NODE_TYPES{$type} );
 	return {map { ($_ => 1) } keys %NODE_TYPES};
 }
 
 sub node_types_with_pseudonode_parents {
-	my ($self, $type) = @_;
+	my (undef, $type) = @_;
 	if( $type ) {
 		exists( $NODE_TYPES{$type} ) or return;
 		return $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE};
@@ -1401,7 +1400,7 @@ sub node_types_with_pseudonode_parents {
 }
 
 sub node_types_with_primary_parent_attributes {
-	my ($self, $type) = @_;
+	my (undef, $type) = @_;
 	if( $type ) {
 		exists( $NODE_TYPES{$type} ) or return;
 		exists( $NODE_TYPES{$type}->{$TPI_PP_NREF} ) or return;
@@ -1412,7 +1411,7 @@ sub node_types_with_primary_parent_attributes {
 }
 
 sub valid_node_type_literal_attributes {
-	my ($self, $type, $attr) = @_;
+	my (undef, $type, $attr) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return);
 	exists( $NODE_TYPES{$type}->{$TPI_AT_LITERALS} ) or return;
 	$attr and return $NODE_TYPES{$type}->{$TPI_AT_LITERALS}->{$attr};
@@ -1420,7 +1419,7 @@ sub valid_node_type_literal_attributes {
 }
 
 sub valid_node_type_enumerated_attributes {
-	my ($self, $type, $attr) = @_;
+	my (undef, $type, $attr) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return);
 	exists( $NODE_TYPES{$type}->{$TPI_AT_ENUMS} ) or return;
 	$attr and return $NODE_TYPES{$type}->{$TPI_AT_ENUMS}->{$attr};
@@ -1428,7 +1427,7 @@ sub valid_node_type_enumerated_attributes {
 }
 
 sub valid_node_type_node_ref_attributes {
-	my ($self, $type, $attr) = @_;
+	my (undef, $type, $attr) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return);
 	exists( $NODE_TYPES{$type}->{$TPI_AT_NREFS} ) or return;
 	my $rh = $NODE_TYPES{$type}->{$TPI_AT_NREFS};
@@ -1437,7 +1436,7 @@ sub valid_node_type_node_ref_attributes {
 }
 
 sub valid_node_type_surrogate_id_attributes {
-	my ($self, $type) = @_;
+	my (undef, $type) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return);
 	$type and return (grep { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM}})[0];
 	return {map { ($_ => (grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}})[0]) } keys %NODE_TYPES};
@@ -1447,12 +1446,12 @@ sub valid_node_type_surrogate_id_attributes {
 # This is a 'protected' method; only sub-classes should invoke it.
 
 sub _serialize_as_perl {
-	my ($self, $node, $pad) = @_;
+	my ($self, $node_dump, $pad) = @_;
 	$pad ||= '';
 	my $padc = "$pad\t\t";
-	my $node_type = $node->{$NAMED_NODE_TYPE};
+	my $node_type = $node_dump->{$NAMED_NODE_TYPE};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node->{$NAMED_ATTRS};
+	my $attrs = $node_dump->{$NAMED_ATTRS};
 	return join( '', 
 		$pad."{\n",
 		$pad."\t'".$NAMED_NODE_TYPE."' => '".$node_type."',\n",
@@ -1467,9 +1466,9 @@ sub _serialize_as_perl {
 				).",\n" } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
 			$pad."\t},\n",
 		) : ''),
-		(scalar(@{$node->{$NAMED_CHILDREN}}) ? (
+		(scalar(@{$node_dump->{$NAMED_CHILDREN}}) ? (
 			$pad."\t'".$NAMED_CHILDREN."' => [\n",
-			(map { $self->_serialize_as_perl( $_,$padc ) } @{$node->{$NAMED_CHILDREN}}),
+			(map { $self->_serialize_as_perl( $_,$padc ) } @{$node_dump->{$NAMED_CHILDREN}}),
 			$pad."\t],\n",
 		) : ''),
 		$pad."},\n",
@@ -1477,7 +1476,7 @@ sub _serialize_as_perl {
 }
 
 sub _s_a_p_esc {
-	my ($self, $text) = @_;
+	my (undef, $text) = @_;
 	$text =~ s/\\/\\\\/g;
 	$text =~ s/'/\\'/g;
 	return $text;
@@ -1487,12 +1486,12 @@ sub _s_a_p_esc {
 # This is a 'protected' method; only sub-classes should invoke it.
 
 sub _serialize_as_xml {
-	my ($self, $node, $pad) = @_;
+	my ($self, $node_dump, $pad) = @_;
 	$pad ||= '';
 	my $padc = "$pad\t";
-	my $node_type = $node->{$NAMED_NODE_TYPE};
+	my $node_type = $node_dump->{$NAMED_NODE_TYPE};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node->{$NAMED_ATTRS};
+	my $attrs = $node_dump->{$NAMED_ATTRS};
 	return join( '', 
 		$pad.'<'.$node_type,
 		(map { ' '.$_.'="'.(
@@ -1502,16 +1501,16 @@ sub _serialize_as_xml {
 						} @{$attrs->{$_}} )."]" : 
 					$self->_s_a_x_esc($attrs->{$_})
 			).'"' } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
-		(scalar(@{$node->{$NAMED_CHILDREN}}) ? (
+		(scalar(@{$node_dump->{$NAMED_CHILDREN}}) ? (
 			'>'."\n",
-			(map { $self->_serialize_as_xml( $_,$padc ) } @{$node->{$NAMED_CHILDREN}}),
+			(map { $self->_serialize_as_xml( $_,$padc ) } @{$node_dump->{$NAMED_CHILDREN}}),
 			$pad.'</'.$node_type.'>'."\n",
 		) : ' />'."\n"),
 	);
 }
 
 sub _s_a_x_esc {
-	my ($self, $text) = @_;
+	my (undef, $text) = @_;
 	$text =~ s/&/&amp;/g;
 	$text =~ s/\"/&quot;/g;
 	$text =~ s/>/&gt;/g;
@@ -1523,24 +1522,24 @@ sub _s_a_x_esc {
 # This is a 'protected' method; only sub-classes should invoke it.
 
 sub _throw_error_message {
-	my ($self, $error_code, $args) = @_;
+	my ($self, $msg_key, $msg_vars) = @_;
 	# Throws an exception consisting of an object.  A Container property is not 
 	# used to store object so things work properly in multi-threaded environment; 
 	# an exception is only supposed to affect the thread that calls it.
-	ref($args) eq 'HASH' or $args = {};
+	ref($msg_vars) eq 'HASH' or $msg_vars = {};
 	if( ref($self) and UNIVERSAL::isa( $self, 'SQL::Routine::Node' ) ) {
-		$args->{'NTYPE'} = $self->{$NPROP_NODE_TYPE};
-		$args->{'NID'} = $self->{$NPROP_NODE_ID};
+		$msg_vars->{'NTYPE'} = $self->{$NPROP_NODE_TYPE};
+		$msg_vars->{'NID'} = $self->{$NPROP_NODE_ID};
 		if( $self->{$NPROP_CONTAINER} ) {
-			$args->{'SIDCH'} = $self->get_surrogate_id_chain();
+			$msg_vars->{'SIDCH'} = $self->get_surrogate_id_chain();
 		}
 	}
-	foreach my $arg_key (keys %{$args}) {
-		if( ref($args->{$arg_key}) eq 'ARRAY' ) {
-			$args->{$arg_key} = 'PERL_ARRAY:['.join(',',map {$_||''} @{$args->{$arg_key}}).']';
+	foreach my $var_key (keys %{$msg_vars}) {
+		if( ref($msg_vars->{$var_key}) eq 'ARRAY' ) {
+			$msg_vars->{$var_key} = 'PERL_ARRAY:['.join(',',map {$_||''} @{$msg_vars->{$var_key}}).']';
 		}
 	}
-	die Locale::KeyedText->new_message( $error_code, $args );
+	die Locale::KeyedText->new_message( $msg_key, $msg_vars );
 }
 
 ######################################################################
@@ -1551,7 +1550,8 @@ sub new_container {
 }
 
 sub new_node {
-	return SQL::Routine::Node->new( $_[1] );
+	my (undef, $node_type) = @_;
+	return SQL::Routine::Node->new( $node_type );
 }
 
 ######################################################################
@@ -1568,7 +1568,7 @@ sub build_lonely_node {
 }
 
 sub _build_node_normalize_attrs {
-	my ($self, $node, $attrs) = @_;
+	my (undef, $node, $attrs) = @_;
 	if( ref($attrs) eq 'HASH' ) {
 		$attrs = {%{$attrs}}; # copy this, to preserve caller environment
 	} elsif( defined($attrs) ) {
@@ -1722,7 +1722,8 @@ sub get_next_free_node_id {
 ######################################################################
 
 sub deferrable_constraints_are_tested {
-	return $_[0]->{$CPROP_DEF_CON_TESTED};
+	my ($container) = @_;
+	return $container->{$CPROP_DEF_CON_TESTED};
 }
 
 sub assert_deferrable_constraints {
@@ -1751,11 +1752,12 @@ sub _assert_deferrable_constraints {
 ######################################################################
 
 sub get_all_properties {
-	return $_[0]->_get_all_properties( $_[1] );
+	my ($container, $links_as_si, $want_shortest) = @_;
+	return $container->_get_all_properties( $links_as_si, $want_shortest );
 }
 
 sub _get_all_properties {
-	my ($container, $links_as_si) = @_;
+	my ($container, $links_as_si, $want_shortest) = @_;
 	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
 	return {
 		$NAMED_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
@@ -1763,18 +1765,20 @@ sub _get_all_properties {
 		$NAMED_CHILDREN => [map { {
 			$NAMED_NODE_TYPE => $_,
 			$NAMED_ATTRS => {},
-			$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si ) } @{$pseudonodes->{$_}}],
+			$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si, $want_shortest ) } @{$pseudonodes->{$_}}],
 		} } @L2_PSEUDONODE_LIST],
 	};
 }
 
 sub get_all_properties_as_perl_str {
-	return $_[0]->_serialize_as_perl( $_[0]->_get_all_properties( $_[1] ) );
+	my ($container, $links_as_si, $want_shortest) = @_;
+	return $container->_serialize_as_perl( $container->_get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 sub get_all_properties_as_xml_str {
+	my ($container, $links_as_si, $want_shortest) = @_;
 	return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties( $_[1] ) );
+		$container->_serialize_as_xml( $container->_get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
@@ -1919,13 +1923,15 @@ sub delete_node {
 ######################################################################
 
 sub get_node_type {
-	return $_[0]->{$NPROP_NODE_TYPE};
+	my ($node) = @_;
+	return $node->{$NPROP_NODE_TYPE};
 }
 
 ######################################################################
 
 sub get_node_id {
-	return $_[0]->{$NPROP_NODE_ID};
+	my ($node) = @_;
+	return $node->{$NPROP_NODE_ID};
 }
 
 sub clear_node_id {
@@ -1944,7 +1950,7 @@ sub set_node_id {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG', { 'ARG' => $new_id } );
 	}
 
-	if( !$node->{$NPROP_CONTAINER} ) {
+	unless( $node->{$NPROP_CONTAINER} ) {
 		$node->{$NPROP_NODE_ID} = $new_id;
 		return;
 	}
@@ -2065,7 +2071,8 @@ sub _get_literal_attribute {
 }
 
 sub get_literal_attributes {
-	return {%{$_[0]->{$NPROP_AT_LITERALS}}};
+	my ($node) = @_;
+	return {%{$node->{$NPROP_AT_LITERALS}}};
 }
 
 sub clear_literal_attribute {
@@ -2167,7 +2174,8 @@ sub _get_enumerated_attribute {
 }
 
 sub get_enumerated_attributes {
-	return {%{$_[0]->{$NPROP_AT_ENUMS}}};
+	my ($node) = @_;
+	return {%{$node->{$NPROP_AT_ENUMS}}};
 }
 
 sub clear_enumerated_attribute {
@@ -2256,8 +2264,8 @@ sub get_node_ref_attributes {
 	my $at_nrefs = $node->{$NPROP_AT_NREFS};
 	if( $get_target_si and $node->{$NPROP_CONTAINER} ) {
 		return { map { ( 
-				$at_nrefs->{$_}->get_surrogate_id_attribute( $get_target_si )
-			) } keys %{$at_nrefs} };
+				$_->get_surrogate_id_attribute( $get_target_si )
+			) } values %{$at_nrefs} };
 	} else {
 		return {%{$at_nrefs}};
 	}
@@ -2294,7 +2302,7 @@ sub _clear_node_ref_attribute {
 
 sub clear_node_ref_attributes {
 	my ($node) = @_;
-	foreach my $attr_name (sort keys %{$node->{$NPROP_AT_NREFS}}) {
+	foreach my $attr_name (keys %{$node->{$NPROP_AT_NREFS}}) {
 		$node->_clear_node_ref_attribute( $attr_name );
 	}
 	if( $node->{$NPROP_CONTAINER} ) {
@@ -2377,12 +2385,17 @@ sub _normalize_primary_parent_or_node_ref_attribute_value {
 		unless( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_MAY_MATCH_SNIDS} ) {
 			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
-		my $searched_attr_value = $node->find_node_by_surrogate_id( $attr_name, $attr_value );
-		unless( $searched_attr_value ) {
+		my $searched_attr_values = $node->find_node_by_surrogate_id( $attr_name, $attr_value );
+		unless( $searched_attr_values ) {
 			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_SID', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 		}
-		$attr_value = $searched_attr_value;
+		if( @{$searched_attr_values} > 1 ) {
+			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_AMBIG_SID', 
+				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types, 
+				'CANDIDATES' => [';', map { (@{$_->_get_surrogate_id_chain()},';') } @{$searched_attr_values}] } );
+		}
+		$attr_value = $searched_attr_values->[0];
 	}
 
 	return $attr_value;
@@ -2394,7 +2407,7 @@ sub set_node_ref_attributes {
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_NREF_ATS_BAD_ARGS', { 'ARG' => $attrs } );
 	}
-	foreach my $attr_name (sort keys %{$attrs}) {
+	foreach my $attr_name (keys %{$attrs}) {
 		$node->set_node_ref_attribute( $attr_name, $attrs->{$attr_name} );
 	}
 }
@@ -2515,7 +2528,7 @@ sub set_attributes {
 		$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
 	}
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
-	foreach my $attr_name (sort keys %{$attrs}) {
+	foreach my $attr_name (keys %{$attrs}) {
 		my $attr_value = $attrs->{$attr_name};
 		defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARG_ELEM_VAL', { 'ATNM' => $attr_name } );
 		if( $attr_name eq $ATTR_ID ) {
@@ -2545,7 +2558,8 @@ sub set_attributes {
 ######################################################################
 
 sub get_container {
-	return $_[0]->{$NPROP_CONTAINER};
+	my ($node) = @_;
+	return $node->{$NPROP_CONTAINER};
 }
 
 sub put_in_container {
@@ -2845,7 +2859,7 @@ sub find_node_by_surrogate_id {
 	if( $qualifier_l1 ) {
 		# An attempt is definitely being made to remotely address a Node.
 		scalar( keys %remotely_addressable_types ) >= 1 or $node->_throw_error_message( 
-			'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR', { 'ATNM' => $self_attr_name } );
+			'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR', { 'ATNM' => $self_attr_name, 'ATVL' => $target_attr_value } );
 		# If we get here, we are allowed to remotely address a Node.
 		return $node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, $target_attr_value );
 	}
@@ -2892,45 +2906,44 @@ sub _find_node_by_surrogate_id_remotely {
 	my $pseudonodes = $node->{$NPROP_CONTAINER}->{$CPROP_PSEUDONODES};
 	my @anc_nodes = grep { $exp_anc_node_types{$_->{$NPROP_NODE_TYPE}} } 
 		map { @{$pseudonodes->{$_}} } grep { $psn_roots{$_} } @L2_PSEUDONODE_LIST;
+	my @matched_node_list = ();
 	foreach my $anc_node (@anc_nodes) {
 		if( my $result = $anc_node->_find_node_by_surrogate_id_remotely_below_here( $exp_p_node_types, \@search_chain ) ) {
-			return $result;
+			push( @matched_node_list, @{$result} );
 		}
 	}
-	# If we get here, nothing was found.
-	return;
+	return @matched_node_list == 0 ? undef : \@matched_node_list;
 }
 
 sub _find_node_by_surrogate_id_remotely_below_here {
 	# Method assumes $exp_p_node_types only contains Node types that can be remotely addressable.
 	my ($node, $exp_p_node_types, $search_chain_in) = @_;
-	my @search_chain = @{$search_chain_in};
-	scalar( @search_chain ) or return; # no match
-	if( my $si_atvl = $node->get_surrogate_id_attribute( 1 ) ) {
-		if( $si_atvl eq $search_chain[0] ) {
-			# Invocant Node's name matched a chain element.
-			my $first = shift( @search_chain ); 
-			unless( scalar( @search_chain ) ) {
-				# No more Nodes to search along this path; win or lose, we're done here.
-				if( $exp_p_node_types->{$node->{$NPROP_NODE_TYPE}} ) {
-					return $node;
-				} else {
-					return;
-				}
-			}
+	my @search_chain = @{$search_chain_in} or return; # search chain empty; no match possible
+	my $si_atvl = $node->get_surrogate_id_attribute( 1 ) or return;
+	if( $exp_p_node_types->{$node->{$NPROP_NODE_TYPE}} ) {
+		# It is illegal to remotely match a Node that is a child of a remotely matcheable type.
+		# Therefore, the invocant Node must be the end of the line, win or lose; its children can not be searched.
+		if( @search_chain == 1 and $si_atvl eq $search_chain[0] ) {
+			# We have a single perfectly matching Node along this path.
+			return [$node];
+		} else {
+			# No match, and we can't go further anyway.
+			return; 
 		}
+	}
+	# If we get here, the invocant Node can not be returned regardless of its name; proceed to its children.
+	if( @search_chain > 1 and $si_atvl eq $search_chain[0] ) {
+		# There are at least 2 chain elements left, so the invocant Node may match the first one.
+		shift( @search_chain );
 	}
 	# If we get here, there is at least 1 more unmatched search chain element.
+	my @matched_node_list = ();
 	foreach my $child (@{$node->{$NPROP_PRIM_CHILD_NREFS}}) {
-		if( $child->{$NPROP_NODE_TYPE} eq $node->{$NPROP_NODE_TYPE} ) {
-			next; # It is illegal to remotely match a Node that is a child of its own Node type.
-		}
 		if( my $result = $child->_find_node_by_surrogate_id_remotely_below_here( $exp_p_node_types, \@search_chain ) ) {
-			return $result;
+			push( @matched_node_list, @{$result} );
 		}
 	}
-	# If we get here, nothing was found.
-	return;
+	return @matched_node_list == 0 ? undef : \@matched_node_list;
 }
 
 sub _find_node_by_surrogate_id_within_layers {
@@ -2957,7 +2970,7 @@ sub _find_node_by_surrogate_id_within_layers {
 		$exp_p_node_types->{$sibling_node->{$NPROP_NODE_TYPE}} or next;
 		if( my $si_atvl = $sibling_node->get_surrogate_id_attribute( 1 ) ) {
 			if( $si_atvl eq $target_attr_value ) {
-				return $sibling_node;
+				return [$sibling_node];
 			}
 		}
 	}
@@ -3003,29 +3016,23 @@ sub _find_node_by_surrogate_id_using_path {
 						$exp_p_node_types->{$child_l2->{$NPROP_NODE_TYPE}} or next;
 						if( my $si_atvl = $child_l2->get_surrogate_id_attribute( 1 ) ) {
 							if( $si_atvl eq $unqualified_value ) {
-								return $child_l2;
+								return [$child_l2];
 							}
 						}
 					}
 				}
-			} else { # Given value is unqualified; take any one that matches, if only one matches.
-				my $matched_count = 0;
-				my $matched_node = undef;
+			} else { 
+				# Given value is unqualified; take any ones that match.
+				my @matched_node_list = ();
 				foreach my $grandchild (map { @{$_->{$NPROP_PRIM_CHILD_NREFS}} } @{$curr_node->{$NPROP_PRIM_CHILD_NREFS}}) {
 					$exp_p_node_types->{$grandchild->{$NPROP_NODE_TYPE}} or next;
 					if( my $si_atvl = $grandchild->get_surrogate_id_attribute( 1 ) ) {
 						if( $si_atvl eq $unqualified_value ) {
-							$matched_count += 1;
-							$matched_node = $grandchild;
+							push( @matched_node_list, $grandchild );
 						}
 					}
 				}
-				if( $matched_count == 1 ) {
-					return $matched_node;
-				}
-				# If we get here, then either no matches were found, or 2+ were, 
-				# so the unqualified identifier can't say which to take.
-				# MAYBE TODO: Throw exception to specify that input SI was too ambiguous to match.
+				return @matched_node_list == 0 ? undef : \@matched_node_list;
 			}
 			return;
 		} else { # <nref-attr>; $path_seg is an attribute name
@@ -3051,7 +3058,7 @@ sub _find_node_by_surrogate_id_using_path {
 		$exp_p_node_types->{$child->{$NPROP_NODE_TYPE}} or next;
 		if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
 			if( $si_atvl eq $unqualified_value ) {
-				return $child;
+				return [$child];
 			}
 		}
 	}
@@ -3092,7 +3099,7 @@ sub find_child_node_by_surrogate_id {
 ######################################################################
 
 sub get_relative_surrogate_id {
-	my ($node, $self_attr_name) = @_;
+	my ($node, $self_attr_name, $want_shortest) = @_;
 	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_GET_REL_SID_NOT_IN_CONT' );
 	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_GET_REL_SID_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
@@ -3106,8 +3113,24 @@ sub get_relative_surrogate_id {
 			# For simplicity, assume only one $C, which is at the end of the search path, as find_*() does.
 			my $p_of_attr_value_node = $attr_value_node->{$NPROP_PP_NREF} or return; # linked Node not in tree
 			my $p_of_attr_value_si_atvl = $p_of_attr_value_node->get_surrogate_id_attribute( 1 );
-			# Now we have the info we need.
-			return [$attr_value_si_atvl, $p_of_attr_value_si_atvl];
+			# Now we have the info we need.  However, we may optionally abbreviate output further.
+			if( $want_shortest ) {
+				# We want to further abbreviate output, check if $attr_value_si_atvl distinct by itself.
+				my $p_of_p_of_attr_value_node = $p_of_attr_value_node->{$NPROP_PP_NREF} or return; # linked Node not in tree
+				foreach my $ch_node (map { @{$_->{$NPROP_PRIM_CHILD_NREFS}} } @{$p_of_p_of_attr_value_node->{$NPROP_PRIM_CHILD_NREFS}}) {
+					if( my $ch_si_atvl = $ch_node->get_surrogate_id_attribute( 1 ) ) {
+						if( $ch_si_atvl eq $attr_value_si_atvl and $ch_node ne $attr_value_node ) {
+							# The target Node has a cousin Node that has the same surrogate id, so we must qualify ours.
+							return [$attr_value_si_atvl, $p_of_attr_value_si_atvl];
+						}
+					}
+				}
+				# If we get here, there is no cousin with the same surrogate id, so an unqualified one is okay here.
+				return $attr_value_si_atvl;
+			} else {
+				# We do not want to further abbreviate output, so return fully qualified version.
+				return [$attr_value_si_atvl, $p_of_attr_value_si_atvl];
+			}
 		} else {
 			# There is a correlated search path, and it does not have a $C.
 			return $attr_value_si_atvl;
@@ -3115,8 +3138,8 @@ sub get_relative_surrogate_id {
 	}
 	# If we get here, the value we are outputting is not the child part of a correlated pair.
 	my %exp_p_node_types = map { ($_ => 1) } @{$exp_node_types};
-	my $layered_search_result = $node->_find_node_by_surrogate_id_within_layers( \%exp_p_node_types, $attr_value_si_atvl );
-	if( $layered_search_result and $layered_search_result eq $attr_value_node ) {
+	my $layered_search_results = $node->_find_node_by_surrogate_id_within_layers( \%exp_p_node_types, $attr_value_si_atvl );
+	if( $layered_search_results and $layered_search_results->[0] eq $attr_value_node ) {
 		return $attr_value_si_atvl;
 	}
 	# If we get here, the value we are outputting is not an ancestor's sibling.
@@ -3136,10 +3159,32 @@ sub get_relative_surrogate_id {
 	$attr_value_anc_node or return; # attr-val does not have expected ancestor
 	my $anc_si_atvl = $attr_value_anc_node->get_surrogate_id_attribute( 1 ) or return; # part of SI not defined yet
 	push( @attr_value_si_chain, $anc_si_atvl ); # push required ancestor itself
-	my $remote_search_result = $node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, \@attr_value_si_chain );
-	$remote_search_result and $remote_search_result eq $attr_value_node or return; # can't find ourself, oops
-	# If we get here, the attr-value can be remotely addressed successfully.
-	return \@attr_value_si_chain;
+	my $remote_search_results = $node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, \@attr_value_si_chain );
+	$remote_search_results and $remote_search_results->[0] eq $attr_value_node or return; # can't find ourself, oops
+	# If we get here, the fully-qualified form of the attr-value can be remotely addressed successfully.
+	if( $want_shortest ) {
+		# We want to further abbreviate output.
+		my ($unqualified, $l2, $l3) = @attr_value_si_chain; # for simplicity, assume no more than 3 levels
+		$l2 or return $unqualified; # fully qualified version is only 1 element long
+		if( @{$node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, [$unqualified] )} == 1 ) {
+			# Fully unqualified version returns only one result, so it is currently unambiguous.
+			return $unqualified; # 1 element
+		}
+		$l3 or return \@attr_value_si_chain; # fully qualified version is only 2 elements long
+		if( @{$node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, [$unqualified, $l2] )} == 1 ) {
+			# This partially qualified version returns only one result, so it is currently unambiguous.
+			return [$unqualified, $l2]; # 2 elements
+		}
+		if( @{$node->_find_node_by_surrogate_id_remotely( \%remotely_addressable_types, [$unqualified, $l3] )} == 1 ) {
+			# This partially qualified version returns only one result, so it is currently unambiguous.
+			return [$unqualified, $l3]; # 2 elements
+		}
+		# If we get here, all shortened versions return multiple results, so return fully qualified version.
+		return \@attr_value_si_chain; # 3 elements
+	} else {
+		# We do not want to further abbreviate output, so return fully qualified version.
+		return \@attr_value_si_chain;
+	}
 }
 
 ######################################################################
@@ -3338,8 +3383,8 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 			my $given_p_node = $node->{$NPROP_AT_NREFS}->{$attr_name};
 			if( defined( $given_p_node ) ) {
 				my $given_p_node_si = $node->get_relative_surrogate_id( $attr_name );
-				my $fetched_p_node = $node->find_node_by_surrogate_id( $attr_name, $given_p_node_si );
-				unless( $fetched_p_node and $fetched_p_node eq $given_p_node ) {
+				my $fetched_p_nodes = $node->find_node_by_surrogate_id( $attr_name, $given_p_node_si );
+				unless( $fetched_p_nodes and $fetched_p_nodes->[0] eq $given_p_node ) {
 					my $given_p_node_type = $given_p_node->{$NPROP_NODE_TYPE};
 					my $given_p_node_id = $given_p_node->{$NPROP_NODE_ID};
 					my $given_p_node_sidch = $given_p_node->get_surrogate_id_chain();
@@ -3510,11 +3555,12 @@ sub _assert_child_comp_deferrable_constraints {
 ######################################################################
 
 sub get_all_properties {
-	return $_[0]->_get_all_properties( $_[1] );
+	my ($node, $links_as_si, $want_shortest) = @_;
+	return $node->_get_all_properties( $links_as_si, $want_shortest );
 }
 
 sub _get_all_properties {
-	my ($node, $links_as_si) = @_;
+	my ($node, $links_as_si, $want_shortest) = @_;
 	my $at_nrefs_in = $node->{$NPROP_AT_NREFS};
 	return {
 		$NAMED_NODE_TYPE => $node->{$NPROP_NODE_TYPE},
@@ -3525,22 +3571,24 @@ sub _get_all_properties {
 			%{$node->{$NPROP_AT_ENUMS}},
 			(map { ( $_ => (
 					$links_as_si ? 
-					$node->get_relative_surrogate_id( $_ ) : 
+					$node->get_relative_surrogate_id( $_, $want_shortest ) : 
 					$at_nrefs_in->{$_}->{$NPROP_NODE_ID}
 				) ) } 
 				keys %{$at_nrefs_in}),
 		},
-		$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
+		$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si, $want_shortest ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
 	};
 }
 
 sub get_all_properties_as_perl_str {
-	return $_[0]->_serialize_as_perl( $_[0]->_get_all_properties( $_[1] ) );
+	my ($node, $links_as_si, $want_shortest) = @_;
+	return $node->_serialize_as_perl( $node->_get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 sub get_all_properties_as_xml_str {
+	my ($node, $links_as_si, $want_shortest) = @_;
 	return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties( $_[1] ) );
+		$node->_serialize_as_xml( $node->_get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
@@ -3602,7 +3650,537 @@ __END__
 
 =head1 SYNOPSIS
 
-I<The previous SYNOPSIS was removed; a new one will be written later.>
+=head2 Perl Code That Builds A SQL::Routine Model
+
+This executable code example shows how to define some simple database tasks
+with SQL::Routine; it only shows a tiny fraction of what the module is capable
+of, since more advanced features are not shown for brevity.
+
+	use SQL::Routine;
+
+	eval {
+		# Create a model/container in which all SQL details are to be stored.
+		# The two boolean options being set true here permit all the subsequent code to be as concise, 
+		# easy to read, and most SQL-string-like as possible, at the cost of being slower to execute.
+		my $model = SQL::Routine->new_container();
+		$model->auto_set_node_ids( 1 );
+		$model->may_match_surrogate_node_ids( 1 );
+
+		# This defines 4 scalar/column/field data types (1 number, 2 char strings, 1 enumerated value type) 
+		# and 2 row/table data types; the former are atomic and the latter are composite.
+		# The former can describe individual columns of a base table (table) or viewed table (view), 
+		# while the latter can describe an entire table or view.
+		# Any of these can describe a 'domain' schema object or a stored procedure's variable's data type.
+		# See also the 'person' and 'person_with_parents' table+view defs further below; these data types help describe them.
+		$model->build_child_node_trees( [
+			[ 'scalar_data_type', { 'si_name' => 'entity_id'  , 'base_type' => 'NUM_INT' , 'num_precision' => 9, }, ],
+			[ 'scalar_data_type', { 'si_name' => 'alt_id'     , 'base_type' => 'STR_CHAR', 'max_chars' => 20, 'char_enc' => 'UTF8', }, ],
+			[ 'scalar_data_type', { 'si_name' => 'person_name', 'base_type' => 'STR_CHAR', 'max_chars' => 100, 'char_enc' => 'UTF8', }, ],
+			[ 'scalar_data_type', { 'si_name' => 'person_sex' , 'base_type' => 'STR_CHAR', 'max_chars' => 1, 'char_enc' => 'UTF8', }, [
+				[ 'scalar_data_type_opt', 'M', ],
+				[ 'scalar_data_type_opt', 'F', ],
+			], ],
+			[ 'row_data_type', 'person', [
+				[ 'row_data_type_field', { 'si_name' => 'person_id'   , 'scalar_data_type' => 'entity_id'  , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'alternate_id', 'scalar_data_type' => 'alt_id'     , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'name'        , 'scalar_data_type' => 'person_name', }, ],
+				[ 'row_data_type_field', { 'si_name' => 'sex'         , 'scalar_data_type' => 'person_sex' , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'father_id'   , 'scalar_data_type' => 'entity_id'  , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'mother_id'   , 'scalar_data_type' => 'entity_id'  , }, ],
+			], ],
+			[ 'row_data_type', 'person_with_parents', [
+				[ 'row_data_type_field', { 'si_name' => 'self_id'    , 'scalar_data_type' => 'entity_id'  , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'self_name'  , 'scalar_data_type' => 'person_name', }, ],
+				[ 'row_data_type_field', { 'si_name' => 'father_id'  , 'scalar_data_type' => 'entity_id'  , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'father_name', 'scalar_data_type' => 'person_name', }, ],
+				[ 'row_data_type_field', { 'si_name' => 'mother_id'  , 'scalar_data_type' => 'entity_id'  , }, ],
+				[ 'row_data_type_field', { 'si_name' => 'mother_name', 'scalar_data_type' => 'person_name', }, ],
+			], ],
+		] );
+
+		# This defines the blueprint of a database catalog that contains a single schema and a single virtual user which owns the schema.
+		my $catalog_bp = $model->build_child_node_tree( 'catalog', 'Gene Database', [
+			[ 'owner', 'Lord of the Root', ],
+			[ 'schema', { 'si_name' => 'Gene Schema', 'owner' => 'Lord of the Root', }, ],
+		] );
+		my $schema = $catalog_bp->find_child_node_by_surrogate_id( 'Gene Schema' );
+
+		# This defines a base table (table) schema object that lives in the aforementioned database catalog. 
+		# It contains 6 columns, including a not-null primary key (having a trivial sequence generator to give it 
+		# default values), another not-null field, a surrogate key, and 2 self-referencing foreign keys.
+		# Each row represents a single 'person', for each storing up to 2 unique identifiers, name, sex, and the parents' unique ids.
+		my $tb_person = $schema->build_child_node_tree( 'table', { 'si_name' => 'person', 'row_data_type' => 'person', }, [
+			[ 'table_field', { 'si_row_field' => 'person_id', 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, }, ],
+			[ 'table_field', { 'si_row_field' => 'name'     , 'mandatory' => 1, }, ],
+			[ 'table_index', { 'si_name' => 'primary' , 'index_type' => 'UNIQUE', }, [
+				[ 'table_index_field', 'person_id', ], 
+			], ],
+			[ 'table_index', { 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, [
+				[ 'table_index_field', 'alternate_id', ], 
+			], ],
+			[ 'table_index', { 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, [
+				[ 'table_index_field', { 'si_field' => 'father_id', 'f_field' => 'person_id' } ],
+			], ],
+			[ 'table_index', { 'si_name' => 'fk_mother', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, [
+				[ 'table_index_field', { 'si_field' => 'mother_id', 'f_field' => 'person_id' } ],
+			], ],
+		] );
+
+		# This defines a viewed table (view) schema object that lives in the aforementioned database catalog. 
+		# It left-outer-joins the 'person' table to itself twice and returns 2 columns from each constituent, for 6 total.
+		# Each row gives the unique id and name each for 3 people, a given person and that person's 2 parents.
+		my $vw_pwp = $schema->build_child_node_tree( 'view', { 'si_name' => 'person_with_parents', 
+				'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [
+			( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, [
+				map { [ 'view_src_field', $_, ], } ( 'person_id', 'name', 'father_id', 'mother_id', ),
+			], ], } ('self') ),
+			( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, [
+				map { [ 'view_src_field', $_, ], } ( 'person_id', 'name', ),
+			], ], } ( 'father', 'mother', ) ),
+			[ 'view_field', { 'si_row_field' => 'self_id'    , 'src_field' => ['person_id','self'  ], }, ],
+			[ 'view_field', { 'si_row_field' => 'self_name'  , 'src_field' => ['name'     ,'self'  ], }, ],
+			[ 'view_field', { 'si_row_field' => 'father_id'  , 'src_field' => ['person_id','father'], }, ],
+			[ 'view_field', { 'si_row_field' => 'father_name', 'src_field' => ['name'     ,'father'], }, ],
+			[ 'view_field', { 'si_row_field' => 'mother_id'  , 'src_field' => ['person_id','mother'], }, ],
+			[ 'view_field', { 'si_row_field' => 'mother_name', 'src_field' => ['name'     ,'mother'], }, ],
+			[ 'view_join', { 'lhs_src' => 'self', 'rhs_src' => 'father', 'join_op' => 'LEFT', }, [
+				[ 'view_join_field', { 'lhs_src_field' => 'father_id', 'rhs_src_field' => 'person_id' } ],
+			], ],
+			[ 'view_join', { 'lhs_src' => 'self', 'rhs_src' => 'mother', 'join_op' => 'LEFT', }, [
+				[ 'view_join_field', { 'lhs_src_field' => 'mother_id', 'rhs_src_field' => 'person_id' } ],
+			], ],
+		] );
+
+		# This defines the blueprint of an application that has a single virtual connection descriptor to the above database.
+		my $application_bp = $model->build_child_node_tree( 'application', 'Gene App', [
+			[ 'catalog_link', { 'si_name' => 'editor_link', 'target' => $catalog_bp, }, ],
+		] );
+
+		# This defines another scalar data type, which is used by some routines that follow below.
+		my $sdt_login_auth = $model->build_child_node_tree( 'scalar_data_type', { 'si_name' => 'login_auth', 
+			'base_type' => 'STR_CHAR', 'max_chars' => 20, 'char_enc' => 'UTF8', } );
+
+		# This defines an application-side routine/function that connects to the 'Gene Database', fetches all 
+		# the records from the 'person_with_parents' view, disconnects the database, and returns the fetched records.
+		# It takes run-time arguments for a user login name and password that are used when connecting.
+		my $rt_fetch_pwp = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'fetch_pwp', 
+				'routine_type' => 'FUNCTION', 'return_cont_type' => 'RW_ARY', 'return_row_data_type' => 'person_with_parents', }, [
+			[ 'routine_arg', { 'si_name' => 'login_name', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
+			[ 'routine_arg', { 'si_name' => 'login_pass', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
+			[ 'routine_var', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
+			[ 'routine_stmt', { 'call_sroutine' => 'CATALOG_OPEN', }, [
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item', 'conn_cx', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_NAME', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_name', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_pass', }, ],
+			], ],
+			[ 'routine_var', { 'si_name' => 'pwp_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person_with_parents', }, ],
+			[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', 'set_p_routine_item' => 'pwp_ary', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_pwp', }, ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'CATALOG_CLOSE', }, [
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item', 'conn_cx', }, ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'RETURN', }, [
+				[ 'routine_expr', { 'call_sroutine_arg' => 'RETURN_VALUE', 'cont_type' => 'RW_ARY', 'valf_p_routine_item' => 'pwp_ary', }, ],
+			], ],
+		] );
+
+		# This defines an application-side routine/procedure that inserts a set of records, given in an argument, 
+		# into the 'person' table.  It takes an already opened db connection handle to operate through as a 
+		# 'context' argument (which would represent the invocant if this routine was wrapped in an object-oriented interface).
+		my $rt_add_people = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'add_people', 'routine_type' => 'PROCEDURE', }, [
+			[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
+			[ 'routine_arg', { 'si_name' => 'person_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person', }, ],
+			[ 'view', { 'si_name' => 'insert_people', 'view_type' => 'INSERT', 'row_data_type' => 'person', 'ins_p_routine_item' => 'person_ary', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'INSERT', }, [
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'INSERT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'insert_people', }, ],
+			], ],
+		] );
+
+		# This defines an application-side routine/function that fetches one record 
+		# from the 'person' table which matches its argument.
+		my $rt_get_person = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'get_person', 
+				'routine_type' => 'FUNCTION', 'return_cont_type' => 'ROW', 'return_row_data_type' => 'person', }, [
+			[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
+			[ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
+			[ 'routine_var', { 'si_name' => 'person_row', 'cont_type' => 'ROW', 'row_data_type' => 'person', }, ],
+			[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', 'set_p_routine_item' => 'person_row', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
+					[ 'view_src_field', 'person_id', ],
+				], ],
+				[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
+					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
+					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
+				], ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_person', }, ],
+			], ],
+			[ 'routine_stmt', { 'call_sroutine' => 'RETURN', }, [
+				[ 'routine_expr', { 'call_sroutine_arg' => 'RETURN_VALUE', 'cont_type' => 'ROW', 'valf_p_routine_item' => 'person_row', }, ],
+			], ],
+		] );
+
+		# This defines 6 database engine descriptors and 2 database bridge descriptors that we may be using.
+		# These details can help external code determine such things as what string-SQL flavors should be 
+		# generated from the model, as well as which database features can be used natively or have to be emulated.
+		# The 'si_name' has no meaning to code and is for users; the other attribute values should have meaning to said external code.
+		$model->build_child_node_trees( [
+			[ 'data_storage_product', { 'si_name' => 'SQLite v3.2'  , 'product_code' => 'SQLite_3_2'  , 'is_file_based'  => 1, }, ],
+			[ 'data_storage_product', { 'si_name' => 'MySQL v5.0'   , 'product_code' => 'MySQL_5_0'   , 'is_network_svc' => 1, }, ],
+			[ 'data_storage_product', { 'si_name' => 'PostgreSQL v8', 'product_code' => 'PostgreSQL_8', 'is_network_svc' => 1, }, ],
+			[ 'data_storage_product', { 'si_name' => 'Oracle v10g'  , 'product_code' => 'Oracle_10_g' , 'is_network_svc' => 1, }, ],
+			[ 'data_storage_product', { 'si_name' => 'Sybase'       , 'product_code' => 'Sybase'      , 'is_network_svc' => 1, }, ],
+			[ 'data_storage_product', { 'si_name' => 'CSV'          , 'product_code' => 'CSV'         , 'is_file_based'  => 1, }, ],
+			[ 'data_link_product', { 'si_name' => 'Microsoft ODBC v3', 'product_code' => 'ODBC_3', }, ],
+			[ 'data_link_product', { 'si_name' => 'Oracle OCI*8', 'product_code' => 'OCI_8', }, ],
+			[ 'data_link_product', { 'si_name' => 'Generic Rosetta Engine', 'product_code' => 'Rosetta::Engine::Generic', }, ],
+		] );
+
+		# This defines one concrete instance each of the database catalog and an application using it.
+		# This concrete database instance includes two concrete user definitions, one that can owns 
+		# the schema and one that can only edit data.  The concrete application instance includes 
+		# a concrete connection descriptor going to this concrete database instance.
+		# Note that 'user' descriptions are only stored in a SQL::Routine model when that model is being used to create 
+		# database catalogs and/or create or modify database users; otherwise 'user' should not be kept for security sake.
+		$model->build_child_node_trees( [
+			[ 'catalog_instance', { 'si_name' => 'test', 'blueprint' => $catalog_bp, 'product' => 'PostgreSQL v8', }, [
+				[ 'user', { 'si_name' => 'ronsealy', 'user_type' => 'SCHEMA_OWNER', 'match_owner' => 'Lord of the Root', 'password' => 'K34dsD', }, ],
+				[ 'user', { 'si_name' => 'joesmith', 'user_type' => 'DATA_EDITOR', 'password' => 'fdsKJ4', }, ],
+			], ],
+			[ 'application_instance', { 'si_name' => 'test app', 'blueprint' => $application_bp, }, [
+				[ 'catalog_link_instance', { 'blueprint' => 'editor_link', 'product' => 'Microsoft ODBC v3', 'target' => 'test', 'local_dsn' => 'keep_it', }, ],
+			], ],
+		] );
+
+
+		# This defines another concrete instance each of the database catalog and an application using it.
+		$model->build_child_node_trees( [
+			[ 'catalog_instance', { 'si_name' => 'production', 'blueprint' => $catalog_bp, 'product' => 'Oracle v10g', }, [
+				[ 'user', { 'si_name' => 'florence', 'user_type' => 'SCHEMA_OWNER', 'match_owner' => 'Lord of the Root', 'password' => '0sfs8G', }, ],
+				[ 'user', { 'si_name' => 'thainuff', 'user_type' => 'DATA_EDITOR', 'password' => '9340sd', }, ],
+			], ],
+			[ 'application_instance', { 'si_name' => 'production app', 'blueprint' => $application_bp, }, [
+				[ 'catalog_link_instance', { 'blueprint' => 'editor_link', 'product' => 'Oracle OCI*8', 'target' => 'production', 'local_dsn' => 'ship_it', }, ],
+			], ],
+		] );
+
+		# This defines a third concrete instance each of the database catalog and an application using it.
+		$model->build_child_node_trees( [
+			[ 'catalog_instance', { 'si_name' => 'laptop demo', 'blueprint' => $catalog_bp, 'product' => 'SQLite v3.2', 'file_path' => 'Move It', }, ],
+			[ 'application_instance', { 'si_name' => 'laptop demo app', 'blueprint' => $application_bp, }, [
+				[ 'catalog_link_instance', { 'blueprint' => 'editor_link', 'product' => 'Generic Rosetta Engine', 'target' => 'laptop demo', }, ],
+			], ],
+		] );
+
+		# This line will run some correctness tests on the model that were not done 
+		# when the model was being populated for execution speed efficiency.
+		$model->assert_deferrable_constraints();
+
+		# This line will dump the contents of the model in pretty-printed XML format.
+		# It can be helpful when debugging your programs that use SQL::Routine.
+		print $model->get_all_properties_as_xml_str( 1 );
+	};
+	$@ and print error_to_string($@);
+
+	# SQL::Routine throws object exceptions when it encounters bad input; this function 
+	# will convert those into human readable text for display by the try/catch block.
+	sub error_to_string {
+		my ($message) = @_;
+		if( ref($message) and UNIVERSAL::isa( $message, 'Locale::KeyedText::Message' ) ) {
+			my $translator = Locale::KeyedText->new_translator( ['SQL::Routine::L::'], ['en'] );
+			my $user_text = $translator->translate_message( $message );
+			unless( $user_text ) {
+				return 'internal error: can\'t find user text for a message: '.
+					$message->as_string().' '.$translator->as_string();
+			}
+			return $user_text;
+		}
+		return $message; # if this isn't the right kind of object
+	}
+
+Note that one key feature of SQL::Routine is that all of a model's pieces are
+linked by references rather than by name as in SQL itself.  For example, the
+name of the 'person' table is only stored once internally; if, after executing
+all of the above code, you were to run "$tb_person->set_literal_attribute(
+'si_name', 'The Huddled Masses' );", then all of the other parts of the model
+that referred to the table would not break, and an XML dump would show that all
+the references now say 'The Huddled Masses'.
+
+I<For some more (older) examples of SQL::Routine in use, see its test suite code.>
+
+=head2 An XML Representation of That Model
+
+This is the XML that the above get_all_properties_as_xml_str() prints out:
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<root>
+		<elements>
+			<scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
+			<scalar_data_type id="2" si_name="alt_id" base_type="STR_CHAR" max_chars="20" char_enc="UTF8" />
+			<scalar_data_type id="3" si_name="person_name" base_type="STR_CHAR" max_chars="100" char_enc="UTF8" />
+			<scalar_data_type id="4" si_name="person_sex" base_type="STR_CHAR" max_chars="1" char_enc="UTF8">
+				<scalar_data_type_opt id="5" si_value="M" />
+				<scalar_data_type_opt id="6" si_value="F" />
+			</scalar_data_type>
+			<row_data_type id="7" si_name="person">
+				<row_data_type_field id="8" si_name="person_id" scalar_data_type="entity_id" />
+				<row_data_type_field id="9" si_name="alternate_id" scalar_data_type="alt_id" />
+				<row_data_type_field id="10" si_name="name" scalar_data_type="person_name" />
+				<row_data_type_field id="11" si_name="sex" scalar_data_type="person_sex" />
+				<row_data_type_field id="12" si_name="father_id" scalar_data_type="entity_id" />
+				<row_data_type_field id="13" si_name="mother_id" scalar_data_type="entity_id" />
+			</row_data_type>
+			<row_data_type id="14" si_name="person_with_parents">
+				<row_data_type_field id="15" si_name="self_id" scalar_data_type="entity_id" />
+				<row_data_type_field id="16" si_name="self_name" scalar_data_type="person_name" />
+				<row_data_type_field id="17" si_name="father_id" scalar_data_type="entity_id" />
+				<row_data_type_field id="18" si_name="father_name" scalar_data_type="person_name" />
+				<row_data_type_field id="19" si_name="mother_id" scalar_data_type="entity_id" />
+				<row_data_type_field id="20" si_name="mother_name" scalar_data_type="person_name" />
+			</row_data_type>
+			<scalar_data_type id="59" si_name="login_auth" base_type="STR_CHAR" max_chars="20" char_enc="UTF8" />
+		</elements>
+		<blueprints>
+			<catalog id="21" si_name="Gene Database">
+				<owner id="22" si_name="Lord of the Root" />
+				<schema id="23" si_name="Gene Schema" owner="Lord of the Root">
+					<table id="24" si_name="person" row_data_type="person">
+						<table_field id="25" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
+						<table_field id="26" si_row_field="name" mandatory="1" />
+						<table_index id="27" si_name="primary" index_type="UNIQUE">
+							<table_index_field id="28" si_field="person_id" />
+						</table_index>
+						<table_index id="29" si_name="ak_alternate_id" index_type="UNIQUE">
+							<table_index_field id="30" si_field="alternate_id" />
+						</table_index>
+						<table_index id="31" si_name="fk_father" index_type="FOREIGN" f_table="person">
+							<table_index_field id="32" si_field="father_id" f_field="person_id" />
+						</table_index>
+						<table_index id="33" si_name="fk_mother" index_type="FOREIGN" f_table="person">
+							<table_index_field id="34" si_field="mother_id" f_field="person_id" />
+						</table_index>
+					</table>
+					<view id="35" si_name="person_with_parents" view_type="JOINED" row_data_type="person_with_parents">
+						<view_src id="36" si_name="self" match="person">
+							<view_src_field id="37" si_match_field="person_id" />
+							<view_src_field id="38" si_match_field="name" />
+							<view_src_field id="39" si_match_field="father_id" />
+							<view_src_field id="40" si_match_field="mother_id" />
+						</view_src>
+						<view_src id="41" si_name="father" match="person">
+							<view_src_field id="42" si_match_field="person_id" />
+							<view_src_field id="43" si_match_field="name" />
+						</view_src>
+						<view_src id="44" si_name="mother" match="person">
+							<view_src_field id="45" si_match_field="person_id" />
+							<view_src_field id="46" si_match_field="name" />
+						</view_src>
+						<view_field id="47" si_row_field="self_id" src_field="[person_id,self]" />
+						<view_field id="48" si_row_field="self_name" src_field="[name,self]" />
+						<view_field id="49" si_row_field="father_id" src_field="[person_id,father]" />
+						<view_field id="50" si_row_field="father_name" src_field="[name,father]" />
+						<view_field id="51" si_row_field="mother_id" src_field="[person_id,mother]" />
+						<view_field id="52" si_row_field="mother_name" src_field="[name,mother]" />
+						<view_join id="53" lhs_src="self" rhs_src="father" join_op="LEFT">
+							<view_join_field id="54" lhs_src_field="father_id" rhs_src_field="person_id" />
+						</view_join>
+						<view_join id="55" lhs_src="self" rhs_src="mother" join_op="LEFT">
+							<view_join_field id="56" lhs_src_field="mother_id" rhs_src_field="person_id" />
+						</view_join>
+					</view>
+				</schema>
+			</catalog>
+			<application id="57" si_name="Gene App">
+				<catalog_link id="58" si_name="editor_link" target="Gene Database" />
+				<routine id="60" si_name="fetch_pwp" routine_type="FUNCTION" return_cont_type="RW_ARY" return_row_data_type="person_with_parents">
+					<routine_arg id="61" si_name="login_name" cont_type="SCALAR" scalar_data_type="login_auth" />
+					<routine_arg id="62" si_name="login_pass" cont_type="SCALAR" scalar_data_type="login_auth" />
+					<routine_var id="63" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+					<routine_stmt id="64" call_sroutine="CATALOG_OPEN">
+						<routine_expr id="65" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="66" call_sroutine_arg="LOGIN_NAME" cont_type="SCALAR" valf_p_routine_item="login_name" />
+						<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
+					</routine_stmt>
+					<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="person_with_parents" />
+					<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents" set_p_routine_item="pwp_ary">
+						<view_src id="70" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
+					</view>
+					<routine_stmt id="71" call_sroutine="SELECT">
+						<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_pwp" />
+					</routine_stmt>
+					<routine_stmt id="74" call_sroutine="CATALOG_CLOSE">
+						<routine_expr id="75" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					</routine_stmt>
+					<routine_stmt id="76" call_sroutine="RETURN">
+						<routine_expr id="77" call_sroutine_arg="RETURN_VALUE" cont_type="RW_ARY" valf_p_routine_item="pwp_ary" />
+					</routine_stmt>
+				</routine>
+				<routine id="78" si_name="add_people" routine_type="PROCEDURE">
+					<routine_context id="79" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+					<routine_arg id="80" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
+					<view id="81" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
+						<view_src id="82" si_name="s" match="[person,Gene Schema,Gene Database]" />
+					</view>
+					<routine_stmt id="83" call_sroutine="INSERT">
+						<routine_expr id="84" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="85" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
+					</routine_stmt>
+				</routine>
+				<routine id="86" si_name="get_person" routine_type="FUNCTION" return_cont_type="ROW" return_row_data_type="person">
+					<routine_context id="87" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+					<routine_arg id="88" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+					<routine_var id="89" si_name="person_row" cont_type="ROW" row_data_type="person" />
+					<view id="90" si_name="query_person" view_type="JOINED" row_data_type="person" set_p_routine_item="person_row">
+						<view_src id="91" si_name="s" match="[person,Gene Schema,Gene Database]">
+							<view_src_field id="92" si_match_field="person_id" />
+						</view_src>
+						<view_expr id="93" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="94" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+							<view_expr id="95" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
+					<routine_stmt id="96" call_sroutine="SELECT">
+						<routine_expr id="97" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="98" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
+					</routine_stmt>
+					<routine_stmt id="99" call_sroutine="RETURN">
+						<routine_expr id="100" call_sroutine_arg="RETURN_VALUE" cont_type="ROW" valf_p_routine_item="person_row" />
+					</routine_stmt>
+				</routine>
+			</application>
+		</blueprints>
+		<tools>
+			<data_storage_product id="101" si_name="SQLite v3.2" product_code="SQLite_3_2" is_file_based="1" />
+			<data_storage_product id="102" si_name="MySQL v5.0" product_code="MySQL_5_0" is_network_svc="1" />
+			<data_storage_product id="103" si_name="PostgreSQL v8" product_code="PostgreSQL_8" is_network_svc="1" />
+			<data_storage_product id="104" si_name="Oracle v10g" product_code="Oracle_10_g" is_network_svc="1" />
+			<data_storage_product id="105" si_name="Sybase" product_code="Sybase" is_network_svc="1" />
+			<data_storage_product id="106" si_name="CSV" product_code="CSV" is_file_based="1" />
+			<data_link_product id="107" si_name="Microsoft ODBC v3" product_code="ODBC_3" />
+			<data_link_product id="108" si_name="Oracle OCI*8" product_code="OCI_8" />
+			<data_link_product id="109" si_name="Generic Rosetta Engine" product_code="Rosetta::Engine::Generic" />
+		</tools>
+		<sites>
+			<catalog_instance id="110" si_name="test" blueprint="Gene Database" product="PostgreSQL v8">
+				<user id="111" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="K34dsD" />
+				<user id="112" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
+			</catalog_instance>
+			<application_instance id="113" si_name="test app" blueprint="Gene App">
+				<catalog_link_instance id="114" blueprint="editor_link" product="Microsoft ODBC v3" target="test" local_dsn="keep_it" />
+			</application_instance>
+			<catalog_instance id="115" si_name="production" blueprint="Gene Database" product="Oracle v10g">
+				<user id="116" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="0sfs8G" />
+				<user id="117" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
+			</catalog_instance>
+			<application_instance id="118" si_name="production app" blueprint="Gene App">
+				<catalog_link_instance id="119" blueprint="editor_link" product="Oracle OCI*8" target="production" local_dsn="ship_it" />
+			</application_instance>
+			<catalog_instance id="120" si_name="laptop demo" blueprint="Gene Database" product="SQLite v3.2" file_path="Move It" />
+			<application_instance id="121" si_name="laptop demo app" blueprint="Gene App">
+				<catalog_link_instance id="122" blueprint="editor_link" product="Generic Rosetta Engine" target="laptop demo" />
+			</application_instance>
+		</sites>
+		<circumventions />
+	</root>
+
+=head2 String SQL That Can Be Made From the Model
+
+This section has examples of string-SQL that can be generated from the above
+model.  The examples are conformant by default to the SQL:2003 standard flavor,
+but will vary from there to make illustration simpler; some examples may contain
+a hodge-podge of database vendor extensions and as a whole won't execute as is
+on some database products.
+
+These two examples for creating the same TABLE schema object, separated by a
+blank line, demonstrate SQL for a database that supports DOMAIN schema objects
+and SQL for a database that does not.  They both assume that uniqueness and
+foreign key constraints are only enforced on not-null values.
+
+	CREATE DOMAIN entity_id AS INTEGER(9);
+	CREATE DOMAIN alt_id AS VARCHAR(20);
+	CREATE DOMAIN person_name AS VARCHAR(100);
+	CREATE DOMAIN person_sex AS ENUM('M','F');
+	CREATE TABLE person (
+		person_id entity_id NOT NULL DEFAULT 1 AUTO_INCREMENT,
+		alternate_id alt_id NULL,
+		name person_name NOT NULL,
+		sex person_sex NULL,
+		father_id entity_id NULL,
+		mother_id entity_id NULL,
+		CONSTRAINT PRIMARY KEY (person_id),
+		CONSTRAINT UNIQUE (alternate_id),
+		CONSTRAINT fk_father FOREIGN KEY (father_id) REFERENCES person (person_id),
+		CONSTRAINT fk_mother FOREIGN KEY (mother_id) REFERENCES person (person_id)
+	);
+
+	CREATE TABLE person (
+		person_id INTEGER(9) NOT NULL DEFAULT 1 AUTO_INCREMENT,
+		alternate_id VARCHAR(20) NULL,
+		name VARCHAR(100) NOT NULL,
+		sex ENUM('M','F') NULL,
+		father_id INTEGER(9) NULL,
+		mother_id INTEGER(9) NULL,
+		CONSTRAINT PRIMARY KEY (person_id),
+		CONSTRAINT UNIQUE (alternate_id),
+		CONSTRAINT fk_father FOREIGN KEY (father_id) REFERENCES person (person_id),
+		CONSTRAINT fk_mother FOREIGN KEY (mother_id) REFERENCES person (person_id)
+	);
+
+This example is for creating the VIEW schema object:
+
+	CREATE VIEW person_with_parents AS
+	SELECT self.person_id AS self_id, self.name AS self_name,
+		father.person_id AS father_id, father.name AS father_name,
+		mother.person_id AS mother_id, mother.name AS mother_name
+	FROM person AS self
+		LEFT OUTER JOIN person AS father ON father.person_id = self.father_id
+		LEFT OUTER JOIN person AS mother ON mother.person_id = self.father_id;
+
+If the 'get_person' routine were implemented as a database schema object, this 
+is what it might look like:
+
+	CREATE FUNCTION get_person (arg_person_id INTEGER(9)) RETURNS ROW(...) AS
+	BEGIN
+		DECLARE person_row ROW(...);
+		SELECT * INTO person_row FROM person AS s WHERE s.person_id = arg_person_id;
+		RETURN person_row;
+	END;
+
+Then it could be invoked elsewhere like this:
+
+	my_rec = get_person( '3' );
+
+If the same routine were implemented as an application-side routine, then it 
+might look like this (not actual DBI syntax):
+
+	my $sth = $dbh->prepare( "SELECT * FROM person AS s WHERE s.person_id = :arg_person_id" );
+	$sth->bind_param( 'arg_person_id', 'INTEGER(9)' );
+	$sth->execute( { 'arg_person_id' => '3' } );
+	my $my_rec = $sth->fetchrow_hashref();
+
+And finally, corresponding DROP statements can be made for any of the above
+database schema objects:
+
+	DROP DOMAIN entity_id;
+	DROP DOMAIN alt_id;
+	DROP DOMAIN person_name;
+	DROP DOMAIN person_sex;
+	DROP TABLE person;
+	DROP VIEW person_with_parents;
+	DROP FUNCTION get_person;
+
+I<See also the separately distributed SQL::Routine::SQLBuilder module, which is
+a reference implementation of a SQL:2003 (and more) generator for SQL::Routine.>
 
 =head1 DESCRIPTION
 
@@ -3825,16 +4403,31 @@ encounter this caveat, though, since you would never use a number as a "SQL
 identifier" in normal cases, and that is only technically possible with a
 "delimited SQL identifier".
 
+=head1 CREDITS
+
+Besides myself as the creator ...
+
+* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu) for
+inspiring me to add some concrete SYNOPSIS documentation examples to this
+module, which demonstrate actual SQL statements that can be generated from parts
+of a model, when he wrote me asking for examples of how to use this module.
+
+* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
+towards improving this module's documentation, particularly towards using a much
+shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
+a glance, and not be intimidated by large amounts of detailed information.
+
 =head1 SEE ALSO
 
 L<perl(1)>, L<SQL::Routine::L::en>, L<SQL::Routine::Details>,
 L<SQL::Routine::Language>, L<SQL::Routine::EnumTypes>,
 L<SQL::Routine::NodeTypes>, L<SQL::Routine::API_C>, L<Locale::KeyedText>,
 L<Rosetta>, L<Rosetta::Engine::Generic>, L<SQL::Routine::SQLBuilder>,
-L<SQL::Routine::SQLParser>, L<DBI>, L<SQL::Statement>, L<SQL::Translator>,
-L<SQL::YASP>, L<SQL::Generator>, L<SQL::Schema>, L<SQL::Abstract>,
-L<SQL::Snippet>, L<SQL::Catalog>, L<DB::Ent>, L<DBIx::Abstract>,
-L<DBIx::AnyDBD>, L<DBIx::DBSchema>, L<DBIx::Namespace>, L<DBIx::SearchBuilder>,
-L<TripleStore>, L<Data::Table>, and various other modules.
+L<SQL::Routine::SQLParser>, L<DBI>, L<SQL::Statement>, L<SQL::Parser>,
+L<SQL::Translator>, L<SQL::YASP>, L<SQL::Generator>, L<SQL::Schema>,
+L<SQL::Abstract>, L<SQL::Snippet>, L<SQL::Catalog>, L<DB::Ent>,
+L<DBIx::Abstract>, L<DBIx::AnyDBD>, L<DBIx::DBSchema>, L<DBIx::Namespace>,
+L<DBIx::SearchBuilder>, L<TripleStore>, L<Data::Table>, and various other
+modules.
 
 =cut

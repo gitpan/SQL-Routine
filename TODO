@@ -5,14 +5,7 @@ an explicit destroy() by users of the module.
 
 * Continue fleshing out the standard_routine enumerated type documentation.
 
-* Rewrite the SYNOPSIS documentation to emphasize the simplest-to-use API.
-
 * Add more deferred constraints to reduce erroneous models.
-
-* Create a branch of this distribution that is written in Perl 6 but matches
-this mainline distribution feature-wise.  This fork will initially have a
-dependency in Autrijus Tang's "Pugs" distribution, which will be the runtime
-engine that it runs under; later it will run under the "Parrot" engine.
 
 * Find some efficient way to maintain an index of surrogate ids for Nodes so
 that using them isn't as expensive.  Currently, the code is optimized for those

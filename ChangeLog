@@ -1,3 +1,121 @@
+2005-04-03   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.58.
+
+	* New code file versions are: Routine.pm v0.58 and en.pm v0.27.
+
+	* Updated external dependencies on Locale::KeyedText to v1.03.
+
+	* All of the main changes in this release were in Routine.pm, Details.pod,
+	en.pm, and the test suite; there were zero changes to: Language.pod,
+	EnumTypes.pod, NodeTypes.pod, API_C.pod.
+
+	* Added new external dependency on Test::More v0.47 (bundled with Perl
+	5.8.x); this distribution's test suite has been re-factored to use it rather
+	than rolling its own equivalent functionality, which is more in line with
+	CPAN best practices.  The new dependency does not extend to this
+	distribution's core modules (everything in /lib), which do not use it.
+
+	* Updated every 'use' statement in this distribution so that the module
+	version is formatted as a number rather than a string; this fixes a problem
+	where Perl was not asserting that the installed modules were new enough.
+
+	* In order to help ease the transition to Perl 6, updated every in-code
+	function and method which made direct references to @_ elements so that they
+	explicitly declare argument variables instead with "my (...) = @_;";
+	moreover, any functions that don't use their invocant use "undef" for it in
+	the above list.  These 25 Routine.pm code routines were affected: all 9
+	valid_*s() information functions, _s_a_[p|x]_esc(), new_node(),
+	_build_node_normalize_attrs(), deferrable_constraints_are_tested(), all 6
+	get_all_properties[|*]() methods, get_node_[type|id](),
+	get_[literal|enumerated]_attributes(), get_container().  This 1 en.pm 
+	routine was affected: get_text_by_key().
+
+	* Fixed a bug in Routine.pm's %NODE_TYPES data dictionary where the 2
+	'data_[storage|link]_product' Node types mistakenly declared that 'id' was
+	their Surrogate Id attribute rather than 'si_name'.  Also fixed 6
+	corresponding errors in the t_SRT_Verbose.pm expected XML output.
+
+	* Fixed a bug in several en.pm user text messages where the word "Node's"
+	was mis-spelled as 'Node"s'.  Also moved two 'NID' en.pm messages up above
+	related 'SID' messages; this should have been done in release 0.56 (when the
+	Routine.pm code was reordered) but wasn't.  Also added the
+	'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR' user text message, which should have been
+	done in release 0.56 (when the key was added to Routine.pm); for this,
+	updated Node.find_node_by_surrogate_id() to set the 'ATVL' message variable.
+
+	* Added a brand new SYNOPSIS to Routine.pm, replacing the one that was
+	removed in release 0.56.  The new SYNOPSIS should be much easier to learn
+	from quickly and should be much more suited to explaining the benefits and
+	purpose of the module; it uses the highest level and most concise API that
+	SQL::Routine has to offer, vs the low level and verbose API used before.  In
+	addition, the entire XML dump and string-SQL examples are generated from the
+	model created by the SYNOPSIS code, rather than referring to the test suite.
+
+	* A large update with components in Routine.pm, Details.pod, and en.pm.
+	Updated the Node.[|_]find_node_by_surrogate_id[|*]() methods so that they
+	now return a list of all Nodes in the same scope that match as their normal
+	valid output; it is no longer an error condition within these methods to
+	have more than one Node match, such that it returned the same undef as if no
+	Nodes matched.  So now it is possible for users of these methods to
+	differentiate between a search that got no matches vs one that got multiple
+	matches.  The _normalize_primary_parent_or_node_ref_attribute_value() method
+	was updated so it now throws different exceptions based on whether a SID
+	problem was zero vs multiple matches; this should be a lot more
+	user-friendly; in en.pm, the new 'SRT_N_SET_NREF_AT_AMBIG_SID' user text
+	message was split off from 'SRT_N_SET_NREF_AT_NONEX_SID' (the old version
+	said the problem was either zero or many, not which of those).  The
+	_assert_parent_ref_scope_deferrable_constraints() method saw a minor update,
+	and its en.pm message 'SRT_N_ASDC_NREF_AT_NONEX_SID' was edited to simply
+	say the linked Node wasn't visible.  Corresponding minor updates in the 
+	get_relative_surrogate_id() method.  
+
+	* Another large update with components in Routine.pm and Details.pod.
+	Updated the get_relative_surrogate_id() method to take an extra boolean
+	argument, WANT_SHORTEST, which when set true will cause the method to do
+	more work and try to return the shortest result possible that is
+	un-ambiguous, instead of a sometimes longer result that takes less work to
+	make.  This more terse result will most closely resemble what a typical
+	programmer would write when hand crafting string-SQL.  Also updated all 8
+	[|_]get_all_properties[|*]() methods to take a corresponding extra boolean
+	argument so their output can be more terse.  Note that the pre-existing 
+	Node.find_node_by_surrogate_id() could already handle both formats as input.
+
+	* With all 3 of the t_*.pm files, renamed expected_model_sid_xml_output() to
+	expected_model_sid_long_xml_output(), and added a similar new function named
+	expected_model_sid_short_xml_output().  In SQL_Routine.t, added 3 new tests 
+	by splitting each of the 3 'SID-based output' tests into 'long' and 'short' 
+	variants; they differ by invoking get_relative_surrogate_id() without or 
+	with a true WANT_SHORTEST.  This raised the test count to 23 from 20.
+
+	* In SQL_Routine.t, added a new set of 18 tests (raising the total to 41)
+	which tests that a populated container (made by t_SRT_Terse.pm in this case)
+	can be cloned by way of a get_all_properties() dump -> build_container();
+	all 3 output variants of get_all_properties() are tested (NID, SID-long,
+	SID-short) to make sure build_container() can handle them completely.
+
+	* In Routine.pm, removed all 'sort' from 'sort keys' since their reason to
+	exist was archaic (getting multiple errors reported in the same sequence);
+	these 3 methods were affected: clear_node_ref_attributes(),
+	set_node_ref_attributes(), set_attributes().
+
+	* Renamed an argument each in _serialize_as_perl() and _serialize_as_xml(); 
+	renamed both _throw_error_message() arguments; another minor code updates 
+	in set_node_id() and get_node_ref_attributes(), 
+
+	* Added dated credit notices to Jarrell Dunson and Stevan Little in the
+	ReadMe and Routine.pm; now credits are in both files.  The credit for
+	Jarrell came late (except for in the ChangeLog, which is transient) and
+	should have been added in Release 0.33.  In Routine.pm, these live in a new
+	POD section called CREDITS.
+
+	* Removed the section in the TODO file about a branch to Perl 6.  Also
+	removed a few other TODO file items that have now been accomplished.
+
+	* NOTICE: This release v0.58 is the last one to contain detailed ChangeLog
+	entries for releases v0.28 thru v0.58; release v0.59 will truncate the
+	ChangeLog so it only shows details for v0.59 and later.
+
 2005-03-22   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.57.

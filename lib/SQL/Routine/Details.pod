@@ -791,9 +791,9 @@ different).  If the attribute was previously valued, this method will first
 invoke clear_node_ref_attribute() on it.  When setting a new value, if the
 current Node is in a Container, then it will also add the current Node to the
 other Node's child list.  ATTR_VALUE may either be a perl reference to a Node,
-or a Node Id value, or a Surrogate Node Id value (either a single value or an id
-chain array ref); the last one will only work if this Node is in a Container
-that matches Nodes by surrogate ids.
+or a Node Id value, or a relative Surrogate Node Id value (scalar or array ref);
+the last one will only work if this Node is in a Container that matches Nodes by
+surrogate ids.
 
 =head2 set_node_ref_attributes( ATTRS )
 
@@ -942,20 +942,23 @@ reorganized; it is also much longer.
 This "getter" method may only be called on Nodes that are in a Container, and
 the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
 the current Node (but not the 'pp' attribute); it throws an exception if either
-condition is not met.  This method searches for a member Node of this Node's
-host Container whose type makes it legally linkable by the SELF_ATTR_NAME
-attribute and whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument
-(which may be either a scalar or a Perl array ref); if one is found then it is
-returned by reference; if none is found, or multiple matching Nodes were found
-within the same scope, then undef is returned.  The search is context sensitive
-and scoped; it starts by examining the Nodes that are closest to this Node's
-location in its Container's Node tree and then spreads outwards, looking within
-just the locations that are supposed to be visible to this Node.  Variations on
-this search method come into play for Node types that are connected to the
-concepts of "wrapper attribute", "ancestor attribute correlation", and "remotely
+condition is not met.  This method searches for member Nodes of this Node's host
+Container whose type makes them legally linkable by the SELF_ATTR_NAME attribute
+and whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument (which may be
+either a scalar or a Perl array ref); if one or more are found in the same scope
+then they are all returned by reference, within an array ref; if none are found,
+then undef is returned.  The search is context sensitive and scoped; it starts
+by examining the Nodes that are closest to this Node's location in its
+Container's Node tree and then spreads outwards, looking within just the
+locations that are supposed to be visible to this Node.  Variations on this
+search method come into play for Node types that are connected to the concepts
+of "wrapper attribute", "ancestor attribute correlation", and "remotely
 addressable types".  Note that it is illegal to use the return value of
 get_surrogate_id_chain() as a TARGET_ATTR_VALUE with this method; you can give
-the return value of get_relative_surrogate_id(), however.
+the return value of get_relative_surrogate_id(), however.  Note that counting
+the number of return values from find_node_by_surrogate_id() is an accurate way
+to tell whether set_node_ref_attribute() with the same 2 arguments will succeed
+or not; it will only succeed if this method returns exactly 1 matching Node.
 
 =head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 
@@ -973,10 +976,12 @@ child of the first matched child, and so on.  If said array ref has undef as its
 first element, then this method behaves the same as
 Container.find_child_node_by_surrogate_id( TARGET_ATTR_VALUE ).
 
-=head2 get_relative_surrogate_id( SELF_ATTR_NAME )
+=head2 get_relative_surrogate_id( SELF_ATTR_NAME[, WANT_SHORTEST] )
 
-	my $table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table' );
-	my $view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name' );
+	my $longer_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table' );
+	my $shorter_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table', 1 );
+	my $longer_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name' );
+	my $shorter_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name', 1 );
 
 This "getter" method may only be called on Nodes that are in a Container, and
 the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
@@ -989,7 +994,20 @@ valid; if none can be determined, then undef is returned.  This method's return
 value is conceptually like what get_surrogate_id_chain() returns except that it
 is defined in a relative context rather than an absolute context, making it more
 suitable for serializing models that are subsequently reorganized; it is also
-much shorter.
+much shorter.  Depending on context circumstances, get_relative_surrogate_id()
+can possibly return either fully qualified (longest), partly qualified, or
+unqualified (shortest) Surrogate Id values for certain Node-ref attributes.  By
+default, it will return the fully qualified Surrogate Id in every case, which is
+the fastest to determine and use, and which has the most resiliency against
+becoming an ambiguous reference when other parts of the SRT model are changed to
+have the same surrogate id attribute value as the target.  If the optional
+boolean argument WANT_SHORTEST is set true, then this method will produce the
+most unqualified Surrogate Id possible that is fully unambiguous within the
+current state of the SRT model; this version can be more resilient against
+breaking when parts of the SRT model being moved around relative to each other,
+as long as there are no duplicate surrogate id attributes in the model, at the
+cost of being slower to determine and use.  WANT_SHORTEST has no effect with the
+large fraction of Node refs whose fully qualified name is a single element.
 
 =head2 assert_deferrable_constraints()
 
@@ -1012,12 +1030,14 @@ Node, then that Node will be the root of the returned structure. If you invoke
 them on a Container, then a few pseudo-Nodes will be output with all the normal
 Nodes in the Container as their children.
 
-=head2 get_all_properties([ LINKS_AS_SI ])
+=head2 get_all_properties([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
 	$rh_node_properties = $container->get_all_properties();
 	$rh_node_properties = $container->get_all_properties( 1 );
+	$rh_node_properties = $container->get_all_properties( 1, 1 );
 	$rh_node_properties = $node->get_all_properties();
 	$rh_node_properties = $node->get_all_properties( 1 );
+	$rh_node_properties = $node->get_all_properties( 1, 1 );
 
 This method returns a deep copy of all of the properties of this object as
 non-blessed Perl data structures.  These data structures are also arranged in a
@@ -1033,32 +1053,36 @@ should you want to compare your results easily by string compare; see
 "get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()".  If
 the optional boolean argument LINKS_AS_SI is true, then each Node ref attribute
 will be output as the target Node's surrogate id value, as returned by
-get_relative_surrogate_id(), if it has a valued surrogate id attribute; if the
-argument is false, or a Node doesn't have a valued surrogate id attribute, then
-its Node id will be output by default.  The output can alternately be passed as
-a parameter to build_container() so that the method creates a clone of the
-original Container, where applicable; iff the output was generated using
-LINKS_AS_SI, then build_container() will need to be given a true MATCH_SURR_IDS
-argument (its other boolean args can all be false).
+get_relative_surrogate_id( <attr-name>, WANT_SHORTEST ), if it has a valued
+surrogate id attribute; if the argument is false, or a Node doesn't have a
+valued surrogate id attribute, then its Node id will be output by default.  The
+output can alternately be passed as a parameter to build_container() so that the
+method creates a clone of the original Container, where applicable; iff the
+output was generated using LINKS_AS_SI, then build_container() will need to be
+given a true MATCH_SURR_IDS argument (its other boolean args can all be false).
 
-=head2 get_all_properties_as_perl_str([ LINKS_AS_SI ])
+=head2 get_all_properties_as_perl_str([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
 	$perl_code_str = $container->get_all_properties_as_perl_str();
 	$perl_code_str = $container->get_all_properties_as_perl_str( 1 );
+	$perl_code_str = $container->get_all_properties_as_perl_str( 1, 1 );
 	$perl_code_str = $node->get_all_properties_as_perl_str();
 	$perl_code_str = $node->get_all_properties_as_perl_str( 1 );
+	$perl_code_str = $node->get_all_properties_as_perl_str( 1, 1 );
 
 This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
 its output into a pretty-printed string of Perl code, suitable for humans to
 read.  You should be able to eval this string and produce the original
 structure.
 
-=head2 get_all_properties_as_xml_str([ LINKS_AS_SI ])
+=head2 get_all_properties_as_xml_str([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
 	$xml_doc_str = $container->get_all_properties_as_xml_str();
 	$xml_doc_str = $container->get_all_properties_as_xml_str( 1 );
+	$xml_doc_str = $container->get_all_properties_as_xml_str( 1, 1 );
 	$xml_doc_str = $node->get_all_properties_as_xml_str();
 	$xml_doc_str = $node->get_all_properties_as_xml_str( 1 );
+	$xml_doc_str = $node->get_all_properties_as_xml_str( 1, 1 );
 
 This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
 its output into a pretty-printed string of XML, suitable for humans to read.
