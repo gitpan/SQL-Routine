@@ -1,5 +1,8 @@
 TODO
 
+* Consider using Scalar::Util::weaken in SQL::Routine to alleviate the need for 
+an explicit destroy() by users of the module.
+
 * Continue fleshing out the standard_routine enumerated type documentation.
 
 * Rewrite the SYNOPSIS documentation to emphasize the simplest-to-use API.

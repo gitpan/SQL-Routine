@@ -2,8 +2,11 @@ ChangeLog
 INSTALL
 lib/SQL/Routine.pm
 lib/SQL/Routine/API_C.pod
+lib/SQL/Routine/Details.pod
+lib/SQL/Routine/EnumTypes.pod
 lib/SQL/Routine/L/en.pm
 lib/SQL/Routine/Language.pod
+lib/SQL/Routine/NodeTypes.pod
 LICENSE
 Makefile.PL
 MANIFEST

@@ -14,14 +14,13 @@ CONTENTS
 
 PREFACE
 
-This distribution features the Perl 5 module named "SQL::Routine"; see the
-files lib/SQL/Routine.pm and lib/SQL/Routine/Language.pod for the main
+This distribution features the Perl 5 module named "SQL::Routine"; see the files
+lib/SQL/Routine.pm and lib/SQL/Routine/Language.pod for the roots of the main
 documentation, which is in POD format.  The distribution also includes a
-ChangeLog file to say what changes already happened, and a TODO file to say
-what changes have yet to happen.  The file INSTALL should help with
-installation issues.  Read below for how to get support or keep up to date,
-know this distribution's dependencies, or read the credits or copyright and
-license.
+ChangeLog file to say what changes already happened, and a TODO file to say what
+changes have yet to happen.  The file INSTALL should help with installation
+issues.  Read below for how to get support or keep up to date, know this
+distribution's dependencies, or read the credits or copyright and license.
 
 KEEPING UP TO DATE
 

@@ -1,3 +1,63 @@
+2005-03-22   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.57.
+
+	* New code file versions are: Routine.pm v0.57.
+
+	* The main purpose of this release is to split up some large documentation
+	files into smaller ones, so they are less intimidating to users.  This split
+	is rough and very little if any editing has been done to the resulting
+	pieces; cleaning them up can happen in later releases.  Note that in all
+	cases the COPYRIGHT AND LICENSE was copied and is identical in both	parts.
+
+	* Split lib/SQL/Routine.pm into itself and lib/SQL/Routine/Details.pod.  The
+	original file retains all of the executable code plus these original POD
+	documentation sections: NAME, DEPENDENCIES, SYNOPSIS, DESCRIPTION, CLASSES
+	IN THIS MODULE, BUGS, CAVEATS, SEE ALSO; it also gains a new BRIEF FUNCTION
+	AND METHOD LIST section.  The new all-POD file has a new and different NAME
+	and DESCRIPTION and SEE ALSO; otherwise it has these sections that were in
+	the original file: MATTERS OF PORTABILITY AND FEATURES, STRUCTURE, FAULT
+	TOLERANCE AND MULTI-THREADING SUPPORT, NODE EVOLUTION STATES, NODE IDENTITY
+	ATTRIBUTES, SYNTAX, and every *FUNCTION* and *METHOD* section.  The new
+	Routine.pm makes up about 2/3 of the pair's combined file size; it is
+	internally 12/13 executable code (or code comments) and 1/13 POD; the new
+	Details.pod makes about 1/3 of the pair and is 100% POD.
+
+	* In Routine.pm, updated the BUGS and CAVEATS sections; the former because
+	the module is now in alpha status, the latter to suggest I may use weak refs
+	in the future.  Also updated the TODO.
+
+	* Split lib/SQL/Routine/Language.pod into itself and
+	lib/SQL/Routine/EnumTypes.pod and lib/SQL/Routine/NodeTypes.pod.
+	Language.pod retains these original POD documentation sections: NAME,
+	DESCRIPTION, FEATURE SCOPE AND STANDARDS COMPLIANCE, CIRCUMVENTING FEATURE
+	LIMITATIONS, LANGUAGE CONCEPT STRUCTURE, LANGUAGE PROCEDURAL STRUCTURE, NODE
+	ATTRIBUTE TYPES, LITERAL ATTRIBUTE TYPES, OLDER DOCUMENTATION, SEE ALSO; it
+	also gains new BRIEF ENUMERATED ATTRIBUTE TYPE LIST and BRIEF NODE TYPE LIST
+	sections.  Both EnumTypes.pod and NodeTypes.pod each have a new and
+	different NAME and DESCRIPTION and SEE ALSO; otherwise EnumTypes.pod also
+	has ENUMERATED ATTRIBUTE TYPES from the original file, and NodeTypes.pod
+	likewise has NODE TYPES; those two main moved sections were subsequently
+	split up further within the files, as detailed further below.  The new
+	Language.pod makes up about 1/5 of the triplet's combined file size, the new
+	EnumTypes.pod makes about 3/10 of the triplet, and the new NodeTypes.pod
+	makes about 1/2 of the triplet.
+
+	* In EnumTypes.pod, the ENUMERATED ATTRIBUTE TYPES section was renamed to 
+	ENUMERATED TYPES, and it was not split up further.
+
+	* In NodeTypes.pod, the NODE TYPES section was split up into 7 level-1
+	sections: 'UNDERSTANDING NODE ATTRIBUTE DETAILS, CONSTRAINTS, AND
+	RELATIONSHIPS', 'PSEUDO-NODE TYPES', and
+	'[ELEMENTS|BLUEPRINTS|TOOLS|SITES|CIRCUMVENTIONS] CATEGORY NODE TYPES'.  The
+	first section is what used to be the large NODE TYPES introduction section,
+	and is now subdivided with 7 level-2 headings.
+
+	* There were zero changes to en.pm and API_C.pod.  There were zero code
+	changes in Routine.pm, except for the version number increment, and likewise
+	zero changes in the test suite.  This distribution will behave identically
+	to the previous release.
+
 2005-03-18   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.56.
