@@ -3,12 +3,14 @@
 
 ######################### We start with some black magic to print on failure.
 
-BEGIN { $| = 1; print "1..6\n"; }
+BEGIN { $| = 1; print "1..9\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use lib 't/lib';
-use t_SQL_Routine;
-use SQL::Routine '0.46';
-use SQL::Routine::L::en '0.16';
+use t_SRT_Circular;
+use t_SRT_Verbose;
+use t_SRT_Terse;
+use SQL::Routine '0.47';
+use SQL::Routine::L::en '0.17';
 $loaded = 1;
 print "ok 1\n";
 use strict;
@@ -50,19 +52,36 @@ sub error_to_string {
 
 ######################################################################
 
-message( "START TESTING SQL::Routine" );
+message( "START TESTING SQL::Routine - t_SRT_Circular" );
+message( "  Test that circular reference creation can be blocked." );
+
+######################################################################
+
+eval {
+	my ($test1_passed, $test2_passed) = 
+		t_SRT_Circular->test_circular_ref_prevention( 'SQL::Routine' );
+	result( $test1_passed, "prevent creation of circular refs - set nref attr" );
+	result( $test2_passed, "prevent creation of circular refs - set pp name" );
+};
+$@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
+
+######################################################################
+
+message( "DONE TESTING SQL::Routine - t_SRT_Circular" );
+message( "START TESTING SQL::Routine - t_SRT_Verbose" );
+message( "  Test model construction using verbose standard interface." );
 
 ######################################################################
 
 eval {
 	message( "First populate some objects ..." );
 
-	my $model = t_SQL_Routine->create_and_populate_model( 'SQL::Routine' );
+	my $model = t_SRT_Verbose->create_and_populate_model( 'SQL::Routine' );
 	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
 
 	message( "Now see if the output is correct ..." );
 
-	my $expected_output = t_SQL_Routine->expected_model_xml_output();
+	my $expected_output = t_SRT_Verbose->expected_model_xml_output();
 	my $actual_output = $model->get_all_properties_as_xml_str();
 	result( $actual_output eq $expected_output, "verify serialization of objects" );
 
@@ -70,21 +89,39 @@ eval {
 
 	$model->destroy();
 	result( (keys %{$model}) eq '0', "destruction of all objects" );
-
-	message( "Now test that circular reference creation can be blocked" );
-
-	my ($test1_passed, $test2_passed) = 
-		t_SQL_Routine->test_circular_ref_prevention( 'SQL::Routine' );
-	result( $test1_passed, "prevent creation of circular refs - set nref attr" );
-	result( $test2_passed, "prevent creation of circular refs - set pp name" );
-
-	message( "Other functional tests are not written yet; they will come later" );
 };
 $@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
 
 ######################################################################
 
-message( "DONE TESTING SQL::Routine" );
+message( "DONE TESTING SQL::Routine - t_SRT_Verbose" );
+message( "START TESTING SQL::Routine - t_SRT_Terse" );
+message( "  Test model construction using terse wrapper interface." );
+
+######################################################################
+
+eval {
+	message( "First populate some objects ..." );
+
+	my $model = t_SRT_Terse->create_and_populate_model( 'SQL::Routine' );
+	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
+
+	message( "Now see if the output is correct ..." );
+
+	my $expected_output = t_SRT_Terse->expected_model_xml_output();
+	my $actual_output = $model->get_all_properties_as_xml_str();
+	result( $actual_output eq $expected_output, "verify serialization of objects" );
+
+	message( "Now destroy the objects ..." );
+
+	$model->destroy();
+	result( (keys %{$model}) eq '0', "destruction of all objects" );
+};
+$@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
+
+######################################################################
+
+message( "DONE TESTING SQL::Routine - t_SRT_Terse" );
 
 ######################################################################
 

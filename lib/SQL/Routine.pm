@@ -10,7 +10,7 @@ package SQL::Routine;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 use Locale::KeyedText '1.00';
 
@@ -653,6 +653,9 @@ my %NODE_TYPES = (
 			['ak_name',[
 				['table_index',['name'],[],[]],
 			]],
+			['ak_row_field',[
+				['table_field',[],[],['row_field']],
+			]],
 		],
 	},
 	'table_field' => {
@@ -767,6 +770,9 @@ my %NODE_TYPES = (
 			]],
 			['ak_src_name',[
 				['view_src',['name'],[],[]],
+			]],
+			['ak_row_field',[
+				['view_field',[],[],['row_field']],
 			]],
 			['ak_join',[
 				['view_join',[],[],['lhs_src','rhs_src']],
@@ -1281,14 +1287,14 @@ my %NODE_TYPES = (
 	},
 	'catalog_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id name product blueprint file_path server_ip server_scalar_domain server_port
+			id name product blueprint file_path server_ip server_domain server_port
 			local_dsn login_name login_pass
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
 			'file_path' => 'cstr',
 			'server_ip' => 'cstr',
-			'server_scalar_domain' => 'cstr',
+			'server_domain' => 'cstr',
 			'server_port' => 'uint',
 			'local_dsn' => 'cstr',
 			'login_name' => 'cstr',
@@ -1462,10 +1468,12 @@ my $NAMT_ENUM    = 'ENUM'; # enumerated attribute
 my $NAMT_NODE    = 'NODE'; # node attribute
 my $ATTR_ID      = 'id'; # attribute name to use for the node id
 
-# These special hash keys are used by the get_all_properties[/*]() methods:
-my $DBG_GAP_NODE_TYPE = 'NODE_TYPE'; # str - what type of Node we are
-my $DBG_GAP_ATTRS     = 'ATTRS'; # hash - our attributes, including refs/ids of parents we will have
-my $DBG_GAP_CHILDREN  = 'CHILDREN'; # list of refs to new Nodes we will become primary parent of
+# These special hash keys are used by the get_all_properties[/*]() methods, 
+# and/or by the build*node*() functions and methods for RAD:
+my $NAMED_NODE_TYPE = 'NODE_TYPE'; # str - what type of Node we are
+my $NAMED_ATTRS     = 'ATTRS'; # hash - all attributes, including 'id' and primary-parent-id
+my $NAMED_PP_ATNM   = 'PP_ATNM'; # str - attr-name pointing to primary-parent
+my $NAMED_CHILDREN  = 'CHILDREN'; # array - list of child Node descriptors
 
 ######################################################################
 
@@ -1576,21 +1584,21 @@ sub _serialize_as_perl {
 	my ($self, $ind, $node, $pad) = @_;
 	$pad ||= '';
 	my $padc = $ind ? "" : "$pad\t\t";
-	my $node_type = $node->{$DBG_GAP_NODE_TYPE};
+	my $node_type = $node->{$NAMED_NODE_TYPE};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node->{$DBG_GAP_ATTRS};
+	my $attrs = $node->{$NAMED_ATTRS};
 	return( join( '', 
 		$pad."{\n",
-		$pad."\t'".$DBG_GAP_NODE_TYPE."' => '".$node_type."',\n",
+		$pad."\t'".$NAMED_NODE_TYPE."' => '".$node_type."',\n",
 		(scalar(keys %{$attrs}) ? (
-			$pad."\t'".$DBG_GAP_ATTRS."' => {\n",
+			$pad."\t'".$NAMED_ATTRS."' => {\n",
 			(map { $pad."\t\t'".$_."' => '".$self->_s_a_p_esc($attrs->{$_})."',\n" } 
 				grep { defined( $attrs->{$_} ) } @{$attr_seq}),
 			$pad."\t},\n",
 		) : ''),
-		(scalar(@{$node->{$DBG_GAP_CHILDREN}}) ? (
-			$pad."\t'".$DBG_GAP_CHILDREN."' => [\n",
-			(map { $self->_serialize_as_perl( $ind,$_,$padc ) } @{$node->{$DBG_GAP_CHILDREN}}),
+		(scalar(@{$node->{$NAMED_CHILDREN}}) ? (
+			$pad."\t'".$NAMED_CHILDREN."' => [\n",
+			(map { $self->_serialize_as_perl( $ind,$_,$padc ) } @{$node->{$NAMED_CHILDREN}}),
 			$pad."\t],\n",
 		) : ''),
 		$pad."},\n",
@@ -1611,16 +1619,16 @@ sub _serialize_as_xml {
 	my ($self, $ind, $node, $pad) = @_;
 	$pad ||= '';
 	my $padc = $ind ? "" : "$pad\t";
-	my $node_type = $node->{$DBG_GAP_NODE_TYPE};
+	my $node_type = $node->{$NAMED_NODE_TYPE};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node->{$DBG_GAP_ATTRS};
+	my $attrs = $node->{$NAMED_ATTRS};
 	return( join( '', 
 		$pad.'<'.$node_type,
 		(map { ' '.$_.'="'.$self->_s_a_x_esc($attrs->{$_}).'"' } 
 			grep { defined( $attrs->{$_} ) } @{$attr_seq}),
-		(scalar(@{$node->{$DBG_GAP_CHILDREN}}) ? (
+		(scalar(@{$node->{$NAMED_CHILDREN}}) ? (
 			'>'."\n",
-			(map { $self->_serialize_as_xml( $ind,$_,$padc ) } @{$node->{$DBG_GAP_CHILDREN}}),
+			(map { $self->_serialize_as_xml( $ind,$_,$padc ) } @{$node->{$NAMED_CHILDREN}}),
 			$pad.'</'.$node_type.'>'."\n",
 		) : ' />'."\n"),
 	) );
@@ -1660,6 +1668,27 @@ sub new_container {
 
 sub new_node {
 	return( SQL::Routine::Node->new( $_[1] ) );
+}
+
+######################################################################
+
+sub build_lonely_node {
+	my ($self, $node_type, $attrs, $pp_atnm) = @_;
+	if( ref($node_type) eq 'HASH' ) {
+		($node_type, $attrs, $pp_atnm) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_PP_ATNM};
+	}
+	my $node = $self->new_node( $node_type );
+	defined( $attrs ) and $node->set_attributes( $attrs );
+	defined( $pp_atnm ) or $pp_atnm = $node->get_first_candidate_pp_node_attribute_name();
+	defined( $pp_atnm ) and $node->set_pp_node_attribute_name( $pp_atnm );
+	return( $node );
+}
+
+sub build_container {
+	my ($self, @args) = @_;
+	my $container = $self->new_container();
+	$container->build_child_node_tree( @args );
+	return( $container );
 }
 
 ######################################################################
@@ -1788,12 +1817,12 @@ sub _get_all_properties {
 	my ($container) = @_;
 	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
 	return( {
-		$DBG_GAP_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
-		$DBG_GAP_ATTRS => {},
-		$DBG_GAP_CHILDREN => [map { {
-			$DBG_GAP_NODE_TYPE => $_,
-			$DBG_GAP_ATTRS => {},
-			$DBG_GAP_CHILDREN => [map { $_->_get_all_properties() } @{$pseudonodes->{$_}}],
+		$NAMED_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
+		$NAMED_ATTRS => {},
+		$NAMED_CHILDREN => [map { {
+			$NAMED_NODE_TYPE => $_,
+			$NAMED_ATTRS => {},
+			$NAMED_CHILDREN => [map { $_->_get_all_properties() } @{$pseudonodes->{$_}}],
 		} } @L2_PSEUDONODE_LIST],
 	} );
 }
@@ -1804,6 +1833,87 @@ sub get_all_properties_as_perl_str {
 
 sub get_all_properties_as_xml_str {
 	return( $_[0]->_serialize_as_xml( $_[1], $_[0]->_get_all_properties() ) );
+}
+
+######################################################################
+
+sub build_node {
+	my ($container, @args) = @_;
+	my $node = $container->build_lonely_node( @args );
+	unless( $node->get_node_id() ) {
+		$node->set_node_id( $container->get_next_free_node_id( $node->get_node_type() ) );
+	}
+	$node->put_in_container( $container );
+	return( $node );
+}
+
+sub build_child_node {
+	my ($container, $node_type, $attrs) = @_;
+	if( ref($node_type) eq 'HASH' ) {
+		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
+	}
+	if( defined($attrs) and ref($attrs) ne 'HASH' ) {
+		$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_BAD_ATTRS', { 'ARG' => $attrs } );
+	}
+	if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
+		return( $container );
+	} else { # $node_type is not a valid pseudo-Node
+		my $node = $container->new_node( $node_type );
+		unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+			$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_NO_PSND', { 'ARGNTYPE' => $node_type } );
+		}
+		defined( $attrs ) and $node->set_attributes( $attrs );
+		unless( $node->get_node_id() ) {
+			$node->set_node_id( $container->get_next_free_node_id( $node->get_node_type() ) );
+		}
+		$node->put_in_container( $container );
+		return( $node );
+	}
+}
+
+sub build_child_nodes {
+	my ($container, $list) = @_;
+	$list or return( undef );
+	unless( ref($list) eq 'ARRAY' ) {
+		$list = [ $list ];
+	}
+	foreach my $element (@{$list}) {
+		$container->build_child_node( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	}
+}
+
+sub build_child_node_tree {
+	my ($container, $node_type, $attrs, $children) = @_;
+	if( ref($node_type) eq 'HASH' ) {
+		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
+	}
+	if( defined($attrs) and ref($attrs) ne 'HASH' ) {
+		$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_TREE_BAD_ATTRS', { 'ARG' => $attrs } );
+	}
+	if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
+		$container->build_child_node_trees( $children );
+		return( $container );
+	} else { # $node_type is not a valid pseudo-Node
+		my $node = $container->new_node( $node_type );
+		unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+			$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_TREE_NO_PSND', { 'ARGNTYPE' => $node_type } );
+		}
+		defined( $attrs ) and $node->set_attributes( $attrs );
+		$node->put_in_container( $container );
+		$node->build_child_node_trees( $children );
+		return( $node );
+	}
+}
+
+sub build_child_node_trees {
+	my ($container, $list) = @_;
+	$list or return( undef );
+	unless( ref($list) eq 'ARRAY' ) {
+		$list = [ $list ];
+	}
+	foreach my $element (@{$list}) {
+		$container->build_child_node_tree( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	}
 }
 
 ######################################################################
@@ -2181,9 +2291,9 @@ sub set_node_ref_attribute {
 	if( ref($attr_value) eq ref($node) ) {
 		# Attempt is to link two Nodes in the same Container; it would be okay, except 
 		# that we still have to check for circular primary parent Node references.
-		my $parent_node = $attr_value;
-		while( $parent_node = $parent_node->get_parent_node() ) {
-			if( $parent_node eq $node ) {
+		my $pp_node = $attr_value;
+		while( $pp_node = $pp_node->get_pp_node() ) {
+			if( $pp_node eq $node ) {
 				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_CIRC_REF' );
 			}
 		}
@@ -2303,11 +2413,11 @@ sub set_attributes {
 
 ######################################################################
 
-sub get_parent_node_attribute_name {
+sub get_pp_node_attribute_name {
 	return( $_[0]->{$NPROP_PP_NODE_ATNM} );
 }
 
-sub get_parent_node {
+sub get_pp_node {
 	my ($node) = @_;
 	if( $node->{$NPROP_PP_NODE_ATNM} and $node->{$NPROP_CONTAINER} ) {
 		# Note that the associated AT_NREFS property may not be valued right now.
@@ -2316,7 +2426,7 @@ sub get_parent_node {
 	}
 }
 
-sub clear_parent_node_attribute_name {
+sub clear_pp_node_attribute_name {
 	my ($node) = @_;
 	$node->{$NPROP_PP_NODE_ATNM} = undef;
 	if( $node->{$NPROP_CONTAINER} ) {
@@ -2324,7 +2434,7 @@ sub clear_parent_node_attribute_name {
 	}
 }
 
-sub set_parent_node_attribute_name {
+sub set_pp_node_attribute_name {
 	my ($node, $attr_name) = @_;
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_PP_NODE_ATNM_NO_ARGS' );
 	my $node_type = $node->{$NPROP_NODE_TYPE};
@@ -2340,9 +2450,9 @@ sub set_parent_node_attribute_name {
 		# Attempt is to set an already-linked parent Node as this current Node's 
 		# primary parent; it would be okay, except we have to make sure the change 
 		# won't create a circular primary parent reference chain.
-		my $parent_node = $node->{$NPROP_AT_NREFS}->{$attr_name};
-		while( $parent_node = $parent_node->get_parent_node() ) {
-			if( $parent_node eq $node ) {
+		my $pp_node = $node->{$NPROP_AT_NREFS}->{$attr_name};
+		while( $pp_node = $pp_node->get_pp_node() ) {
+			if( $pp_node eq $node ) {
 				$node->_throw_error_message( 'SRT_N_SET_PP_NODE_ATNM_CIRC_REF', 
 					{ 'ATNM' => $attr_name } );
 			}
@@ -2356,7 +2466,19 @@ sub set_parent_node_attribute_name {
 
 ######################################################################
 
-sub estimate_parent_node_attribute_name {
+sub get_first_candidate_pp_node_attribute_name {
+	my ($node) = @_;
+	if( my $pp_node_atnms = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NODE_ATNMS} ) {
+		foreach my $attr_name (@{$pp_node_atnms}) {
+			if( defined( $node->{$NPROP_AT_NREFS}->{$attr_name} ) ) {
+				return( $attr_name );
+			}
+		}
+	}
+	return( undef );
+}
+
+sub estimate_pp_node_attribute_name {
 	# This function tries to find a way to make its argument Node a primary parent of 
 	# the current Node; it returns the first appropriate node attribute name which 
 	# takes a Node of the same node type of the argument.
@@ -2365,14 +2487,14 @@ sub estimate_parent_node_attribute_name {
 	unless( ref($new_parent) eq ref($node) ) {
 		$node->_throw_error_message( 'SRT_N_EST_PP_NODE_ATNM_BAD_ARG', { 'ARG' => $new_parent } );
 	}
-	my $parent_node_type = $new_parent->{$NPROP_NODE_TYPE};
+	my $pp_node_type = $new_parent->{$NPROP_NODE_TYPE};
 	my $node_type = $node->{$NPROP_NODE_TYPE};
 	my $pp_node_atnms = $NODE_TYPES{$node_type}->{$TPI_PP_NODE_ATNMS} or return( undef ); # can't have any parent
 	my $exp_at_nodes = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS}; # assume exists, as prev does
 	my $at_nodes = $node->{$NPROP_AT_NREFS};
 	foreach my $attr_name (@{$pp_node_atnms}) {
 		my $exp_at_node = $exp_at_nodes->{$attr_name};
-		if( $parent_node_type eq $exp_at_node ) {
+		if( $pp_node_type eq $exp_at_node ) {
 			# If we get here, we found a primary parent attribute which is of the right type.
 			$only_not_valued and $at_nodes->{$attr_name} and next; # can't use when has value; keep looking
 			return( $attr_name ); # no value set or may overwrite it
@@ -2577,13 +2699,13 @@ sub add_child_node {
 	unless( ref($new_child) eq ref($node) ) {
 		$node->_throw_error_message( 'SRT_N_ADD_CH_NODE_BAD_ARG', { 'ARG' => $new_child } );
 	}
-	my $est_attr_name = $new_child->estimate_parent_node_attribute_name( $node );
+	my $est_attr_name = $new_child->estimate_pp_node_attribute_name( $node );
 	unless( $est_attr_name ) {
 		$node->_throw_error_message( 'SRT_N_ADD_CH_NODE_NO_EST' );
 	}
 	$new_child->set_node_ref_attribute( $est_attr_name, $node ); # will die if not same Container
 		# will also die if the change would result in a circular reference
-	$new_child->set_parent_node_attribute_name( $est_attr_name );
+	$new_child->set_pp_node_attribute_name( $est_attr_name );
 }
 
 sub add_child_nodes {
@@ -2902,10 +3024,10 @@ sub _get_all_properties {
 	my ($node) = @_;
 	my %dump = ();
 
-	$dump{$DBG_GAP_NODE_TYPE} = $node->{$NPROP_NODE_TYPE};
+	$dump{$NAMED_NODE_TYPE} = $node->{$NPROP_NODE_TYPE};
 
 	my $at_nodes_in = $node->{$NPROP_AT_NREFS};
-	$dump{$DBG_GAP_ATTRS} = {
+	$dump{$NAMED_ATTRS} = {
 		$ATTR_ID => $node->{$NPROP_NODE_ID},
 		%{$node->{$NPROP_AT_LITERALS}},
 		%{$node->{$NPROP_AT_ENUMS}},
@@ -2928,7 +3050,7 @@ sub _get_all_properties {
 			}
 		}
 	}
-	$dump{$DBG_GAP_CHILDREN} = \@children_out;
+	$dump{$NAMED_CHILDREN} = \@children_out;
 
 	return( \%dump );
 }
@@ -2939,6 +3061,80 @@ sub get_all_properties_as_perl_str {
 
 sub get_all_properties_as_xml_str {
 	return( $_[0]->_serialize_as_xml( $_[1], $_[0]->_get_all_properties() ) );
+}
+
+######################################################################
+
+sub build_node {
+	my ($node, @args) = @_;
+	my $new_node = $node->build_lonely_node( @args );
+	if( my $container = $node->get_container() ) {
+		unless( $new_node->get_node_id() ) {
+			$new_node->set_node_id( $container->get_next_free_node_id( $new_node->get_node_type() ) );
+		}
+		$new_node->put_in_container( $container );
+	}
+	return( $new_node );
+}
+
+sub build_child_node {
+	my ($node, $node_type, $attrs) = @_;
+	if( ref($node_type) eq 'HASH' ) {
+		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
+	}
+	if( defined($attrs) and ref($attrs) ne 'HASH' ) {
+		$node->_throw_error_message( 'SRT_N_BUILD_CH_ND_BAD_ATTRS', { 'ARG' => $attrs } );
+	}
+	my $new_node = $node->new_node( $node_type );
+	defined( $attrs ) and $new_node->set_attributes( $attrs );
+	if( my $container = $node->get_container() ) {
+		unless( $new_node->get_node_id() ) {
+			$new_node->set_node_id( $container->get_next_free_node_id( $new_node->get_node_type() ) );
+		}
+		$new_node->put_in_container( $container );
+	}
+	$node->add_child_node( $new_node );
+	return( $new_node );
+}
+
+sub build_child_nodes {
+	my ($node, $list) = @_;
+	$list or return( undef );
+	unless( ref($list) eq 'ARRAY' ) {
+		$list = [ $list ];
+	}
+	foreach my $element (@{$list}) {
+		$node->build_child_node( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	}
+}
+
+sub build_child_node_tree {
+	my ($node, $node_type, $attrs, $children) = @_;
+	if( ref($node_type) eq 'HASH' ) {
+		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
+	}
+	if( defined($attrs) and ref($attrs) ne 'HASH' ) {
+		$node->_throw_error_message( 'SRT_N_BUILD_CH_ND_TREE_BAD_ATTRS', { 'ARG' => $attrs } );
+	}
+	my $new_node = $node->new_node( $node_type );
+	defined( $attrs ) and $new_node->set_attributes( $attrs );
+	if( my $container = $node->get_container() ) {
+		$new_node->put_in_container( $container );
+	}
+	$node->add_child_node( $new_node );
+	$new_node->build_child_node_trees( $children );
+	return( $new_node );
+}
+
+sub build_child_node_trees {
+	my ($node, $list) = @_;
+	$list or return( undef );
+	unless( ref($list) eq 'ARRAY' ) {
+		$list = [ $list ];
+	}
+	foreach my $element (@{$list}) {
+		$node->build_child_node_tree( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	}
 }
 
 ######################################################################
@@ -2973,7 +3169,7 @@ columns, plus two domains used by it, plus the necessary CREATE instruction:
 		$node->set_node_id( $container->get_next_free_node_id( $node_type ) );
 		$node->put_in_container( $container );
 		$node->set_node_ref_attribute( $pp_attr, $pp_node );
-		$node->set_parent_node_attribute_name( $pp_attr );
+		$node->set_pp_node_attribute_name( $pp_attr );
 		return( $node );
 	}
 
@@ -4060,34 +4256,40 @@ This "setter" method will set or replace multiple Node attributes, whose names
 and values are specified by keys and values of the ATTRS hash ref argument;
 this method will invoke set_attribute() for each key/value pair.
 
-=head2 get_parent_node_attribute_name()
+=head2 get_pp_node_attribute_name()
 
 This "getter" method returns the name of this Node's node attribute which is
 designated to reference this Node's primary parent Node, if there is one.
 
-=head2 get_parent_node()
+=head2 get_pp_node()
 
-	my $parent = $node->get_parent_node();
+	my $parent = $node->get_pp_node();
 
 This "getter" method returns the primary parent Node of the current Node, if
 there is one.  The semantics are like "if the current Node is in a Container
 and its 'parent node attribute name' is defined, then return the Node ref value
 of the named node attribute, if it has one".
 
-=head2 clear_parent_node_attribute_name()
+=head2 clear_pp_node_attribute_name()
 
 This "setter" method will clear this Node's 'primary pparent node attribute
 name' property, if it has one.  The actual node attribute being referred to is
 not affected.
 
-=head2 set_parent_node_attribute_name( ATTR_NAME )
+=head2 set_pp_node_attribute_name( ATTR_NAME )
 
 This "setter" method will set or replace this Node's 'primary parent node attribute
 name' property, giving it the new value specified in ATTR_NAME.  No actual node
 attribute is affected.  Note that only a subset (usually one) of a Node's node
 attributes may be named as the holder of its primary parent.
 
-=head2 estimate_parent_node_attribute_name( NEW_PARENT[, ONLY_NOT_VALUED] )
+=head2 get_first_candidate_pp_node_attribute_name()
+
+This "getter" method will look at each primary-parent candidate attribute in
+the current Node and return the name of the first one that is valued; it will
+return the undefined value if no candidates are valued.
+
+=head2 estimate_pp_node_attribute_name( NEW_PARENT[, ONLY_NOT_VALUED] )
 
 This "getter" method will try to find a way to make the Node given in its
 NEW_PARENT argument into the primary parent of the current Node.  It returns
@@ -4223,6 +4425,100 @@ optional boolean argument NO_INDENTS is true, then all output lines will be
 flush with the left, saving a fair amount of memory in what the resulting
 string consumes.  (That said, even the indents are tabs, which take up much
 less space than multiple spaces per indent level.)
+
+=head1 CONTAINER OR NODE FUNCTIONS AND METHODS FOR RAPID DEVELOPMENT
+
+The following 7 "setter" functions and methods should assist more rapid
+development of code that uses SQL::Routine, at the cost that the code would run
+a bit slower (SQL::Routine has to search for info behind the scenes that it
+would otherwise get from you).  These methods are implemented as wrappers over
+other SQL::Routine methods, and allow you to accomplish with one method call
+what otherwise requires about 4-10 method calls, meaning your code base is
+significantly smaller (unless you implement your own simplifying wrapper
+functions, which is recommended in some situations).
+
+For convenience, these methods can take both positional and named arguments; if
+the first actual positional argument is a Perl hash-ref, then the method
+assumes it contains all the arguments in named format; otherwise, the method
+assumes all of the actual positional arguments are the arguments.  All of the 
+argument names are uppercased strings that are identical to what is shown in 
+the positional-oriented argument list documentation.
+
+Note that when a subroutine is referred to as a "function", it is stateless and
+can be invoked off of either a class name or class object; when a subroutine is
+called a "method", it can only be invoked off of Container or Node objects.
+
+=head2 build_lonely_node( NODE_TYPE[, ATTRS][, PP_ATNM] )
+
+	my $nodeP = SQL::Routine->build_lonely_node( 'catalog', { 'id' => 1, } ); 
+	my $nodeN = SQL::Routine->build_lonely_node( 
+		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
+
+This function will create and return a new Node that is "Alone" (not in a
+Container), whose type is specified in NODE_TYPE, and also set its attributes. 
+The ATTRS argument is processed by Node.set_attributes() if it is provided; a
+Node id can also be provided this way, or the Node id won't be set.  The
+PP_ATNM is processed by Node.set_pp_node_attribute_name() if provided; if not,
+then Node.get_first_candidate_pp_node_attribute_name() will be called to find a
+suitable parent from the newly set ATTRS, and then set the PP if one is found.
+
+=head2 build_node( NODE_TYPE[, ATTRS][, PP_ATNM] )
+
+This method behaves identically to build_lonely_node() if it is invoked on a
+Node that isn't in a Container.  If it is invoked on a Container, or a Node
+that's in a Container, then it will put the new Node in that Container, and
+also generate a new Node id if an explicit one wasn't provided in ATTRS.
+
+=head2 build_child_node( NODE_TYPE[, ATTRS] )
+
+This method is like build_node() except that it will set the new Node's primary
+parent to be the Node that this method was invoked on, using add_child_node();
+if this method was invoked on a Container, then it will work only for new Nodes
+that would have a pseudo-Node as their primary parent.  When creating a Node 
+with this method, you do not set any PP candidates in ATTRS.
+
+=head2 build_child_nodes( LIST )
+
+This method takes an array ref in its single LIST argument, and calls
+build_child_node() for each element found in it; if LIST is not an array ref,
+then one is constructed with LIST as its single element.  This method does not
+return anything.
+
+=head2 build_child_node_tree( NODE_TYPE[, ATTRS][, CHILDREN] )
+
+This method is like build_child_node() except that it will recursively create
+all of the child Nodes of the new Node as well; CHILDREN is a Perl array-ref
+(or, if defined, it will become the single element of a new array-ref), and
+build_child_node_tree() will be called for each of its elements after their
+parent has been fully created.  Unlike build_child_node(), this method will
+*not* generate any Node-ids, so you must specify each 'id' ATTRS value
+yourself; this is an intentional design decision, since you often must know
+Node ids, or have a Node reference to use by subsequent referring Nodes, but
+build_child_node_tree() doesn't return them.  In the context of SQL::Routine, a
+"Node tree" or "tree" consists of one arbitrary Node and all of its
+"descendants".  If invoked on a Container object, this method will recognize
+any pseudo-Node names given in 'NODE_TYPE' and simply move on to creating the
+child Nodes of that pseudo-Node, rather than throwing an error exception for an
+invalid Node type.  Therefore, you can populate a whole Container with one call
+to this method.  This method returns the root Node that it creates, if
+NODE_TYPE was a valid Node type; it returns the Container instead if NODE_TYPE
+is a pseudo-Node name.
+
+=head2 build_child_node_trees( LIST )
+
+This method takes an array ref in its single LIST argument, and calls
+build_child_node_tree() for each element found in it; if LIST is not an array
+ref, then one is constructed with LIST as its single element.  This method does
+not return anything.
+
+=head2 build_container( NODE_TYPE[, ATTRS][, CHILDREN] )
+
+This function is like build_child_node_tree() except that it will create a new
+Container object, which is returned, and populate it with new Node objects that
+are generated from its arguments.  This function is the exact opposite of
+Container.get_all_properties(); you should be able to take the Hash-ref output
+of Container.get_all_properties(), give it to build_container(), and end up
+with a clone of the original Container.
 
 =head1 INFORMATION FUNCTIONS AND METHODS
 

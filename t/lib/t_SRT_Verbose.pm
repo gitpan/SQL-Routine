@@ -1,8 +1,11 @@
+# This module is used when testing SQL::Routine.
+# These tests check that a model can be built using the verbose standard 
+# interface without errors, and serializes to the correct output.
 # This module contains sample input and output data which is used to test 
 # SQL::Routine, and possibly other modules that are derived from it.
 
 package # hide this class name from PAUSE indexer
-t_SQL_Routine;
+t_SRT_Verbose;
 use strict;
 use warnings;
 
@@ -23,7 +26,7 @@ sub make_a_child_node {
 	$node->set_node_id( $container->get_next_free_node_id( $node_type ) );
 	$node->put_in_container( $container );
 	$node->set_node_ref_attribute( $pp_attr, $pp_node );
-	$node->set_parent_node_attribute_name( $pp_attr );
+	$node->set_pp_node_attribute_name( $pp_attr );
 	return( $node );
 }
 
@@ -549,8 +552,6 @@ sub create_and_populate_model {
 	$demo_editor_app_cl->set_node_ref_attribute( 'target', $demo_db );
 	$demo_editor_app_cl->set_literal_attribute( 'local_dsn', 'demo' );
 
-	# ... we are still missing a bunch of things in this example ...
-
 	##### END OF DETAILS SETTING #####
 
 	# Now check that we didn't omit something important:
@@ -735,62 +736,6 @@ sub expected_model_xml_output {
 </root>
 '
 	);
-}
-
-######################################################################
-
-sub test_circular_ref_prevention {
-	my (undef, $class) = @_;
-	my $model = $class->new_container();
-
-	my $catalog_bp = make_a_node( 'catalog', $model );
-	$catalog_bp->set_literal_attribute( 'name', 'The Catalog Blueprint' );
-	my $owner = make_a_child_node( 'owner', $catalog_bp, 'pp_catalog' );
-	my $schema = make_a_child_node( 'schema', $catalog_bp, 'pp_catalog' );
-	$schema->set_literal_attribute( 'name', 'gene' );
-	$schema->set_node_ref_attribute( 'owner', $owner );
-
-	my $vw1 = make_a_child_node( 'view', $schema, 'pp_schema' );
-	$vw1->set_literal_attribute( 'name', 'foo' );
-	$vw1->set_enumerated_attribute( 'view_type', 'UPDATE' );
-
-	my $vw2 = make_a_child_node( 'view', $vw1, 'pp_view' );
-	$vw2->set_literal_attribute( 'name', 'bar' );
-	$vw2->set_enumerated_attribute( 'view_type', 'UPDATE' );
-
-	my $vw3 = make_a_child_node( 'view', $vw2, 'pp_view' );
-	$vw3->set_literal_attribute( 'name', 'bz' );
-	$vw3->set_enumerated_attribute( 'view_type', 'UPDATE' );
-
-	my $test1_passed = 0;
-	my $test2_passed = 0;
-	eval {
-		$vw2->set_node_ref_attribute( 'pp_view', $vw3 );
-	};
-	if( my $exception = $@ ) {
-		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_SET_NREF_AT_CIRC_REF' ) {
-				$test1_passed = 1;
-			}
-		}
-	}
-	eval {
-		$vw3->clear_parent_node_attribute_name();
-		$vw2->set_node_ref_attribute( 'pp_view', $vw3 );
-		$vw3->set_parent_node_attribute_name( 'pp_view' );
-	};
-	if( my $exception = $@ ) {
-		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_SET_PP_NODE_ATNM_CIRC_REF' ) {
-				$test2_passed = 1;
-			}
-		}
-	}
-
-	$model->assert_deferrable_constraints();
-	$model->destroy();
-
-	return( $test1_passed, $test2_passed );
 }
 
 ######################################################################

@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 ######################################################################
 
@@ -87,6 +87,18 @@ my %text_strings = (
 		"$CC.get_next_free_node_id(): missing NODE_TYPE argument",
 	'SRT_C_GET_NFNI_BAD_TYPE' => 
 		"$CC.get_next_free_node_id(): invalid NODE_TYPE argument; there is no Node Type named '{ARGNTYPE}'",
+
+	'SRT_C_BUILD_CH_ND_BAD_ATTRS' => 
+		"$CC.build_child_node(): invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
+	'SRT_C_BUILD_CH_ND_NO_PSND' => 
+		"$CC.build_child_node(): invalid NODE_TYPE argument; a '{ARGNTYPE}' Node does not ".
+		"have a pseudo-Node parent and can not be made a direct child of a Container",
+
+	'SRT_C_BUILD_CH_ND_TREE_BAD_ATTRS' => 
+		"$CC.build_child_node_tree(): invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
+	'SRT_C_BUILD_CH_ND_TREE_NO_PSND' => 
+		"$CC.build_child_node_tree(): invalid NODE_TYPE argument; a '{ARGNTYPE}' Node does not ".
+		"have a pseudo-Node parent and can not be made a direct child of a Container",
 
 	'SRT_N_NEW_NODE_NO_ARGS' => 
 		"$CN.new_node(): missing NODE_TYPE argument",
@@ -228,24 +240,24 @@ my %text_strings = (
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
 	'SRT_N_SET_PP_NODE_ATNM_NO_ARGS' => 
-		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTR_NAME argument",
 	'SRT_N_SET_PP_NODE_ATNM_INVAL_NM' => 
-		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTR_NAME argument; either there is no Node attribute named '{ATNM}' in this Node, ".
 		"or that attribute can not be used as the primary parent Node",
 	'SRT_N_SET_PP_NODE_ATNM_CIRC_REF' => 
-		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTR_NAME argument; this Node's Node ref attribute named '{ATNM}' is valued ".
 		"with a Node that is a direct or indirect child of this current Node, so that Node ".
 		"can not become the primary parent of this current Node; ".
 		"if it was, that would result in a circular reference chain",
 
 	'SRT_N_EST_PP_NODE_ATNM_NO_ARGS' => 
-		"$CN.estimate_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"$CN.estimate_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing NEW_PARENT argument",
 	'SRT_N_EST_PP_NODE_ATNM_BAD_ARG' => 
-		"$CN.estimate_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"$CN.estimate_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_PARENT argument; it is not a Node object, but rather is '{ARG}'",
 
 	'SRT_N_PI_CONT_NO_ARGS' => 
@@ -409,6 +421,14 @@ my %text_strings = (
 		"at least two of its child Nodes have identical attribute set values ('{VALUES}') ".
 		"with respect to the mutual-distinct child group '{MUDI}'; you must change ".
 		"either the '{C1NTYPE}' Node with Id '{C1NID}' or the '{C2NTYPE}' Node with Id '{C2NID}'",
+
+	'SRT_N_BUILD_CH_ND_BAD_ATTRS' => 
+		"$CN.build_child_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
+
+	'SRT_N_BUILD_CH_ND_TREE_BAD_ATTRS' => 
+		"$CN.build_child_node_tree(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 );
 
 ######################################################################

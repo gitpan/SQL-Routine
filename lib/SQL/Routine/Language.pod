@@ -2022,6 +2022,8 @@ Distinct Child Groups List:
 
 	ak_name:
 		table_index - name
+	ak_row_field
+		table_field - row_field
 
 Example List:
 
@@ -2270,6 +2272,8 @@ Distinct Child Groups List:
 		view_arg - name
 	ak_src_name:
 		view_src - name
+	ak_row_field
+		view_field - row_field
 	ak_join:
 		view_join - lhs_src,rhs_src
 	ak_join_limit_one:

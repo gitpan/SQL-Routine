@@ -1,3 +1,62 @@
+2004-11-01   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Release 0.47.
+
+	* New code file versions are: Routine.pm v0.47 and en.pm v0.17.
+
+	* This release mainly serves to merge two previously distinct modules into
+	one; SQL::Routine::ByTree has been merged into SQL::Routine, and no longer
+	exists as its own entity.  However, the code that was ByTree.pm has been
+	rewritten in the process.  Similarly, SQL::Routine::ByTree::L::en was
+	merged into SQL::Routine::L::en.  The details of this merger are given
+	below, but simply in terms of new functionality being added to Routine.pm.
+
+	* Renamed the *parent_node*() methods to *pp_node*(); this affected
+	Routine.pm and en.pm and the test suite.
+
+	* Added new Node method get_first_candidate_pp_node_attribute_name().
+
+	* Added 7 new functions or methods that should assist more rapid
+	development of code that uses SQL::Routine, at the cost that the code would
+	run a bit slower (SQL::Routine has to search for info behind the scenes
+	that it would otherwise get from you).  These methods are implemented as
+	wrappers over other SQL::Routine methods, and allow you to accomplish with
+	one method call what otherwise requires about 4-10 method calls, meaning
+	your code base is significantly smaller (unless you implement your own
+	simplifying wrapper functions, which is recommended in some situations).
+	These 2 can be invoked on any class name or object: build_lonely_node(),
+	build_container().  These 5 can be invoked only on an object: build_node(),
+	build_child_node(), build_child_nodes(), build_child_node_tree(),
+	build_child_node_trees(); the last 2 of these 5 correspond the most to the
+	old 4 ByTree.pm create_[child_]node_tree[s]() methods, and take all of the
+	same input that they did.  Added 6 new message keys to en.pm that
+	correspond to the 7 added methods.
+
+	* Corrected a bug in Routine.pm where the 'catalog_instance' Node attribute
+	'server_domain' was mis-named 'server_scalar_domain'.
+
+	* Small corresponding change in Language.pod and Routine.pm: Added a
+	distinct value constraint on each of "[table|view]_field.row_field"; this 
+	was the only change to Language.pod.
+
+	* Split up the tester module t_SQL_Routine.pm into two more specialized
+	files, which SQL_Routine.t invokes: t_SRT_Circular.pm, t_SRT_Verbose.pm;
+	none of the module test code itself was changed during the split.
+
+	* Added a third tester module t_SRT_Terse.pm, which SQL_Routine.t invokes;
+	it is similar in structure to t_SRT_Verbose.pm but it exclusively uses the
+	new build_*() to produce the model.  This tester module is a modified 
+	version of the t_SQL_Routine_ByTree.pm that came with SQL::Routine::ByTree.
+	The new test count goes from 1..9, up from 1..6.
+
+	* The code added to Routine.pm wasn't identical to that removed from
+	ByTree.pm; these are the main changes:  1. ByTree.pm called
+	assert_deferrable_constraints() immediately after each Node was built;
+	Routine.pm does not.  2. ByTree.pm always put the new Nodes in a Container
+	(or tried to and could possibly have died on a Perl error); Routine.pm only
+	does in specific situations.  3. ByTree.pm never generated Node ids;
+	Routine.pm does in specific situations.
+
 2004-10-29   Darren Duncan <perl@DarrenDuncan.net>
 
 	* Release 0.46.
