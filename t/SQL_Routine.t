@@ -3,14 +3,15 @@
 
 ######################### We start with some black magic to print on failure.
 
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "1..12\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use lib 't/lib';
 use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
-use SQL::Routine '0.47';
-use SQL::Routine::L::en '0.17';
+use t_SRT_Abstract;
+use SQL::Routine '0.48';
+use SQL::Routine::L::en '0.18';
 $loaded = 1;
 print "ok 1\n";
 use strict;
@@ -31,7 +32,8 @@ sub result {
 	my ($worked, $detail) = @_;
 	$verbose or 
 		$detail = substr( $detail, 0, 50 ).
-		(length( $detail ) > 47 ? "..." : "");	print "@{[$worked ? '' : 'not ']}ok $test_num $detail\n";
+		(length( $detail ) > 47 ? "..." : "");
+	print "@{[$worked ? '' : 'not ']}ok $test_num $detail\n";
 }
 
 sub message {
@@ -122,6 +124,33 @@ $@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
 ######################################################################
 
 message( "DONE TESTING SQL::Routine - t_SRT_Terse" );
+message( "START TESTING SQL::Routine - t_SRT_Abstract" );
+message( "  Test model construction using abstract wrapper interface." );
+
+######################################################################
+
+eval {
+	message( "First populate some objects ..." );
+
+	my $model = t_SRT_Abstract->create_and_populate_model( 'SQL::Routine' );
+	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
+
+	message( "Now see if the output is correct ..." );
+
+	my $expected_output = t_SRT_Abstract->expected_model_xml_output();
+	my $actual_output = $model->get_all_properties_as_xml_str();
+	result( $actual_output eq $expected_output, "verify serialization of objects" );
+
+	message( "Now destroy the objects ..." );
+
+	$model->destroy();
+	result( (keys %{$model}) eq '0', "destruction of all objects" );
+};
+$@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
+
+######################################################################
+
+message( "DONE TESTING SQL::Routine - t_SRT_Abstract" );
 
 ######################################################################
 

@@ -9,6 +9,7 @@ Makefile.PL
 MANIFEST
 META.yml                                Module meta-data (added by MakeMaker)
 ReadMe
+t/lib/t_SRT_Abstract.pm
 t/lib/t_SRT_Circular.pm
 t/lib/t_SRT_Terse.pm
 t/lib/t_SRT_Verbose.pm

@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 
 ######################################################################
 
@@ -71,6 +71,7 @@ way of suggesting improvements to the standard version.
 
 my $CC = 'SQL::Routine::Container';
 my $CN = 'SQL::Routine::Node';
+my $ABSINTF = 'using abstract interface';
 
 my %text_strings = (
 	'SRT_C_GET_NODE_NO_ARG_TYPE' => 
@@ -88,16 +89,8 @@ my %text_strings = (
 	'SRT_C_GET_NFNI_BAD_TYPE' => 
 		"$CC.get_next_free_node_id(): invalid NODE_TYPE argument; there is no Node Type named '{ARGNTYPE}'",
 
-	'SRT_C_BUILD_CH_ND_BAD_ATTRS' => 
-		"$CC.build_child_node(): invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 	'SRT_C_BUILD_CH_ND_NO_PSND' => 
 		"$CC.build_child_node(): invalid NODE_TYPE argument; a '{ARGNTYPE}' Node does not ".
-		"have a pseudo-Node parent and can not be made a direct child of a Container",
-
-	'SRT_C_BUILD_CH_ND_TREE_BAD_ATTRS' => 
-		"$CC.build_child_node_tree(): invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
-	'SRT_C_BUILD_CH_ND_TREE_NO_PSND' => 
-		"$CC.build_child_node_tree(): invalid NODE_TYPE argument; a '{ARGNTYPE}' Node does not ".
 		"have a pseudo-Node parent and can not be made a direct child of a Container",
 
 	'SRT_N_NEW_NODE_NO_ARGS' => 
@@ -225,6 +218,12 @@ my %text_strings = (
 		"$CN.set_node_ref_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
+	'SRT_ABSINTF_N_SET_NREF_AT_NO_ID_MATCH' => 
+		"$CN.set_node_ref_attribute(), $ABSINTF: concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"invalid ATTRS argument element; when trying to set '{ATNM}' attribute, ".
+		"'{ARG}' is not a Node ref and it does not ".
+		"match the id of any existing '{EXPNTYPE}' Node",
+
 	'SRT_N_EXP_AT_MT_NO_ARGS' => 
 		"$CN.expected_attribute_major_type(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTR_NAME argument",
@@ -235,6 +234,11 @@ my %text_strings = (
 	'SRT_N_SET_ATS_NO_ARGS' => 
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTRS argument",
+	'SRT_ABSINTF_N_SET_ATS_BAD_ARGS' => 
+		"$CN.set_attributes(), $ABSINTF: concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'; ".
+		"also, Nodes of the current type have no default ".
+		"attribute to associate the given value with",
 	'SRT_N_SET_ATS_BAD_ARGS' => 
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
@@ -266,13 +270,14 @@ my %text_strings = (
 	'SRT_N_PI_CONT_BAD_ARG' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_CONTAINER argument; it is not a Container object, but rather is '{ARG}'",
-	'SRT_N_PI_CONT_NO_NODE_ID' => 
-		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"this Node can not be put in a Container yet as this Node has no NODE_ID defined",
 	'SRT_N_PI_CONT_HAVE_ALREADY' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"this Node already lives in a Container; you ".
 		"must take this Node from there before putting it in a different one",
+	'SRT_N_PI_CONT_NO_NODE_ID' => 
+		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"this Node can not be put in a Container yet as this Node has no NODE_ID defined, ".
+		"and the given Container is not configured to auto-set missing Node Ids",
 	'SRT_N_PI_CONT_DUPL_ID' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"this Node can not be put into the given Container ".
@@ -422,13 +427,13 @@ my %text_strings = (
 		"with respect to the mutual-distinct child group '{MUDI}'; you must change ".
 		"either the '{C1NTYPE}' Node with Id '{C1NID}' or the '{C2NTYPE}' Node with Id '{C2NID}'",
 
-	'SRT_N_BUILD_CH_ND_BAD_ATTRS' => 
-		"$CN.build_child_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
+	'SRT_N_BUILD_ND_NOT_IN_CONT' => 
+		"$CN.build_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"you can not invoke this method on this Node because it is not in a Container",
 
-	'SRT_N_BUILD_CH_ND_TREE_BAD_ATTRS' => 
-		"$CN.build_child_node_tree(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
+	'SRT_N_BUILD_CH_ND_NOT_IN_CONT' => 
+		"$CN.build_child_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"you can not invoke this method on this Node because it is not in a Container",
 );
 
 ######################################################################

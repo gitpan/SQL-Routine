@@ -15,6 +15,7 @@ sub create_and_populate_model {
 	my (undef, $class) = @_;
 
 	my $model = $class->new_container();
+	$model->auto_assert_deferrable_constraints( 1 );
 
 	##### NEXT SET CATALOG ELEMENT-TYPE DETAILS #####
 
