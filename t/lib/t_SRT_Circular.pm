@@ -17,13 +17,8 @@ sub test_circular_ref_prevention {
 	$model->auto_set_node_ids( 1 );
 
 	my $vw1 = $model->build_node( 'view', 'foo' );
-	$vw1->set_enumerated_attribute( 'view_type', 'UPDATE' );
-
 	my $vw2 = $vw1->build_child_node( 'view', 'bar' );
-	$vw2->set_enumerated_attribute( 'view_type', 'UPDATE' );
-
 	my $vw3 = $vw2->build_child_node( 'view', 'bz' );
-	$vw3->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $test1_passed = 0;
 	my $test2_passed = 0;
@@ -32,7 +27,7 @@ sub test_circular_ref_prevention {
 	};
 	if( my $exception = $@ ) {
 		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_SET_NREF_AT_CIRC_REF' ) {
+			if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
 				$test1_passed = 1;
 			}
 		}
@@ -42,7 +37,7 @@ sub test_circular_ref_prevention {
 	};
 	if( my $exception = $@ ) {
 		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_SET_NREF_AT_CIRC_REF' ) {
+			if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
 				$test2_passed = 1;
 			}
 		}

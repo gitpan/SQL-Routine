@@ -3,7 +3,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 
 ######################################################################
 
@@ -112,13 +112,77 @@ my %text_strings = (
 		"invalid NEW_ID argument; the Node Id value of '{ARG}' you tried to set ".
 		"is already in use by another Node in the same Container; it must be distinct",
 
-	'SRT_N_EXP_LIT_AT_NO_ARGS' => 
-		"$CN.expected_literal_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_PP_AT_NO_PP_AT' => 
+		"$CN.get_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"there is no primary parent attribute in this Node",
+
+	'SRT_N_CLEAR_PP_AT_NO_PP_AT' => 
+		"$CN.clear_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"there is no primary parent attribute in this Node",
+
+	'SRT_N_SET_PP_AT_NO_PP_AT' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"there is no primary parent attribute in this Node",
+	'SRT_N_SET_PP_AT_NO_ARG_VAL' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_VALUE argument",
+	'SRT_N_SET_PP_AT_CIRC_REF' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; that Node is a direct ".
+		"or indirect child of this current Node, so they can not be linked; ".
+		"if they were linked, that would result in a circular reference chain",
+
+	'SRT_N_SET_PP_AT_WRONG_NODE_TYPE' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; the given Node is an '{ARGNTYPE}' ".
+		"Node but this Node-ref attribute may only reference a '{EXPNTYPE}' Node",
+	'SRT_N_SET_PP_AT_DIFF_CONT' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; that Node is not in ".
+		"the same Container as this current Node, so they can not be linked",
+	'SRT_N_SET_PP_AT_ONE_CONT' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; a Node that is in a ".
+		"Container can not be linked to one that is not",
+	'SRT_N_SET_PP_AT_MISS_NID' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; the given Node ".
+		"lacks a Node Id, and one is required to link to it from this one",
+	'SRT_N_SET_PP_AT_NO_ALLOW_SID' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; '{ARG}' looks like a Surrogate Id but ".
+		"either this Node is not in a Container or its Container does not allow ".
+		"the use of Surrogate Ids to match Nodes when linking; ".
+		"ATTR_VALUE must be either a Node ref or a positive integer Node Id",
+	'SRT_N_SET_PP_AT_NONEX_SID' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; '{ARG}' looks like a Surrogate Id but ".
+		"it does not match the Surrogate Id of any '{EXPNTYPE}' Node in this Node's Container",
+	'SRT_N_SET_PP_AT_NONEX_NID' => 
+		"$CN.set_primary_parent_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_VALUE argument; '{ARG}' looks like a Node Id but ".
+		"it does not match the Id of any '{EXPNTYPE}' Node in this Node's Container",
+
+	'SRT_N_GET_LIT_AT_NO_ARGS' => 
+		"$CN.get_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_NAME argument",
-	'SRT_N_EXP_LIT_AT_INVAL_NM' => 
-		"$CN.expected_literal_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_LIT_AT_INVAL_NM' => 
+		"$CN.get_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_NAME argument; there is no literal attribute named '{ATNM}' in this Node",
 
+	'SRT_N_CLEAR_LIT_AT_NO_ARGS' => 
+		"$CN.clear_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_CLEAR_LIT_AT_INVAL_NM' => 
+		"$CN.clear_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no literal attribute named '{ATNM}' in this Node",
+
+	'SRT_N_SET_LIT_AT_NO_ARGS' => 
+		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_SET_LIT_AT_INVAL_NM' => 
+		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no literal attribute named '{ATNM}' in this Node",
 	'SRT_N_SET_LIT_AT_NO_ARG_VAL' => 
 		"$CN.set_literal_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_VALUE argument when setting '{ATNM}'",
@@ -146,13 +210,26 @@ my %text_strings = (
 		"$CN.set_literal_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}",
 
-	'SRT_N_EXP_ENUM_AT_NO_ARGS' => 
-		"$CN.expected_enumerated_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_ENUM_AT_NO_ARGS' => 
+		"$CN.get_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_NAME argument",
-	'SRT_N_EXP_ENUM_AT_INVAL_NM' => 
-		"$CN.expected_enumerated_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_ENUM_AT_INVAL_NM' => 
+		"$CN.get_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_NAME argument; there is no enumerated attribute named '{ATNM}' in this Node",
 
+	'SRT_N_CLEAR_ENUM_AT_NO_ARGS' => 
+		"$CN.clear_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_CLEAR_ENUM_AT_INVAL_NM' => 
+		"$CN.clear_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no enumerated attribute named '{ATNM}' in this Node",
+
+	'SRT_N_SET_ENUM_AT_NO_ARGS' => 
+		"$CN.set_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_SET_ENUM_AT_INVAL_NM' => 
+		"$CN.set_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no enumerated attribute named '{ATNM}' in this Node",
 	'SRT_N_SET_ENUM_AT_NO_ARG_VAL' => 
 		"$CN.set_enumerated_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_VALUE argument when setting '{ATNM}'",
@@ -168,16 +245,30 @@ my %text_strings = (
 		"$CN.set_enumerated_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
-	'SRT_N_EXP_NREF_AT_NO_ARGS' => 
-		"$CN.expected_node_ref_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_NREF_AT_NO_ARGS' => 
+		"$CN.get_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_NAME argument",
-	'SRT_N_EXP_NREF_AT_INVAL_NM' => 
-		"$CN.expected_node_ref_attribute_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_NREF_AT_INVAL_NM' => 
+		"$CN.get_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_NAME argument; there is no Node attribute named '{ATNM}' in this Node",
 
+	'SRT_N_CLEAR_NREF_AT_NO_ARGS' => 
+		"$CN.clear_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_CLEAR_NREF_AT_INVAL_NM' => 
+		"$CN.clear_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no Node attribute named '{ATNM}' in this Node",
+
+	'SRT_N_SET_NREF_AT_NO_ARGS' => 
+		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_SET_NREF_AT_INVAL_NM' => 
+		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no Node attribute named '{ATNM}' in this Node",
 	'SRT_N_SET_NREF_AT_NO_ARG_VAL' => 
 		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_VALUE argument when setting '{ATNM}'",
+
 	'SRT_N_SET_NREF_AT_WRONG_NODE_TYPE' => 
 		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_VALUE argument when setting '{ATNM}'; the given Node is an '{ARGNTYPE}' ".
@@ -208,11 +299,6 @@ my %text_strings = (
 		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_VALUE argument when setting '{ATNM}'; '{ARG}' looks like a Node Id but ".
 		"it does not match the Id of any '{EXPNTYPE}' Node in this Node's Container",
-	'SRT_N_SET_NREF_AT_CIRC_REF' => 
-		"$CN.set_node_ref_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
-		"invalid ATTR_VALUE argument when setting '{ATNM}'; that Node is a direct ".
-		"or indirect child of this current Node, so they can not be linked; ".
-		"if they were linked, that would result in a circular reference chain",
 
 	'SRT_N_SET_NREF_ATS_NO_ARGS' => 
 		"$CN.set_node_ref_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
@@ -221,11 +307,32 @@ my %text_strings = (
 		"$CN.set_node_ref_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
-	'SRT_N_EXP_AT_MT_NO_ARGS' => 
-		"$CN.expected_attribute_major_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_SET_SI_AT_NO_ARGS' => 
+		"$CN.set_surrogate_id_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_VALUE argument",
+
+	'SRT_N_GET_AT_NO_ARGS' => 
+		"$CN.get_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing ATTR_NAME argument",
-	'SRT_N_EXP_AT_MT_INVAL_NM' => 
-		"$CN.expected_attribute_major_type(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+	'SRT_N_GET_AT_INVAL_NM' => 
+		"$CN.get_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no attribute named '{ATNM}' in this Node",
+
+	'SRT_N_CLEAR_AT_NO_ARGS' => 
+		"$CN.clear_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_CLEAR_AT_INVAL_NM' => 
+		"$CN.clear_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTR_NAME argument; there is no attribute named '{ATNM}' in this Node",
+
+	'SRT_N_SET_AT_NO_ARGS' => 
+		"$CN.set_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_NAME argument",
+	'SRT_N_SET_AT_NO_ARG_VAL' => 
+		"$CN.set_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTR_VALUE argument when setting '{ATNM}'",
+	'SRT_N_SET_AT_INVAL_NM' => 
+		"$CN.set_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTR_NAME argument; there is no attribute named '{ATNM}' in this Node",
 
 	'SRT_N_SET_ATS_NO_ARGS' => 
@@ -234,10 +341,12 @@ my %text_strings = (
 	'SRT_N_SET_ATS_BAD_ARGS' => 
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
-
-	'SRT_N_SET_SI_AT_NO_ARGS' => 
-		"$CN.set_surrogate_id_attribute(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
-		"missing ATTR_VALUE argument",
+	'SRT_N_SET_AT_NO_ARG_ELEM_VAL' => 
+		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing ATTRS argument element value when setting key '{ATNM}'",
+	'SRT_N_SET_AT_INVAL_ELEM_NM' => 
+		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid ATTRS argument element key; there is no attribute named '{ATNM}' in this Node",
 
 	'SRT_N_PI_CONT_NO_ARGS' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
@@ -258,6 +367,11 @@ my %text_strings = (
 		"this Node can not be put into the given Container ".
 		"because it has the same Node Id value as another Node already ".
 		"in the same Container; one of these Node Ids needs to be changed first",
+	'SRT_N_PI_CONT_NONEX_PP_NREF' => 
+		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"this Node can not be put into the given Container ".
+		"because its primary parent attribute expects to link to a '{EXPNTYPE}' Node ".
+		"with a Node Id of '{EXPNID}', but no such Node exists in the given Container",
 	'SRT_N_PI_CONT_NONEX_AT_NREF' => 
 		"$CN.put_in_container(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"this Node can not be put into the given Container ".
@@ -312,6 +426,10 @@ my %text_strings = (
 		"$CN.add_child_node(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"invalid NEW_CHILD argument; it is not a Node object, but rather is '{ARG}'",
 
+	'SRT_N_GET_REF_NODES_BAD_TYPE' => 
+		"$CN.get_referencing_nodes(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid NODE_TYPE argument; there is no Node Type named '{NTYPE}'",
+
 	'SRT_N_GET_SID_CHAIN_NOT_IN_CONT' => 
 		"$CN.get_surrogate_id_chain(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"you can not invoke this method on this Node because it is not in a Container",
@@ -319,6 +437,12 @@ my %text_strings = (
 	'SRT_N_FIND_ND_BY_SID_NOT_IN_CONT' => 
 		"$CN.find_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"you can not invoke this method on this Node because it is not in a Container",
+	'SRT_N_FIND_ND_BY_SID_NO_ARGS' => 
+		"$CN.find_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"missing SELF_ATTR_NAME argument",
+	'SRT_N_FIND_ND_BY_SID_INVAL_NM' => 
+		"$CN.find_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
+		"invalid SELF_ATTR_NAME argument; there is no primary parent or Node-ref attribute named '{ATNM}' in this Node",
 	'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL' => 
 		"$CN.find_node_by_surrogate_id(): concerning the '{NTYPE}' Node with Id '{NID}' and Surrogate Id Chain '{SIDCH}'; ".
 		"missing TARGET_ATTR_VALUE argument",

@@ -1,3 +1,211 @@
+2005-02-23   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.55.
+
+	* New code file versions are: Routine.pm v0.55 and en.pm v0.25.
+
+	* The primary purpose of this release was to refactor Routine.pm for better
+	machine performance.  This was accomplished mainly by the reorganization of
+	internal data structures and by the elimination of duplicated input
+	validation or control flow tests.  The actual functionality of the module is
+	the same as it was in release 0.54.  The module accepts identical input and
+	provides identical output; the validation tests are also the same.  As a 
+	result of these changes, the module's performance has doubled for the more 
+	arduous tasks, with 10-60% speed increases for less arduous tasks, all the 
+	while getting the same amount of work done.
+
+	* A secondary purpose of this release was to improve the experience of
+	programmers trying to use Routine.pm in their programs, debug problems in
+	their own code, or trying to understand the Routine.pm code itself. 
+	Debugging is now easier because there are now fewer internal function calls
+	for simple tasks, so when any exception is thrown, it is more likely to be
+	attributed to the same method name that the programmer directly invoked.
+
+	* All changes in this release were in Routine.pm, en.pm, and the test suite; 
+	there were exactly zero changes made to Language.pod and API_C.pod.
+
+	* The primary test suite changes involved the splitting of 3 tests into two
+	parts, and the addition of 3, so the total test count is now 17, up from 11.
+	For all 3 of the main test libraries, t_SRT_[Verbose|Terse|Abstract].pm, the
+	assert_deferrable_constraints() invocation was removed from the end of
+	create_and_populate_model() and made into a separate new test in
+	SQL_Routine.t (that counts for 3 test splits).  For all 3 of the main test
+	libraries, the expected_model_xml_output() function was renamed to
+	expected_model_nid_xml_output(), and a new expected_model_sid_xml_output()
+	function was added, which became a separate new test in SQL_Routine.t.  A
+	further change was made to create_and_populate_model() in Terse and
+	Abstract; those methods now take an optional boolean argument such that
+	auto_assert_deferrable_constraints() is now only set true when the argument
+	is true; SQL_Routine.t does pass a true value, which preserves the old
+	behaviour that makes test failure debugging easier.  The 3 main test
+	libraries can be run unchanged against both release v0.54 and v0.55, making
+	them ideal to base performance change tests; in addition, the 'populate'
+	splits, and added argument, allow for measuring the deferrable tests'
+	performance separately from the actual input-stuffing code.  Also made two
+	small updates to t_SRT_Circular.pm; one was a compatability change since the
+	name of the exception to catch has changed.
+
+	* Routine.pm saw the following Node property changes: 1. 'at_nrefs' was
+	split into itself and 'pp_nref'; the latter now exclusively stores the value
+	of the 'pp' Node-ref attribute; 2. 'child_nodes' was split into
+	'prim_child_nrefs' and 'link_child_nrefs', where the first reciprocates
+	links stored in 'pp_nref', and the second reciprocates those in 'at_nrefs'.
+
+	* Routine.pm saw the following %NODE_TYPES data dictionary structure
+	changes: 1. 'pp_pseudonode' was moved to appear just beneath 'at_sequence';
+	2. 'at_nrefs' was split into itself and 'pp_nref', where the latter
+	exclusively stores the valid 'pp' attribute Node types (it appears just
+	beneath 'pp_pseudonode'); 3. each 'si_atnm' hash value is now a 4-element
+	array rather than a 3-element array, such that ['id'|undef] is the new first
+	element, and as a result every single Node type now has a SI attribute
+	defined for it; 4. 'ma_attrs' was renamed to 'ma_atnms'; 5. all parts of the
+	data dictionary that used the qw() syntax for defining lists, except
+	'at_sequence', now uses the string quoted and comma delimited syntax.
+
+	* There is no longer a code-recognized concept of "Node attribute major
+	types".  The file scoped constants $NAMT_[ID|LITERAL|ENUM|NODE] were
+	removed.  The information function major_type_of_node_type_attribute() was
+	removed.  The Node method expected_attribute_major_type() was removed.  The
+	6 Node methods [get|clear|set]_attribute[|s]() were refactored to query
+	%NODE_TYPES directly to determine their routing activity.  The 2 en.pm
+	messages 'SRT_N_EXP_AT_MT_[NO_ARGS|INVAL_NM]' were replaced with 6 different
+	en.pm messages, 'SRT_N_[GET|CLEAR|SET]_AT_[NO_ARGS|INVAL_NM]'.  In addition,
+	set_attribute() gained 'SRT_N_SET_AT_NO_ARG_VAL' and set_attributes() gained
+	'SRT_N_SET_AT_[NO_ARG_ELEM_VAL|INVAL_ELEM_NM]'.
+
+	* Updated the 2 information functions node_types_with_pseudonode_parents()
+	and node_types_with_primary_parent_attributes(), and moved them to appear
+	just beneath valid_node_types().  Updated the information function
+	node_types_with_surrogate_id_attributes() and renamed it to
+	valid_node_type_surrogate_id_attributes().  Note that the information
+	function valid_node_type_node_ref_attributes() no longer handles 'pp'.
+
+	* Updated the _throw_error_message() private function to automatically
+	serialize all message arguments that are Perl array refs, and not just the
+	'ARG' one; also updated several other methods so they no longer serialize
+	such arguments before passing them to this function.
+
+	* The Node method expected_surrogate_id_attribute_name() was removed.  The
+	private function _build_node_normalize_attrs() was updated to query
+	%NODE_TYPES directly rather than call it.  The 3 Node methods
+	[get|clear|set]_surrogate_id_attribute() were refactored to no longer call
+	the removed method, and also to no longer call [get|clear|set]_attribute();
+	they now query %NODE_TYPES directly and do internally what the latter 3
+	methods did for them.  These 3 'surrogate' methods were also moved to appear
+	just above the get_attribute() method.
+
+	* The 3 expected_[literal|enumerated|node_ref]_attribute_type[|s]() Node
+	methods were removed.  The 9 Node methods
+	[get|set|clear]_[literal|enumerated|node_ref]_attribute() were refactored to
+	internalize the functionality of the 3 removed methods.  The 6 en.pm
+	messages 'SRT_N_EXP_[LIT|ENUM|NREF]_AT_[NO_ARGS|INVAL_NM]' were replaced
+	with 18 different en.pm messages,
+	'SRT_N_[GET|CLEAR|SET]_[LIT|ENUM|NREF]_AT_[NO_ARGS|INVAL_NM]'.  Next, the
+	aforementioned 9 methods were each split into 2 methods, with the members of
+	each pair having the format 'foo()' and '_foo()'; the 'foo' methods did
+	generic input validation tests and then invoked the '_foo' methods, which
+	did most of the work.  Since a _clear_node_ref_attribute() method already
+	existed, the new version is mostly the same as it was.  Most other
+	Routine.pm methods that used to invoke the old 9 methods now invoke the
+	'_foo' version and handle any necessary 'foo' input validation themselves.
+
+	* The find_node_by_surrogate_id() method also had invoked the now removed
+	expected_node_ref_attribute_types(), but now queries %NODE_TYPES directly; 
+	added 2 en.pm messages: 'SRT_N_FIND_ND_BY_SID_[NO_ARGS|INVAL_NM]'.
+
+	* The newly formed 6 [|_][get|clear|set]_node_ref_attribute() Node methods
+	were then split in correlation with the 'at_nrefs'|'pp_nref' property split,
+	with the following 6 new methods having exclusive access to the 'pp'
+	attribute: [|_][get|clear|set]_primary_parent_attribute().  These 3 'parent'
+	methods were made to appear just beneath the set_node_id() method.  For the
+	3 'foo' methods, 4 new en.pm messages 'SRT_N_[GET|CLEAR|SET]_PP_AT_NO_PP_AT'
+	and 'SRT_N_SET_PP_AT_NO_ARG_VAL' were added.  One en.pm message that was for
+	_set_node_ref_attribute(), 'SRT_N_SET_NREF_AT_CIRC_REF', now only exists for
+	_set_primary_parent_attribute() as 'SRT_N_SET_PP_AT_CIRC_REF'.  To reduce
+	code duplication, most of the old _set_node_ref_attribute() is still shared,
+	as _normalize_primary_parent_or_node_ref_attribute_value(), with the
+	'parent' method.  The 7 en.pm messages used by this were split into 14,
+	however: '*_WRONG_NODE_TYPE', '*_DIFF_CONT', '*_ONE_CONT', '*_MISS_NID',
+	'*_NO_ALLOW_SID', '*_NONEX_SID', '*_NONEX_NID'.  Since 3
+	[get|clear|set]_primary_parent_attribute() methods already existed as simple
+	wrappers for 'node_ref' methods, the new versions behave as they did.
+
+	* The get_child_nodes() method was split into itself and the new
+	get_referencing_nodes(), in correlation with the
+	'prim_child_nrefs'|'link_child_nrefs' property split; get_child_nodes() now
+	handles only children linked via 'pp', and the new method handles children
+	linked via other attributes.  Added 'SRT_N_GET_REF_NODES_BAD_TYPE' to en.pm.
+
+	* The following 3 methods were greatly simplified (and sped up) since they
+	no longer need to test each child of a Node to filter out those that are not
+	primary-children: Container._assert_deferrable_constraints(),
+	Node._assert_child_comp_deferrable_constraints(),
+	Node._get_all_properties().
+
+	* These methods were also updated in accordance with Node attribute splits:
+	Node.new(), put_in_container(), take_from_container(),
+	move_before_sibling(), _get_surrogate_id_chain(),
+	[|_]find_node_by_surrogate_id[|*](), find_child_node_by_surrogate_id();
+	added 'SRT_N_PI_CONT_NONEX_PP_NREF' to en.pm for put_in_container().
+
+	* Updated _assert_in_node_deferrable_constraints() in accordance with the 
+	%NODE_TYPES 'si_atnm' change.
+
+	* Corrected a mis-feature in _build_node_is_child_or_not() that affected
+	Node.build_child_node() in regards to its handling of any 'pp' elements
+	given in its ATTRS argument; the new version ignores said 'pp' element,
+	while the old version would have set the 'pp' Node to be the newly
+	constructed Node's parent, rather than the invocant Node.
+
+	* There were other minor Routine.pm code and documentation updates.
+
+	* To illustrate the performance improvements that were made, I have included
+	benchmarks here that show how much time is used by 1000 iterations of the
+	test suite.  The tests are in 3 groups, each corresponding to one of:
+	t_SRT_Verbose, t_SRT_Terse, t_SRT_Abstract.  'MakeAndBreak' builds a new
+	Container full of Nodes and then destroys it; it does not invoke the
+	deferrable tests. 'AssDefCon' takes a single identical pre-stuffed Container
+	and invokes the global deferrable tests (includes a hack to disable the
+	pre-existing module feature preventing duplicate assertion test runs).  Both
+	'ConvertToXML' take an identical Container and dump it to XML; the 'SID' 
+	version outputs Node-ref attributes as surrogate-ids; 'NID' uses Node Ids.
+
+	Results for SQL-Routine-0.54:
+
+		Benchmark: timing 1000 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
+		V_MakeAndBreak: 36 wallclock secs (35.49 usr +  0.00 sys = 35.49 CPU) @ 28.18/s (n=1000)
+		V_AssDefCon: 32 wallclock secs (31.89 usr +  0.00 sys = 31.89 CPU) @ 31.36/s (n=1000)
+		V_ConvertToXML_NID: 19 wallclock secs (18.96 usr +  0.01 sys = 18.97 CPU) @ 52.71/s (n=1000)
+		V_ConvertToXML_SID: 39 wallclock secs (39.49 usr +  0.01 sys = 39.50 CPU) @ 25.32/s (n=1000)
+		T_MakeAndBreak: 116 wallclock secs (115.14 usr +  0.01 sys = 115.15 CPU) @  8.68/s (n=1000)
+		T_AssDefCon: 61 wallclock secs (60.94 usr +  0.00 sys = 60.94 CPU) @ 16.41/s (n=1000)
+		T_ConvertToXML_NID: 39 wallclock secs (38.43 usr +  0.22 sys = 38.65 CPU) @ 25.87/s (n=1000)
+		T_ConvertToXML_SID: 89 wallclock secs (88.83 usr +  0.43 sys = 89.26 CPU) @ 11.20/s (n=1000)
+		A_MakeAndBreak: 253 wallclock secs (252.60 usr +  0.01 sys = 252.61 CPU) @  3.96/s (n=1000)
+		A_AssDefCon: 60 wallclock secs (60.18 usr +  0.00 sys = 60.18 CPU) @ 16.62/s (n=1000)
+		A_ConvertToXML_NID: 37 wallclock secs (36.98 usr +  0.24 sys = 37.22 CPU) @ 26.87/s (n=1000)
+		A_ConvertToXML_SID: 87 wallclock secs (87.25 usr +  0.26 sys = 87.51 CPU) @ 11.43/s (n=1000)
+
+	Results for SQL-Routine-0.55:
+
+		Benchmark: timing 1000 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
+		V_MakeAndBreak: 33 wallclock secs (32.73 usr +  0.00 sys = 32.73 CPU) @ 30.55/s (n=1000)
+		V_AssDefCon: 19 wallclock secs (18.92 usr +  0.00 sys = 18.92 CPU) @ 52.85/s (n=1000)
+		V_ConvertToXML_NID: 12 wallclock secs (12.52 usr +  0.00 sys = 12.52 CPU) @ 79.87/s (n=1000)
+		V_ConvertToXML_SID: 22 wallclock secs (21.86 usr +  0.00 sys = 21.86 CPU) @ 45.75/s (n=1000)
+		T_MakeAndBreak: 86 wallclock secs (86.27 usr +  0.01 sys = 86.28 CPU) @ 11.59/s (n=1000)
+		T_AssDefCon: 34 wallclock secs (33.46 usr +  0.00 sys = 33.46 CPU) @ 29.89/s (n=1000)
+		T_ConvertToXML_NID: 25 wallclock secs (24.66 usr +  0.22 sys = 24.88 CPU) @ 40.19/s (n=1000)
+		T_ConvertToXML_SID: 46 wallclock secs (46.37 usr +  0.37 sys = 46.74 CPU) @ 21.39/s (n=1000)
+		A_MakeAndBreak: 132 wallclock secs (132.61 usr +  0.01 sys = 132.62 CPU) @  7.54/s (n=1000)
+		A_AssDefCon: 33 wallclock secs (32.89 usr +  0.01 sys = 32.90 CPU) @ 30.40/s (n=1000)
+		A_ConvertToXML_NID: 23 wallclock secs (23.32 usr +  0.17 sys = 23.49 CPU) @ 42.57/s (n=1000)
+		A_ConvertToXML_SID: 46 wallclock secs (44.81 usr +  0.31 sys = 45.12 CPU) @ 22.16/s (n=1000)
+
+	As you can see, the newer release is up to twice as fast as the previous
+	one.  Moreover, several previous releases also had performance enhancements,
+	but they weren't measured, so the degree of improvement is unknown.
+
 2005-02-15   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.54.

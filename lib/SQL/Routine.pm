@@ -3,7 +3,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.54';
+our $VERSION = '0.55';
 
 use Locale::KeyedText '1.01';
 
@@ -123,6 +123,12 @@ my $NPROP_NODE_TYPE   = 'node_type'; # str (enum) - what type of Node this is, c
 my $NPROP_NODE_ID     = 'node_id'; # uint - unique identifier attribute for this node within container+type
 	# Node id must be set when/before Node is put in a container; may lack one when not in container.
 	# C version of this will be an unsigned integer.
+	# This property corresponds to a Node attribute named 'id'.
+my $NPROP_PP_NREF = 'pp_nref'; # Node - special Node attr which points to primary-parent Node (or id reps other Node)
+	# C version of this will be either an array or a single struct, to handle pointer vs uint
+	# Value can only be actual reference when Node is in a Container, and pointed to must be in same
+	# This property is analagous to a non-existing AT_NREFS element whose name is "pp".
+	# When converting to XML, this "pp" attribute won't become an XML attr (redundant)
 my $NPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of Node which are non-enum, non-id literal values
 	# C version of this will be an array (pointer) of Literal structs.
 	# We already know what all the attributes can be for each node type, so the size of the array 
@@ -134,14 +140,17 @@ my $NPROP_AT_ENUMS    = 'at_enums'; # hash (enum,enum) - attrs of Node which are
 my $NPROP_AT_NREFS    = 'at_nrefs'; # hash (enum,Node) - attrs of Node which point to other Nodes (or ids rep other Nodes)
 	# C version of this will be either multiple arrays or a single array of structs, to handle pointer vs uint
 	# Hash elements can only be actual references when Node is in a Container, and pointed to must be in same
-	# The nref named "pp" is special; it says what the current Node's primary parent Node is
-	# When converting to XML, the "pp" attribute won't become an XML attr (redundant)
 my $NPROP_CONTAINER   = 'container'; # ref to Container this Node lives in
 	# C version of this would be a pointer to a Container struct
-my $NPROP_CHILD_NODES = 'child_nodes'; # array - list of refs to other Nodes having actual refs to this one
+my $NPROP_PRIM_CHILD_NREFS = 'prim_child_nrefs'; # array - list of refs to other Nodes having actual refs to this one
+	# We use this to reciprocate actual refs from the PP_NREF property of other Nodes to us.
+	# When converting to XML, only child Nodes linked through PRIM_CHILD_NREFS are rendered.
+	# Every Node in this list is guaranteed to appear in this list exactly once.
+my $NPROP_LINK_CHILD_NREFS = 'link_child_nrefs'; # array - list of refs to other Nodes having actual refs to this one
 	# We use this to reciprocate actual refs from the AT_NREFS property of other Nodes to us.
-	# When converting to XML, we only render once, beneath the Node which we refer to in our "pp" attribute.
+	# When converting to XML, only child Nodes linked through PRIM_CHILD_NREFS are rendered.
 	# C version will be a double-linked list with each element representing a Node struct.
+	# Each Node in this list may possibly appear in this list more than once.
 	# It is important to ensure that if a Node links to us multiple times (via multiple AT_NREFS) 
 	# then we include the other Node in our child list just as many times; eg: 2 here means 2 back; 
 	# however, when rendering to XML, we only render a Node once, and not as many times as linked; 
@@ -259,19 +268,22 @@ my %ENUMERATED_TYPES = (
 
 # Names of hash keys in %NODE_TYPES elements:
 my $TPI_AT_SEQUENCE = 'at_sequence'; # Array of all 'attribute' names in canon order
+my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
+my $TPI_PP_NREF     = 'pp_nref'; # An array ref whose values are enums and each matches a single %NODE_TYPES key.
 my $TPI_AT_LITERALS = 'at_literals'; # Hash - Keys are attr names a Node can have which have literal values
 	# Values are enums and say what literal data type the attribute has, like int or bool or str
 my $TPI_AT_ENUMS    = 'at_enums'; # Hash - Keys are attr names a Node can have which are enumerated values
 	# Values are enums and match a %ENUMERATED_TYPES key
 my $TPI_AT_NREFS    = 'at_nrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
-	# Values are enums and each matches a single %NODE_TYPES key.
-my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
+	# Values are array refs whose values are enums and each matches a single %NODE_TYPES key, 
+	# but an empty array matches all Node types.
 my $TPI_SI_ATNM     = 'si_atnm'; # The surrogate identifier, distinct under primary parent and always-mandatory
-	# Is an array of 3 cstr elements, one for lit|enum|nref; 1 elem is valued, other 2 are undef
+	# Is an array of 4 cstr elements, one for id|lit|enum|nref; 1 elem is valued, other 3 are undef
 	# External code can opt specify a Node by the value of this attr-name rather of its Id
-	# If set_attributes() is given a non-Hash value
+	# If set_attributes() is given a non-Hash value, it will resolve to setting either this 'SI' 
+	# attribute or the Node's 'id' attribute depending on whether it looks like an 'id' attribute.
 my $TPI_WR_ATNM     = 'wr_atnm'; # A wrapper attribute
-my $TPI_MA_ATTRS    = 'ma_attrs'; # Array of always-mandatory ('MA') attributes
+my $TPI_MA_ATNMS    = 'ma_atnms'; # Array of always-mandatory ('MA') attributes
 	# The array contains 3 elements, one each for lit, enum, nref; each inner elem is a MA boolean
 my $TPI_MUTEX_ATGPS = 'mutex_atgps'; # Array of groups of mutually exclusive attributes
 	# Each array element is an array ref with 5 elements: 1. mutex-name (cstr); 2. lit members (ary); 
@@ -346,6 +358,7 @@ my %NODE_TYPES = (
 			max_octets max_chars store_fixed char_enc trim_white uc_latin lc_latin 
 			pad_char trim_pad calendar with_zone range_min range_max 
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'num_precision' => 'uint',
@@ -369,11 +382,10 @@ my %NODE_TYPES = (
 			'char_enc' => 'char_enc_type',
 			'calendar' => 'calendar',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[qw( base_type )],[]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],['base_type'],[]],
 		$TPI_MUTEX_ATGPS => [
-			['num_size',[qw( num_precision num_octets )],[],[],0],
+			['num_size',['num_precision','num_octets'],[],[],0],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'base_type',undef,[
@@ -400,23 +412,21 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_value 
 		)],
+		$TPI_PP_NREF => ['scalar_data_type'],
 		$TPI_AT_LITERALS => {
 			'si_value' => 'misc',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['scalar_data_type'],
-		},
-		$TPI_SI_ATNM => ['si_value',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_value',undef,undef],
 	},
 	'row_data_type' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_CHILD_QUANTS => [
 			['row_data_type_field',1,undef],
 		],
@@ -425,144 +435,139 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name scalar_data_type
 		)],
+		$TPI_PP_NREF => ['row_data_type'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['row_data_type'],
 			'scalar_data_type' => ['scalar_data_type'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( scalar_data_type )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['scalar_data_type']],
 	},
 	'catalog' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name single_schema
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'single_schema' => 'bool',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'application' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name 
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'owner' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name 
 		)],
+		$TPI_PP_NREF => ['catalog'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['catalog'],
-		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'catalog_link' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name target
 		)],
+		$TPI_PP_NREF => ['catalog','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['catalog','application'],
 			'target' => ['catalog'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( target )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['target']],
 	},
 	'schema' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name owner 
 		)],
+		$TPI_PP_NREF => ['catalog'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['catalog'],
 			'owner' => ['owner'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( owner )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['owner']],
 	},
 	'role' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name
 		)],
+		$TPI_PP_NREF => ['catalog'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['catalog'],
-		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'privilege_on' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_priv_on
 		)],
+		$TPI_PP_NREF => ['role'],
 		$TPI_AT_NREFS => {
-			'pp' => ['role'],
 			'si_priv_on' => ['schema','scalar_domain','row_domain','sequence','table','view','routine'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_priv_on'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_priv_on'],
 	},
 	'privilege_for' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_priv_type
 		)],
+		$TPI_PP_NREF => ['privilege_on'],
 		$TPI_AT_ENUMS => {
 			'si_priv_type' => 'privilege_type',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['privilege_on'],
-		},
-		$TPI_SI_ATNM => [undef,'si_priv_type',undef],
+		$TPI_SI_ATNM => [undef,undef,'si_priv_type',undef],
 	},
 	'scalar_domain' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name data_type
 		)],
+		$TPI_PP_NREF => ['schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['schema','application'],
 			'data_type' => ['scalar_data_type'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( data_type )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['data_type']],
 	},
 	'row_domain' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name data_type
 		)],
+		$TPI_PP_NREF => ['schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['schema','application'],
 			'data_type' => ['row_data_type'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'data_type',
-		$TPI_MA_ATTRS => [[],[],[qw( data_type )]],
+		$TPI_MA_ATNMS => [[],[],['data_type']],
 	},
 	'sequence' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name increment min_val max_val start_val cycle order 
 		)],
+		$TPI_PP_NREF => ['schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'increment' => 'sint',
@@ -572,43 +577,40 @@ my %NODE_TYPES = (
 			'cycle' => 'bool',
 			'order' => 'bool',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['schema','application'],
-		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'table' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name row_data_type
 		)],
+		$TPI_PP_NREF => ['schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['schema','application'],
 			'row_data_type' => ['row_data_type','row_domain'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
-		$TPI_MA_ATTRS => [[],[],[qw( row_data_type )]],
+		$TPI_MA_ATNMS => [[],[],['row_data_type']],
 	},
 	'table_field' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_row_field mandatory default_val auto_inc default_seq 
 		)],
+		$TPI_PP_NREF => ['table'],
 		$TPI_AT_LITERALS => {
 			'mandatory' => 'bool',
 			'default_val' => 'misc',
 			'auto_inc' => 'bool',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['table'],
 			'si_row_field' => ['row_data_type_field'],
 			'default_seq' => ['sequence'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_row_field'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_row_field'],
 		$TPI_MUTEX_ATGPS => [
-			['default',[qw( default_val )],[],[qw( default_seq )],0],
+			['default',['default_val'],[],['default_seq'],0],
 		],
 		$TPI_ANCES_ATCORS => {
 			'si_row_field' => [$S,$P],
@@ -618,6 +620,7 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name index_type f_table 
 		)],
+		$TPI_PP_NREF => ['table'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
@@ -625,11 +628,10 @@ my %NODE_TYPES = (
 			'index_type' => 'table_index_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['table'],
 			'f_table' => ['table'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[qw( index_type )],[]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],['index_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'index_type',undef,[
 				[[],[],['f_table'],['FOREIGN','UFOREIGN'],1],
@@ -648,12 +650,12 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_field f_field 
 		)],
+		$TPI_PP_NREF => ['table_index'],
 		$TPI_AT_NREFS => {
-			'pp' => ['table_index'],
 			'si_field' => ['row_data_type_field'],
 			'f_field' => ['row_data_type_field'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_field'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_field'],
 		$TPI_ANCES_ATCORS => {
 			'si_field' => [$S,$P,$P],
 			'f_field' => [$S,$P,'f_table'],
@@ -664,6 +666,7 @@ my %NODE_TYPES = (
 			id pp si_name view_type row_data_type recursive compound_op 
 			distinct_rows may_write set_p_routine_item ins_p_routine_item
 		)],
+		$TPI_PP_NREF => ['view','routine','schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'recursive' => 'bool',
@@ -675,14 +678,13 @@ my %NODE_TYPES = (
 			'compound_op' => 'compound_operator',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['view','routine','schema','application'],
 			'row_data_type' => ['row_data_type','row_domain'],
 			'set_p_routine_item' => ['routine_arg','routine_var'],
 			'ins_p_routine_item' => ['routine_arg','routine_var'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
-		$TPI_MA_ATTRS => [[],[qw( view_type )],[]],
+		$TPI_MA_ATNMS => [[],['view_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'view_type',undef,[
 				[[],[],['row_data_type'],['ALIAS','JOINED','GROUPED','COMPOUND','INSERT'],1],
@@ -716,6 +718,7 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name cont_type scalar_data_type row_data_type 
 		)],
+		$TPI_PP_NREF => ['view'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
@@ -723,15 +726,14 @@ my %NODE_TYPES = (
 			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['view'],
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'row_data_type' => ['row_data_type','row_domain'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_MUTEX_ATGPS => [
-			['data_type',[],[],[qw( scalar_data_type row_data_type )],1],
+			['data_type',[],[],['scalar_data_type','row_data_type'],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
@@ -744,36 +746,36 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name match catalog_link may_write
 		)],
+		$TPI_PP_NREF => ['view'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'may_write' => 'bool',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['view'],
 			'match' => ['table','view','view_arg','routine_arg','routine_var'],
 			'catalog_link' => ['catalog_link'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 	},
 	'view_src_arg' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_match_view_arg
 		)],
+		$TPI_PP_NREF => ['view_src'],
 		$TPI_AT_NREFS => {
-			'pp' => ['view_src'],
 			'si_match_view_arg' => ['view_arg'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_match_view_arg'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_match_view_arg'],
 	},
 	'view_src_field' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_match_field
 		)],
+		$TPI_PP_NREF => ['view_src'],
 		$TPI_AT_NREFS => {
-			'pp' => ['view_src'],
 			'si_match_field' => ['row_data_type_field'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_match_field'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_match_field'],
 		$TPI_ANCES_ATCORS => {
 			'si_match_field' => [$S,$P,'match'],
 		},
@@ -782,12 +784,12 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_row_field src_field 
 		)],
+		$TPI_PP_NREF => ['view'],
 		$TPI_AT_NREFS => {
-			'pp' => ['view'],
 			'si_row_field' => ['row_data_type_field'],
 			'src_field' => ['view_src_field'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_row_field'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_row_field'],
 		$TPI_ANCES_ATCORS => {
 			'si_row_field' => [$S,$P],
 			'src_field' => [$S,$P,$C],
@@ -797,15 +799,16 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp lhs_src rhs_src join_op 
 		)],
+		$TPI_PP_NREF => ['view'],
 		$TPI_AT_ENUMS => {
 			'join_op' => 'join_operator',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['view'],
 			'lhs_src' => ['view_src'],
 			'rhs_src' => ['view_src'],
 		},
-		$TPI_MA_ATTRS => [[],[qw( join_op )],[qw( lhs_src rhs_src )]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],['join_op'],['lhs_src','rhs_src']],
 		$TPI_CHILD_QUANTS => [
 			['view_join_field',1,undef],
 		],
@@ -822,12 +825,13 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp lhs_src_field rhs_src_field 
 		)],
+		$TPI_PP_NREF => ['view_join'],
 		$TPI_AT_NREFS => {
-			'pp' => ['view_join'],
 			'lhs_src_field' => ['view_src_field'],
 			'rhs_src_field' => ['view_src_field'],
 		},
-		$TPI_MA_ATTRS => [[],[],[qw( lhs_src_field rhs_src_field )]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],[],['lhs_src_field','rhs_src_field']],
 		$TPI_ANCES_ATCORS => {
 			'lhs_src_field' => [$S,$P,'lhs_src'],
 			'rhs_src_field' => [$S,$P,'rhs_src'],
@@ -837,11 +841,12 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp operand
 		)],
+		$TPI_PP_NREF => ['view'],
 		$TPI_AT_NREFS => {
-			'pp' => ['view'],
 			'operand' => ['view_src'],
 		},
-		$TPI_MA_ATTRS => [[],[],[qw( operand )]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],[],['operand']],
 	},
 	'view_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -851,6 +856,7 @@ my %NODE_TYPES = (
 			valf_p_view_arg valf_p_routine_item valf_seq_next 
 			valf_call_view valf_call_sroutine valf_call_uroutine catalog_link
 		)],
+		$TPI_PP_NREF => ['view_expr','view'],
 		$TPI_AT_LITERALS => {
 			'valf_literal' => 'misc',
 		},
@@ -862,7 +868,6 @@ my %NODE_TYPES = (
 			'valf_call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['view_expr','view'],
 			'set_result_field' => ['row_data_type_field'],
 			'set_src_field' => ['view_src_field'],
 			'call_src_arg' => ['view_src_arg'],
@@ -879,9 +884,10 @@ my %NODE_TYPES = (
 			'valf_call_uroutine' => ['routine'],
 			'catalog_link' => ['catalog_link'],
 		},
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_MUTEX_ATGPS => [
-		#	['expr_root_view_part',[],[qw( view_part )],[qw( pp_expr )],1],
+		#	['expr_root_view_part',[],['view_part'],['pp_expr'],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'view_part',undef,[
@@ -926,6 +932,7 @@ my %NODE_TYPES = (
 			return_scalar_data_type return_row_data_type 
 			trigger_on trigger_event trigger_per_stmt
 		)],
+		$TPI_PP_NREF => ['routine','schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'trigger_per_stmt' => 'bool',
@@ -936,13 +943,12 @@ my %NODE_TYPES = (
 			'trigger_event' => 'basic_trigger_event',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine','schema','application'],
 			'return_scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'return_row_data_type' => ['row_data_type','row_domain'],
 			'trigger_on' => ['table','view'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[qw( routine_type )],[]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],['routine_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'routine_type',undef,[
 				[[],['return_cont_type'],[],['FUNCTION'],1],
@@ -964,6 +970,7 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name cont_type conn_link curs_view 
 		)],
+		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
@@ -971,14 +978,13 @@ my %NODE_TYPES = (
 			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine'],
 			'conn_link' => ['catalog_link'],
 			'curs_view' => ['view'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_MUTEX_ATGPS => [
-			['context',[],[],[qw( conn_link curs_view )],1],
+			['context',[],[],['conn_link','curs_view'],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
@@ -992,6 +998,7 @@ my %NODE_TYPES = (
 			id pp si_name cont_type scalar_data_type row_data_type
 			conn_link curs_view 
 		)],
+		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
@@ -999,15 +1006,14 @@ my %NODE_TYPES = (
 			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine'],
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'row_data_type' => ['row_data_type','row_domain'],
 			'conn_link' => ['catalog_link'],
 			'curs_view' => ['view'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
 				[[],[],['scalar_data_type'],['SCALAR','SC_ARY'],1],
@@ -1022,6 +1028,7 @@ my %NODE_TYPES = (
 			id pp si_name cont_type scalar_data_type row_data_type
 			init_lit_val is_constant conn_link curs_view curs_for_update 
 		)],
+		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'init_lit_val' => 'misc',
@@ -1032,15 +1039,14 @@ my %NODE_TYPES = (
 			'cont_type' => 'container_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine'],
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'row_data_type' => ['row_data_type','row_domain'],
 			'conn_link' => ['catalog_link'],
 			'curs_view' => ['view'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
 				[[],[],['scalar_data_type'],['SCALAR','SC_ARY'],1],
@@ -1057,18 +1063,19 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp block_routine assign_dest call_sroutine call_uroutine catalog_link 
 		)],
+		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_ENUMS => {
 			'call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine'],
 			'block_routine' => ['routine'],
 			'assign_dest' => ['routine_context','routine_arg','routine_var'],
 			'call_uroutine' => ['routine'],
 			'catalog_link' => ['catalog_link'],
 		},
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
 		$TPI_MUTEX_ATGPS => [
-			['stmt_type',[],[qw( call_sroutine )],[qw( block_routine assign_dest call_uroutine )],1],
+			['stmt_type',[],['call_sroutine'],['block_routine','assign_dest','call_uroutine'],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,undef,'call_uroutine',[
@@ -1092,6 +1099,7 @@ my %NODE_TYPES = (
 			cont_type valf_literal scalar_data_type valf_p_routine_item valf_seq_next 
 			valf_call_sroutine valf_call_uroutine catalog_link act_on
 		)],
+		$TPI_PP_NREF => ['routine_expr','routine_stmt'],
 		$TPI_AT_LITERALS => {
 			'valf_literal' => 'misc',
 		},
@@ -1102,7 +1110,6 @@ my %NODE_TYPES = (
 			'valf_call_sroutine' => 'standard_routine',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['routine_expr','routine_stmt'],
 			'call_uroutine_cxt' => ['routine_context'],
 			'call_uroutine_arg' => ['routine_arg'],
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
@@ -1113,7 +1120,8 @@ my %NODE_TYPES = (
 			'act_on' => ['catalog_link','schema','scalar_domain','row_domain',
 				'sequence','table','view','routine','user'],
 		},
-		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
 				[[],[],['act_on'],['SRT_NODE'],1],
@@ -1144,6 +1152,7 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name product_code is_memory_based is_file_based is_local_proc is_network_svc
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'product_code' => 'cstr',
@@ -1152,28 +1161,30 @@ my %NODE_TYPES = (
 			'is_local_proc' => 'bool',
 			'is_network_svc' => 'bool',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
-		$TPI_MA_ATTRS => [[qw( si_name product_code )],[],[]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [['si_name','product_code'],[],[]],
 		$TPI_MUTEX_ATGPS => [
-			['type',[qw( is_memory_based is_file_based is_local_proc is_network_svc )],[],[],1],
+			['type',['is_memory_based','is_file_based','is_local_proc','is_network_svc'],[],[],1],
 		],
 	},
 	'data_link_product' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name product_code is_proxy
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'product_code' => 'cstr',
 			'is_proxy' => 'bool',
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
-		$TPI_MA_ATTRS => [[qw( si_name product_code )],[],[]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [['si_name','product_code'],[],[]],
 	},
 	'catalog_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name blueprint product file_path server_ip server_domain server_port
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'file_path' => 'cstr',
@@ -1185,9 +1196,8 @@ my %NODE_TYPES = (
 			'blueprint' => ['catalog'],
 			'product' => ['data_storage_product'],
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( blueprint product )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['blueprint','product']],
 		$TPI_MUDI_ATGPS => [
 			['ak_cat_link_inst',[
 				['catalog_link_instance',['blueprint'],[],[]],
@@ -1198,29 +1208,27 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_key value 
 		)],
+		$TPI_PP_NREF => ['catalog_instance'],
 		$TPI_AT_LITERALS => {
 			'si_key' => 'cstr',
 			'value' => 'misc',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['catalog_instance'],
-		},
-		$TPI_SI_ATNM => ['si_key',undef,undef],
-		$TPI_MA_ATTRS => [[qw( value )],[],[]],
+		$TPI_SI_ATNM => [undef,'si_key',undef,undef],
+		$TPI_MA_ATNMS => [['value'],[],[]],
 	},
 	'application_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name blueprint 
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
 			'blueprint' => ['application'],
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[],[qw( blueprint )]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],[],['blueprint']],
 		$TPI_MUDI_ATGPS => [
 			['ak_cat_link_inst',[
 				['catalog_link_instance',['blueprint'],[],[]],
@@ -1231,21 +1239,22 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp blueprint product target local_dsn login_name login_pass
 		)],
+		$TPI_PP_NREF => ['catalog_link_instance','catalog_instance','application_instance'],
 		$TPI_AT_LITERALS => {
 			'local_dsn' => 'cstr',
 			'login_name' => 'cstr',
 			'login_pass' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['catalog_link_instance','catalog_instance','application_instance'],
 			'blueprint' => ['catalog_link'],
 			'product' => ['data_link_product'],
 			'target' => ['catalog_instance'],
 		},
-		$TPI_MA_ATTRS => [[],[],[qw( product )]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],[],['product']],
 		$TPI_MUTEX_ATGPS => [
-			['link_root_unrealized',[],[],[qw( pp_link blueprint )],1],
-			['link_root_target',[],[],[qw( pp_link target )],1],
+			['link_root_unrealized',[],[],['pp_link','blueprint'],1],
+			['link_root_target',[],[],['pp_link','target'],1],
 		],
 		$TPI_CHILD_QUANTS => [
 			['catalog_link_instance',0,1],
@@ -1255,20 +1264,19 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_key value 
 		)],
+		$TPI_PP_NREF => ['catalog_link_instance'],
 		$TPI_AT_LITERALS => {
 			'si_key' => 'cstr',
 			'value' => 'misc',
 		},
-		$TPI_AT_NREFS => {
-			'pp' => ['catalog_link_instance'],
-		},
-		$TPI_SI_ATNM => ['si_key',undef,undef],
-		$TPI_MA_ATTRS => [[qw( value )],[],[]],
+		$TPI_SI_ATNM => [undef,'si_key',undef,undef],
+		$TPI_MA_ATNMS => [['value'],[],[]],
 	},
 	'user' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name user_type match_owner password default_schema 
 		)],
+		$TPI_PP_NREF => ['catalog_instance'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'password' => 'cstr',
@@ -1277,12 +1285,11 @@ my %NODE_TYPES = (
 			'user_type' => 'user_type',
 		},
 		$TPI_AT_NREFS => {
-			'pp' => ['catalog_instance'],
 			'match_owner' => ['owner'],
 			'default_schema' => ['schema'],
 		},
-		$TPI_SI_ATNM => ['si_name',undef,undef],
-		$TPI_MA_ATTRS => [[],[qw( user_type )],[]],
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+		$TPI_MA_ATNMS => [[],['user_type'],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'user_type',undef,[
 				[[],[],['match_owner'],['SCHEMA_OWNER'],1],
@@ -1294,16 +1301,17 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_role 
 		)],
+		$TPI_PP_NREF => ['user'],
 		$TPI_AT_NREFS => {
-			'pp' => ['user'],
 			'si_role' => ['role'],
 		},
-		$TPI_SI_ATNM => [undef,undef,'si_role'],
+		$TPI_SI_ATNM => [undef,undef,undef,'si_role'],
 	},
 	'sql_fragment' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id attach_to product is_inside is_before is_after fragment
 		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_CIRC_PSND,
 		$TPI_AT_LITERALS => {
 			'is_inside' => 'bool',
 			'is_before' => 'bool',
@@ -1314,45 +1322,42 @@ my %NODE_TYPES = (
 			'attach_to' => [],
 			'product' => ['data_storage_product'],
 		},
-		$TPI_PP_PSEUDONODE => $SQLRT_L2_CIRC_PSND,
-		$TPI_MA_ATTRS => [[],[qw( attach_to )],[]],
+		$TPI_SI_ATNM => ['id',undef,undef,undef],
+		$TPI_MA_ATNMS => [[],['attach_to'],[]],
 		$TPI_MUTEX_ATGPS => [
-			['is_where',[qw( is_inside is_before is_after )],[],[],0],
+			['is_where',['is_inside','is_before','is_after'],[],[],0],
 		],
 	},
 );
-my $ATTR_ID = 'id'; # attribute name to use for the node id
-my $ATTR_PP = 'pp'; # attribute name to use for the node's primary parent node-ref
 
 # This structure is used as a speed-efficiency measure.  It creates a reverse-index of sorts 
 # out of each SI_ATNM that resembles and is used as a simpler version of a MUDI_ATGP.
 # It makes the distinct constraint property of surrogate node ids faster to enforce.
+# This structure's main hash has a key for each Node type or pseudo-Node type that can have primary-child Nodes; 
+# the value for each main hash key is a hash whose keys are the names of Node types that can be primary-children 
+# of the aforementioned primary-parent types, and whose values are the SI attribute name of the primary-child Node types.
+# Any Node types that can not have primary-child Nodes do not appear in the main structure hash.
 my %TYPE_CHILD_SI_ATNMS = ();
 while( my ($_node_type, $_type_info) = each %NODE_TYPES ) {
-	my $si_atnm = $_type_info->{$TPI_SI_ATNM} || $ATTR_ID;
+	my $si_atnm = $_type_info->{$TPI_SI_ATNM};
 	if( my $pp_psnd = $_type_info->{$TPI_PP_PSEUDONODE} ) {
 		$TYPE_CHILD_SI_ATNMS{$pp_psnd} ||= {};
 		$TYPE_CHILD_SI_ATNMS{$pp_psnd}->{$_node_type} = $si_atnm;
 	} else { # no pseudonode, so must be PP attrs
-		foreach my $pp_node_type (@{$_type_info->{$TPI_AT_NREFS}->{$ATTR_PP}}) {
+		foreach my $pp_node_type (@{$_type_info->{$TPI_PP_NREF}}) {
 			$TYPE_CHILD_SI_ATNMS{$pp_node_type} ||= {};
 			$TYPE_CHILD_SI_ATNMS{$pp_node_type}->{$_node_type} = $si_atnm;
 		}
 	}
 }
 
-# This is an extension to let you use one set of functions for all Node 
-# attribute major types, rather than separate literal/enumerated/node.
-my $NAMT_ID      = 'ID'; # node id attribute
-my $NAMT_LITERAL = 'LITERAL'; # literal attribute
-my $NAMT_ENUM    = 'ENUM'; # enumerated attribute
-my $NAMT_NODE    = 'NODE'; # node attribute
-
 # These special hash keys are used by the get_all_properties[/*]() methods, 
 # and/or by the build*node*() functions and methods for RAD:
 my $NAMED_NODE_TYPE = 'NODE_TYPE'; # str - what type of Node we are
-my $NAMED_ATTRS     = 'ATTRS'; # hash - all attributes, including 'id' and primary-parent-id
-my $NAMED_CHILDREN  = 'CHILDREN'; # array - list of child Node descriptors
+my $NAMED_ATTRS     = 'ATTRS'; # hash - all attributes, including 'id' (and 'pp' if appropriate)
+my $NAMED_CHILDREN  = 'CHILDREN'; # array - list of primary-child Node descriptors
+my $ATTR_ID         = 'id'; # attribute name to use for the node id
+my $ATTR_PP         = 'pp'; # attribute name to use for the node's primary parent nref
 
 ######################################################################
 
@@ -1373,6 +1378,27 @@ sub valid_node_types {
 	my ($self, $type) = @_;
 	$type and return( exists( $NODE_TYPES{$type} ) );
 	return( {map { ($_ => 1) } keys %NODE_TYPES} );
+}
+
+sub node_types_with_pseudonode_parents {
+	my ($self, $type) = @_;
+	if( $type ) {
+		exists( $NODE_TYPES{$type} ) or return( undef );
+		return( $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE} );
+	}
+	return( {map { ($_ => $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE}) } 
+		grep { $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES} );
+}
+
+sub node_types_with_primary_parent_attributes {
+	my ($self, $type) = @_;
+	if( $type ) {
+		exists( $NODE_TYPES{$type} ) or return( undef );
+		exists( $NODE_TYPES{$type}->{$TPI_PP_NREF} ) or return( undef );
+		return( [@{$NODE_TYPES{$type}->{$TPI_PP_NREF}}] );
+	}
+	return( {map { ($_ => [@{$NODE_TYPES{$_}->{$TPI_PP_NREF}}]) } 
+		grep { $NODE_TYPES{$_}->{$TPI_PP_NREF} } keys %NODE_TYPES} );
 }
 
 sub valid_node_type_literal_attributes {
@@ -1400,51 +1426,11 @@ sub valid_node_type_node_ref_attributes {
 	return( {map { ($_ => [@{$rh->{$_}}]) } keys %{$rh}} );
 }
 
-sub major_type_of_node_type_attribute {
-	my ($self, $type, $attr) = @_;
-	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
-	defined( $attr ) or return( undef );
-	$attr eq $ATTR_ID and return( $NAMT_ID );
-	if( $self->valid_node_type_literal_attributes( $type, $attr ) ) {
-		return( $NAMT_LITERAL );
-	}
-	if( $self->valid_node_type_enumerated_attributes( $type, $attr ) ) {
-		return( $NAMT_ENUM );
-	}
-	if( $self->valid_node_type_node_ref_attributes( $type, $attr ) ) {
-		return( $NAMT_NODE );
-	}
-	return( undef );
-}
-
-sub node_types_with_pseudonode_parents {
+sub valid_node_type_surrogate_id_attributes {
 	my ($self, $type) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
-	$type and return( $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE} );
-	return( {map { ($_ => $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE}) } 
-		grep { $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES} );
-}
-
-sub node_types_with_primary_parent_attributes {
-	my ($self, $type) = @_;
-	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
-	if( $type ) {
-		exists( $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE} ) and return( undef );
-		return( [@{$NODE_TYPES{$type}->{$TPI_AT_NREFS}->{$ATTR_PP}}] );
-	}
-	return( {map { ($_ => [@{$NODE_TYPES{$_}->{$TPI_AT_NREFS}->{$ATTR_PP}}]) } 
-		grep { !$NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES} );
-}
-
-sub node_types_with_surrogate_id_attributes {
-	my ($self, $type) = @_;
-	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
-	if( $type ) {
-		return( (grep { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM} || [$ATTR_ID]})[0] );
-	}
-	return( {map { ($_ => 
-			(grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM} || [$ATTR_ID]})[0]
-		) } keys %NODE_TYPES} );
+	$type and return( (grep { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM}})[0] );
+	return( {map { ($_ => (grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}})[0]) } keys %NODE_TYPES} );
 }
 
 ######################################################################
@@ -1521,15 +1507,17 @@ sub _throw_error_message {
 	# Throws an exception consisting of an object.  A Container property is not 
 	# used to store object so things work properly in multi-threaded environment; 
 	# an exception is only supposed to affect the thread that calls it.
+	ref($args) eq 'HASH' or $args = {};
+	foreach my $arg_key (keys %{$args}) {
+		if( ref($args->{$arg_key}) eq 'ARRAY' ) {
+			$args->{$arg_key} = 'PERL_ARRAY:['.join(',',@{$args->{$arg_key}}).']';
+		}
+	}
 	if( ref($self) and UNIVERSAL::isa( $self, 'SQL::Routine::Node' ) ) {
-		ref($args) eq 'HASH' or $args = {};
 		$args->{'NTYPE'} = $self->{$NPROP_NODE_TYPE};
 		$args->{'NID'} = $self->{$NPROP_NODE_ID};
 		if( $self->{$NPROP_CONTAINER} ) {
 			$args->{'SIDCH'} = $self->_get_surrogate_id_chain_as_str();
-		}
-		if( ref($args->{'ARG'}) eq 'ARRAY' ) {
-			$args->{'ARG'} = 'PERL_ARRAY:['.join(',',@{$args->{'ARG'}}).']';
 		}
 	}
 	die Locale::KeyedText->new_message( $error_code, $args );
@@ -1566,7 +1554,7 @@ sub _build_node_normalize_attrs {
 	} elsif( defined($attrs) ) {
 		if( $attrs =~ /\D/ or $attrs < 1 or int($attrs) ne $attrs ) { # does not look like node id
 			# The regexp above should suppress warnings about non-numerical arguments to '<'
-			$attrs = { $node->expected_surrogate_id_attribute_name() => $attrs }; # dies if no SI
+			$attrs = { (grep { $_ } @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}})[0] => $attrs };
 		} else { # looks like a node id
 			$attrs = { $ATTR_ID => $attrs };
 		}
@@ -1736,18 +1724,8 @@ sub assert_deferrable_constraints {
 sub _assert_deferrable_constraints {
 	my ($container, $node) = @_;
 	$node->assert_deferrable_constraints();
-	my %children_were_output = ();
-	foreach my $child_node (@{$node->{$NPROP_CHILD_NODES}}) {
-		if( my $child_main_parent = $child_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
-			if( $child_main_parent eq $node ) {
-				# Only nav to child if we are its primary parent, not simply any parent.
-				unless( $children_were_output{$child_node} ) {
-					# Only nav to child once; a child may link to primary parent multiple times.
-					$container->_assert_deferrable_constraints( $child_node );
-					$children_were_output{$child_node} = 1;
-				}
-			}
-		}
+	foreach my $child_node (@{$node->{$NPROP_PRIM_CHILD_NREFS}}) {
+		$container->_assert_deferrable_constraints( $child_node );
 	}
 }
 
@@ -1798,12 +1776,11 @@ sub _build_node_is_child_or_not {
 		$node->set_node_id( $node_id );
 	}
 	$node->put_in_container( $container );
+	my $pp_in_attrs = delete( $attrs->{$ATTR_PP} ); # ensure won't override any $pp_node
 	if( $pp_node ) {
 		$pp_node->add_child_node( $node );
 	} else {
-		if( my $attr_val = delete( $attrs->{$ATTR_PP} ) ) {
-			$node->set_node_ref_attribute( $ATTR_PP, $attr_val );
-		}
+		$pp_in_attrs and $node->set_primary_parent_attribute( $pp_in_attrs );
 	}
 	$node->set_attributes( $attrs );
 	if( $container->{$CPROP_AUTO_ASS_DEF_CON} ) {
@@ -1893,11 +1870,13 @@ sub new {
 
 	$node->{$NPROP_NODE_TYPE} = $node_type;
 	$node->{$NPROP_NODE_ID} = undef;
+	$node->{$NPROP_PP_NREF} = undef;
 	$node->{$NPROP_AT_LITERALS} = {};
 	$node->{$NPROP_AT_ENUMS} = {};
 	$node->{$NPROP_AT_NREFS} = {};
 	$node->{$NPROP_CONTAINER} = undef;
-	$node->{$NPROP_CHILD_NODES} = [];
+	$node->{$NPROP_PRIM_CHILD_NREFS} = [];
+	$node->{$NPROP_LINK_CHILD_NREFS} = [];
 
 	return( $node );
 }
@@ -1980,21 +1959,90 @@ sub set_node_id {
 
 ######################################################################
 
-sub expected_literal_attribute_type {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_EXP_LIT_AT_NO_ARGS' );
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	my $exp_lit_type = $NODE_TYPES{$node_type}->{$TPI_AT_LITERALS} && 
-		$NODE_TYPES{$node_type}->{$TPI_AT_LITERALS}->{$attr_name};
-	unless( $exp_lit_type ) {
-		$node->_throw_error_message( 'SRT_N_EXP_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
-	}
-	return( $exp_lit_type );
+sub get_primary_parent_attribute {
+	my ($node) = @_;
+	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 'SRT_N_GET_PP_AT_NO_PP_AT' );
+	return( $node->_get_primary_parent_attribute() );
 }
+
+sub _get_primary_parent_attribute {
+	my ($node) = @_;
+	return( $node->{$NPROP_PP_NREF} );
+}
+
+sub clear_primary_parent_attribute {
+	my ($node) = @_;
+	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 'SRT_N_CLEAR_PP_AT_NO_PP_AT' );
+	$node->_clear_primary_parent_attribute();
+}
+
+sub _clear_primary_parent_attribute {
+	my ($node) = @_;
+	my $pp_node = $node->{$NPROP_PP_NREF} or return( 1 ); # no-op; attr not set
+	if( ref($pp_node) eq ref($node) ) {
+		# The attribute value is a Node object, so clear its link back.
+		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	}
+	$node->{$NPROP_PP_NREF} = undef; # removes link to primary-parent, if any
+	if( $node->{$NPROP_CONTAINER} ) {
+		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
+	}
+}
+
+sub set_primary_parent_attribute {
+	my ($node, $attr_value) = @_;
+	my $exp_node_types = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or 
+		$node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_PP_AT' );
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_ARG_VAL' );
+	$node->_set_primary_parent_attribute( $exp_node_types, $attr_value );
+}
+
+sub _set_primary_parent_attribute {
+	my ($node, $exp_node_types, $attr_value) = @_;
+	$attr_value = $node->_normalize_primary_parent_or_node_ref_attribute_value( 
+		'SRT_N_SET_PP_AT', $ATTR_PP, $exp_node_types, $attr_value );
+
+	if( $node->{$NPROP_PP_NREF} and $attr_value eq $node->{$NPROP_PP_NREF} ) {
+		return( 1 ); # no-op; new attribute value same as old
+	}
+
+	if( ref($attr_value) eq ref($node) ) {
+		# Attempt is to link two Nodes in the same Container; it would be okay, except 
+		# that we still have to check for circular primary parent Node references.
+		my $pp_node = $attr_value;
+		do { # Also make sure we aren't trying to link to ourself.
+			if( $pp_node eq $node ) {
+				$node->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' );
+			}
+		} while( $pp_node = $pp_node->{$NPROP_PP_NREF} );
+		# For simplicity, we assume circular refs via Node-ref attrs other than 'pp' are impossible.
+	}
+
+	$node->_clear_primary_parent_attribute(); # clears any existing link through this attribute
+	$node->{$NPROP_PP_NREF} = $attr_value;
+	if( ref($attr_value) eq ref($node) ) {
+		# The attribute value is a Node object, so that Node should link back now.
+		push( @{$attr_value->{$NPROP_PRIM_CHILD_NREFS}}, $node );
+	}
+	if( $node->{$NPROP_CONTAINER} ) {
+		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
+	}
+}
+
+######################################################################
 
 sub get_literal_attribute {
 	my ($node, $attr_name) = @_;
-	$node->expected_literal_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_LIT_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_GET_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	return( $node->_get_literal_attribute( $attr_name ) );
+}
+
+sub _get_literal_attribute {
+	my ($node, $attr_name) = @_;
 	return( $node->{$NPROP_AT_LITERALS}->{$attr_name} );
 }
 
@@ -2004,7 +2052,15 @@ sub get_literal_attributes {
 
 sub clear_literal_attribute {
 	my ($node, $attr_name) = @_;
-	$node->expected_literal_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_LIT_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_CLEAR_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	$node->_clear_literal_attribute( $attr_name );
+}
+
+sub _clear_literal_attribute {
+	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_LITERALS}->{$attr_name} );
 	if( $node->{$NPROP_CONTAINER} ) {
 		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
@@ -2021,8 +2077,16 @@ sub clear_literal_attributes {
 
 sub set_literal_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
-	my $exp_lit_type = $node->expected_literal_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
+	$node->_set_literal_attribute( $attr_name, $exp_lit_type, $attr_value );
+}
+
+sub _set_literal_attribute {
+	my ($node, $attr_name, $exp_lit_type, $attr_value) = @_;
 
 	if( ref($attr_value) ) {
 		$node->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_IS_REF', 
@@ -2072,21 +2136,17 @@ sub set_literal_attributes {
 
 ######################################################################
 
-sub expected_enumerated_attribute_type {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_EXP_ENUM_AT_NO_ARGS' );
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	my $exp_enum_type = $NODE_TYPES{$node_type}->{$TPI_AT_ENUMS} && 
-		$NODE_TYPES{$node_type}->{$TPI_AT_ENUMS}->{$attr_name};
-	unless( $exp_enum_type ) {
-		$node->_throw_error_message( 'SRT_N_EXP_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
-	}
-	return( $exp_enum_type );
-}
-
 sub get_enumerated_attribute {
 	my ($node, $attr_name) = @_;
-	$node->expected_enumerated_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_ENUM_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_GET_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	return( $node->_get_enumerated_attribute( $attr_name ) );
+}
+
+sub _get_enumerated_attribute {
+	my ($node, $attr_name) = @_;
 	return( $node->{$NPROP_AT_ENUMS}->{$attr_name} );
 }
 
@@ -2096,7 +2156,15 @@ sub get_enumerated_attributes {
 
 sub clear_enumerated_attribute {
 	my ($node, $attr_name) = @_;
-	$node->expected_enumerated_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_ENUM_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_CLEAR_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	$node->_clear_enumerated_attribute( $attr_name );
+}
+
+sub _clear_enumerated_attribute {
+	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_ENUMS}->{$attr_name} );
 	if( $node->{$NPROP_CONTAINER} ) {
 		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
@@ -2113,8 +2181,16 @@ sub clear_enumerated_attributes {
 
 sub set_enumerated_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
-	my $exp_enum_type = $node->expected_enumerated_attribute_type( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
+	$node->_set_enumerated_attribute( $attr_name, $exp_enum_type, $attr_value );
+}
+
+sub _set_enumerated_attribute {
+	my ($node, $attr_name, $exp_enum_type, $attr_value) = @_;
 
 	unless( $ENUMERATED_TYPES{$exp_enum_type}->{$attr_value} ) {
 		$node->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_V', { 'ATNM' => $attr_name, 
@@ -2140,21 +2216,17 @@ sub set_enumerated_attributes {
 
 ######################################################################
 
-sub expected_node_ref_attribute_types {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_EXP_NREF_AT_NO_ARGS' );
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	my $exp_node_types = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS} && 
-		$NODE_TYPES{$node_type}->{$TPI_AT_NREFS}->{$attr_name};
-	unless( $exp_node_types ) {
-		$node->_throw_error_message( 'SRT_N_EXP_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
-	}
-	return( [@{$exp_node_types}] );
-}
-
 sub get_node_ref_attribute {
 	my ($node, $attr_name, $get_target_si) = @_;
-	$node->expected_node_ref_attribute_types( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_NREF_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_GET_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	return( $node->_get_node_ref_attribute( $attr_name, $get_target_si ) );
+}
+
+sub _get_node_ref_attribute {
+	my ($node, $attr_name, $get_target_si) = @_;
 	my $attr_val = $node->{$NPROP_AT_NREFS}->{$attr_name};
 	if( $get_target_si and $node->{$NPROP_CONTAINER} and defined($attr_val) ) {
 		return( $attr_val->get_surrogate_id_attribute( $get_target_si ) );
@@ -2177,8 +2249,28 @@ sub get_node_ref_attributes {
 
 sub clear_node_ref_attribute {
 	my ($node, $attr_name) = @_;
-	$node->expected_node_ref_attribute_types( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_NREF_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_CLEAR_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 	$node->_clear_node_ref_attribute( $attr_name );
+}
+
+sub _clear_node_ref_attribute {
+	my ($node, $attr_name) = @_;
+	my $attr_value = $node->{$NPROP_AT_NREFS}->{$attr_name} or return( 1 ); # no-op; attr not set
+	if( ref($attr_value) eq ref($node) ) {
+		# The attribute value is a Node object, so clear its link back.
+		my $ra_children_of_parent = $attr_value->{$NPROP_LINK_CHILD_NREFS};
+		foreach my $i (0..$#{$ra_children_of_parent}) {
+			if( $ra_children_of_parent->[$i] eq $node ) {
+				# remove first instance of $node from it's parent's child list
+				splice( @{$ra_children_of_parent}, $i, 1 );
+				last;
+			}
+		}
+	}
+	delete( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # removes link to link-parent, if any
 	if( $node->{$NPROP_CONTAINER} ) {
 		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
 	}
@@ -2194,46 +2286,57 @@ sub clear_node_ref_attributes {
 	}
 }
 
-sub _clear_node_ref_attribute {
-	my ($node, $attr_name) = @_;
-	my $attr_value = $node->{$NPROP_AT_NREFS}->{$attr_name} or return( 1 ); # no-op; attr not set
-	if( ref($attr_value) eq ref($node) ) {
-		# The attribute value is a Node object, so clear its link back.
-		my $ra_children_of_parent = $attr_value->{$NPROP_CHILD_NODES};
-		foreach my $i (0..$#{$ra_children_of_parent}) {
-			if( $ra_children_of_parent->[$i] eq $node ) {
-				# remove first instance of $node from it's parent's child list
-				splice( @{$ra_children_of_parent}, $i, 1 );
-				last;
-			}
-		}
-	}
-	delete( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # removes link to parent, if any
-}
-
 sub set_node_ref_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
-	my $exp_node_types = $node->expected_node_ref_attribute_types( $attr_name ); # dies if bad arg
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
+		$node->_throw_error_message( 'SRT_N_SET_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
+	$node->_set_node_ref_attribute( $attr_name, $exp_node_types, $attr_value );
+}
+
+sub _set_node_ref_attribute {
+	my ($node, $attr_name, $exp_node_types, $attr_value) = @_;
+	$attr_value = $node->_normalize_primary_parent_or_node_ref_attribute_value( 
+		'SRT_N_SET_NREF_AT', $attr_name, $exp_node_types, $attr_value );
+
+	if( $node->{$NPROP_AT_NREFS}->{$attr_name} and $attr_value eq $node->{$NPROP_AT_NREFS}->{$attr_name} ) {
+		return( 1 ); # no-op; new attribute value same as old
+	}
+
+	$node->_clear_node_ref_attribute( $attr_name ); # clears any existing link through this attribute
+	$node->{$NPROP_AT_NREFS}->{$attr_name} = $attr_value;
+	if( ref($attr_value) eq ref($node) ) {
+		# The attribute value is a Node object, so that Node should link back now.
+		push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
+	}
+	if( $node->{$NPROP_CONTAINER} ) {
+		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
+	}
+}
+
+sub _normalize_primary_parent_or_node_ref_attribute_value {
+	my ($node, $error_key_pfx, $attr_name, $exp_node_types, $attr_value) = @_;
 
 	if( ref($attr_value) eq ref($node) ) {
 		# We were given a Node object for a new attribute value.
 
 		unless( grep { $attr_value->{$NPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
-				'EXPNTYPE' => "@{$exp_node_types}", 'ARGNTYPE' => $attr_value->{$NPROP_NODE_TYPE} } );
+			$node->_throw_error_message( $error_key_pfx.'_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
+				'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NPROP_NODE_TYPE} } );
 		}
 
 		if( $attr_value->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER} ) {
 			unless( $attr_value->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_DIFF_CONT', { 'ATNM' => $attr_name } );
+				$node->_throw_error_message( $error_key_pfx.'_DIFF_CONT', { 'ATNM' => $attr_name } );
 			}
 			# If we get here, both Nodes are in the same Container and can link
 		} elsif( $attr_value->{$NPROP_CONTAINER} or $node->{$NPROP_CONTAINER} ) {
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_ONE_CONT', { 'ATNM' => $attr_name } );
+			$node->_throw_error_message( $error_key_pfx.'_ONE_CONT', { 'ATNM' => $attr_name } );
 		} elsif( !$attr_value->{$NPROP_NODE_ID} ) {
 			# both Nodes are not in Containers, and $attr_value has no Node Id
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_MISS_NID', { 'ATNM' => $attr_name } );
+			$node->_throw_error_message( $error_key_pfx.'_MISS_NID', { 'ATNM' => $attr_name } );
 		} else {
 			# both Nodes are not in Containers, and $attr_value has Node Id, so can link
 			$attr_value = $attr_value->{$NPROP_NODE_ID};
@@ -2243,12 +2346,12 @@ sub set_node_ref_attribute {
 		# The regexp above should suppress warnings about non-numerical arguments to '<'
 		# We were given a Surrogate Node Id for a new attribute value.
 		unless( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_MAY_MATCH_SNIDS} ) {
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
+			$node->_throw_error_message( $error_key_pfx.'_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 		my $searched_attr_value = $node->find_node_by_surrogate_id( $attr_name, $attr_value );
 		unless( $searched_attr_value ) {
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_SID', 
-				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
+			$node->_throw_error_message( $error_key_pfx.'_NONEX_SID', 
+				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 		}
 		$attr_value = $searched_attr_value;
 
@@ -2257,38 +2360,14 @@ sub set_node_ref_attribute {
 		if( my $container = $node->{$NPROP_CONTAINER} ) {
 			my $searched_attr_value = $container->{$CPROP_ALL_NODES}->{$attr_value};
 			unless( $searched_attr_value and grep { $searched_attr_value->{$NPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_NID', 
-					{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
+				$node->_throw_error_message( $error_key_pfx.'_NONEX_NID', 
+					{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 			}
 			$attr_value = $searched_attr_value;
 		}
 	}
 
-	if( defined( $node->{$NPROP_AT_NREFS}->{$attr_name} ) and
-			$attr_value eq $node->{$NPROP_AT_NREFS}->{$attr_name} ) {
-		return( 1 ); # no-op; new attribute value same as old
-	}
-
-	if( ref($attr_value) eq ref($node) ) {
-		# Attempt is to link two Nodes in the same Container; it would be okay, except 
-		# that we still have to check for circular primary parent Node references.
-		my $pp_node = $attr_value;
-		do { # Also make sure we aren't trying to link to ourself.
-			if( $pp_node eq $node ) {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_CIRC_REF', { 'ATNM' => $attr_name } );
-			}
-		} while( $pp_node = $pp_node->{$NPROP_AT_NREFS}->{$ATTR_PP} );
-	}
-
-	$node->_clear_node_ref_attribute( $attr_name ); # clears any existing link through this attribute
-	$node->{$NPROP_AT_NREFS}->{$attr_name} = $attr_value;
-	if( ref($attr_value) eq ref($node) ) {
-		# The attribute value is a Node object, so that Node should link back now.
-		push( @{$attr_value->{$NPROP_CHILD_NODES}}, $node );
-	}
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	return( $attr_value );
 }
 
 sub set_node_ref_attributes {
@@ -2304,31 +2383,59 @@ sub set_node_ref_attributes {
 
 ######################################################################
 
-sub expected_attribute_major_type {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_EXP_AT_MT_NO_ARGS' );
-	my $node_type = $node->get_node_type();
-	my $namt = $node->major_type_of_node_type_attribute( $node_type, $attr_name );
-	unless( $namt ) {
-		$node->_throw_error_message( 'SRT_N_EXP_AT_MT_INVAL_NM', { 'ATNM' => $attr_name } );
-	}
-	return( $namt );
+sub get_surrogate_id_attribute {
+	my ($node, $get_target_si) = @_;
+	my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
+	$id and return( $node->get_node_id() );
+	$lit and return( $node->_get_literal_attribute( $lit ) );
+	$enum and return( $node->_get_enumerated_attribute( $enum ) );
+	$nref and return( $node->_get_node_ref_attribute( $nref, $get_target_si ) );
 }
+
+sub clear_surrogate_id_attribute {
+	my ($node) = @_;
+	my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
+	$id and return( $node->clear_node_id() );
+	$lit and return( $node->_clear_literal_attribute( $lit ) );
+	$enum and return( $node->_clear_enumerated_attribute( $enum ) );
+	$nref and return( $node->_clear_node_ref_attribute( $nref ) );
+}
+
+sub set_surrogate_id_attribute {
+	my ($node, $attr_value) = @_;
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my ($id, $lit, $enum, $nref) = @{$type_info->{$TPI_SI_ATNM}};
+	$id and return( $node->set_node_id( $attr_value ) );
+	$lit and return( $node->_set_literal_attribute( $lit, $type_info->{$TPI_AT_LITERALS}->{$lit}, $attr_value ) );
+	$enum and return( $node->_set_enumerated_attribute( $enum, $type_info->{$TPI_AT_ENUMS}->{$enum}, $attr_value ) );
+	$nref and return( $node->_set_node_ref_attribute( $nref, $type_info->{$TPI_AT_NREFS}->{$nref}, $attr_value ) );
+}
+
+######################################################################
 
 sub get_attribute {
 	my ($node, $attr_name, $get_target_si) = @_;
-	my $namt = $node->expected_attribute_major_type( $attr_name ); # dies if bad arg
-	$namt eq $NAMT_ID and return( $node->get_node_id() );
-	$namt eq $NAMT_LITERAL and return( $node->get_literal_attribute( $attr_name ) );
-	$namt eq $NAMT_ENUM and return( $node->get_enumerated_attribute( $attr_name ) );
-	$namt eq $NAMT_NODE and return( $node->get_node_ref_attribute( $attr_name, $get_target_si ) );
-	# We should never get here.
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$attr_name eq $ATTR_ID and return( $node->get_node_id() );
+	$attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} and 
+		return( $node->_get_primary_parent_attribute() );
+	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} and 
+		return( $node->_get_literal_attribute( $attr_name ) );
+	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} and 
+		return( $node->_get_enumerated_attribute( $attr_name ) );
+	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} and 
+		return( $node->_get_node_ref_attribute( $attr_name, $get_target_si ) );
+	$node->_throw_error_message( 'SRT_N_GET_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 }
 
 sub get_attributes {
 	my ($node, $get_target_si) = @_;
 	return( {
 		$ATTR_ID => $node->get_node_id(),
+		($NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} ? 
+			($ATTR_PP => $node->_get_primary_parent_attribute()) : ()),
 		%{$node->get_literal_attributes()},
 		%{$node->get_enumerated_attributes()},
 		%{$node->get_node_ref_attributes( $get_target_si )},
@@ -2337,17 +2444,24 @@ sub get_attributes {
 
 sub clear_attribute {
 	my ($node, $attr_name) = @_;
-	my $namt = $node->expected_attribute_major_type( $attr_name ); # dies if bad arg
-	$namt eq $NAMT_ID and return( $node->clear_node_id() );
-	$namt eq $NAMT_LITERAL and return( $node->clear_literal_attribute( $attr_name ) );
-	$namt eq $NAMT_ENUM and return( $node->clear_enumerated_attribute( $attr_name ) );
-	$namt eq $NAMT_NODE and return( $node->clear_node_ref_attribute( $attr_name ) );
-	# We should never get here.
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_AT_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	$attr_name eq $ATTR_ID and return( $node->clear_node_id() );
+	$attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} and 
+		return( $node->_clear_primary_parent_attribute() );
+	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} and 
+		return( $node->_clear_literal_attribute( $attr_name ) );
+	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} and 
+		return( $node->_clear_enumerated_attribute( $attr_name ) );
+	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} and 
+		return( $node->_clear_node_ref_attribute( $attr_name ) );
+	$node->_throw_error_message( 'SRT_N_CLEAR_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 }
 
 sub clear_attributes {
 	my ($node) = @_;
 	$node->clear_node_id();
+	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} and $node->_clear_primary_parent_attribute();
 	$node->clear_literal_attributes();
 	$node->clear_enumerated_attributes();
 	$node->clear_node_ref_attributes();
@@ -2355,12 +2469,25 @@ sub clear_attributes {
 
 sub set_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
-	my $namt = $node->expected_attribute_major_type( $attr_name ); # dies if bad arg
-	$namt eq $NAMT_ID and return( $node->set_node_id( $attr_value ) );
-	$namt eq $NAMT_LITERAL and return( $node->set_literal_attribute( $attr_name, $attr_value ) );
-	$namt eq $NAMT_ENUM and return( $node->set_enumerated_attribute( $attr_name, $attr_value ) );
-	$namt eq $NAMT_NODE and return( $node->set_node_ref_attribute( $attr_name, $attr_value ) );
-	# We should never get here.
+	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARGS' );
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	if( $attr_name eq $ATTR_ID ) {
+		return( $node->set_node_id( $attr_value ) );
+	}
+	if( my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} ) {
+		return( $node->_set_primary_parent_attribute( $exp_node_types, $attr_value ) );
+	}
+	if( my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} ) {
+		return( $node->_set_literal_attribute( $attr_name, $exp_lit_type, $attr_value ) );
+	}
+	if( my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} ) {
+		return( $node->_set_enumerated_attribute( $attr_name, $exp_enum_type, $attr_value ) );
+	}
+	if( my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} ) {
+		return( $node->_set_node_ref_attribute( $attr_name, $exp_node_types, $attr_value ) );
+	}
+	$node->_throw_error_message( 'SRT_N_SET_AT_INVAL_NM', { 'ATNM' => $attr_name } );
 }
 
 sub set_attributes {
@@ -2369,70 +2496,32 @@ sub set_attributes {
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
 	}
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	foreach my $attr_name (sort keys %{$attrs}) {
 		my $attr_value = $attrs->{$attr_name};
-		my $namt = $node->expected_attribute_major_type( $attr_name ); # dies if bad arg
-		if( $namt eq $NAMT_ID ) {
+		defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARG_ELEM_VAL', { 'ATNM' => $attr_name } );
+		if( $attr_name eq $ATTR_ID ) {
 			$node->set_node_id( $attr_value );
 			next;
 		}
-		if( $namt eq $NAMT_LITERAL ) {
-			$node->set_literal_attribute( $attr_name, $attr_value );
+		if( my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} ) {
+			$node->_set_primary_parent_attribute( $exp_node_types, $attr_value );
 			next;
 		}
-		if( $namt eq $NAMT_ENUM ) {
-			$node->set_enumerated_attribute( $attr_name, $attr_value );
+		if( my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} ) {
+			$node->_set_literal_attribute( $attr_name, $exp_lit_type, $attr_value );
 			next;
 		}
-		if( $namt eq $NAMT_NODE ) {
-			$node->set_node_ref_attribute( $attr_name, $attr_value );
+		if( my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} ) {
+			$node->_set_enumerated_attribute( $attr_name, $exp_enum_type, $attr_value );
 			next;
 		}
-		# We should never get here.
+		if( my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} ) {
+			$node->_set_node_ref_attribute( $attr_name, $exp_node_types, $attr_value );
+			next;
+		}
+		$node->_throw_error_message( 'SRT_N_SET_AT_INVAL_ELEM_NM', { 'ATNM' => $attr_name } );
 	}
-}
-
-######################################################################
-
-sub get_primary_parent_attribute {
-	my ($node) = @_;
-	return( $node->get_node_ref_attribute( $ATTR_PP ) );
-}
-
-sub clear_primary_parent_attribute {
-	my ($node) = @_;
-	return( $node->clear_node_ref_attribute( $ATTR_PP ) );
-}
-
-sub set_primary_parent_attribute {
-	my ($node, $attr_value) = @_;
-	return( $node->set_node_ref_attribute( $ATTR_PP, $attr_value ) );
-}
-
-######################################################################
-
-sub expected_surrogate_id_attribute_name {
-	my ($node) = @_;
-	return( $node->node_types_with_surrogate_id_attributes( $node->{$NPROP_NODE_TYPE} ) );
-}
-
-sub get_surrogate_id_attribute {
-	my ($node, $get_target_si) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute_name();
-	return( $node->get_attribute( $si_atnm, $get_target_si ) );
-}
-
-sub clear_surrogate_id_attribute {
-	my ($node) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute_name();
-	$node->clear_attribute( $si_atnm );
-}
-
-sub set_surrogate_id_attribute {
-	my ($node, $attr_value) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute_name();
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
-	$node->set_attribute( $si_atnm, $attr_value );
 }
 
 ######################################################################
@@ -2474,33 +2563,45 @@ sub put_in_container {
 	# that the newly added Node would link to can not already be the new Node's direct 
 	# or indirect child, since Nodes in Containers can't reference Nodes that aren't.
 
-	my $tpi_at_nodes = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS};
+	my $exp_pp_types = $NODE_TYPES{$node_type}->{$TPI_PP_NREF};
+	my $exp_at_nrefs_types = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS};
 	my $rh_at_nodes_nids = $node->{$NPROP_AT_NREFS}; # all values should be node ids now
 	my $rh_can = $new_container->{$CPROP_ALL_NODES};
 
+	my $pp_node = $node->{$NPROP_PP_NREF}; # value should be id number
+	if( my $pp_node_id = $pp_node ) {
+		my $pp_node_ref = $rh_can->{$pp_node_id};
+		unless( $pp_node_ref and grep { $pp_node_ref->{$NPROP_NODE_TYPE} eq $_ } @{$exp_pp_types} ) {
+			$node->_throw_error_message( 'SRT_N_PI_CONT_NONEX_AT_NREF', 
+				{ 'EXPNTYPE' => $exp_pp_types, 'EXPNID' => $pp_node_id } );
+		}
+		$pp_node = $pp_node_ref; # change id number to node ref
+	}
 	my %at_nodes_refs = (); # values put in here will be actual references
 	foreach my $at_nodes_atnm (keys %{$rh_at_nodes_nids}) {
-		# We need to make sure that when an attribute value is cleared, its key is deleted
 		# Note that if $tpi_at_nodes is undefined, expect that this foreach loop will not run
+		my $exp_at_nref_types = $exp_at_nrefs_types->{$at_nodes_atnm};
 		my $at_nodes_nid = $rh_at_nodes_nids->{$at_nodes_atnm};
 		my $at_nodes_ref = $rh_can->{$at_nodes_nid};
-		unless( $at_nodes_ref ) {
-			my $at_node_type = $tpi_at_nodes->{$at_nodes_atnm};
+		unless( $at_nodes_ref and grep { $at_nodes_ref->{$NPROP_NODE_TYPE} eq $_ } @{$exp_at_nref_types} ) {
 			$node->_throw_error_message( 'SRT_N_PI_CONT_NONEX_AT_NREF', 
-				{ 'ATNM' => $at_nodes_atnm, 'EXPNTYPE' => $at_node_type, 'EXPNID' => $at_nodes_nid } );
+				{ 'ATNM' => $at_nodes_atnm, 'EXPNTYPE' => $exp_at_nref_types, 'EXPNID' => $at_nodes_nid } );
 		}
 		$at_nodes_refs{$at_nodes_atnm} = $at_nodes_ref;
 	}
 	$node->{$NPROP_CONTAINER} = $new_container;
+	$node->{$NPROP_PP_NREF} = $pp_node;
 	$node->{$NPROP_AT_NREFS} = \%at_nodes_refs;
 	$rh_can->{$node_id} = $node;
 
 	# Now get our parent Nodes to link back to us.
 	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
 		push( @{$new_container->{$CPROP_PSEUDONODES}->{$pp_pseudonode}}, $node );
+	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
+		push( @{$pp_node->{$NPROP_PRIM_CHILD_NREFS}}, $node );
 	}
 	foreach my $attr_value (values %{$node->{$NPROP_AT_NREFS}}) {
-		push( @{$attr_value->{$NPROP_CHILD_NODES}}, $node );
+		push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
 	}
 
 	# Now adjust our "next free node id" counter if appropriate
@@ -2515,7 +2616,7 @@ sub take_from_container {
 	my ($node) = @_;
 	my $container = $node->{$NPROP_CONTAINER} or return( 1 ); # no-op; node is already not in a container
 
-	if( @{$node->{$NPROP_CHILD_NODES}} > 0 ) {
+	if( @{$node->{$NPROP_PRIM_CHILD_NREFS}} > 0 or @{$node->{$NPROP_LINK_CHILD_NREFS}} > 0 ) {
 		$node->_throw_error_message( 'SRT_N_TF_CONT_HAS_CHILD' );
 	}
 
@@ -2524,22 +2625,29 @@ sub take_from_container {
 	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
 		my $container = $node->{$NPROP_CONTAINER};
 		my $siblings = $container->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
-		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove all occurances
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
+		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
 	}
-	foreach my $attr_value (@{$node->{$NPROP_AT_NREFS}}) {
-		my $siblings = $attr_value->{$NPROP_CHILD_NODES};
+	foreach my $attr_value (values %{$node->{$NPROP_AT_NREFS}}) {
+		my $siblings = $attr_value->{$NPROP_LINK_CHILD_NREFS};
 		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove all occurances
 	}
 
-	my $rh_at_nodes_refs = $node->{$NPROP_AT_NREFS};
+	my $pp_node = $node->{$NPROP_PP_NREF}; # value should be actual ref
+	if( $pp_node ) {
+		$pp_node = $pp_node->{$NPROP_NODE_ID}; # change node ref to node id number
+	}
+	my $rh_at_nodes_refs = $node->{$NPROP_AT_NREFS}; # all values should be actual references now
 	my %at_nodes_nids = (); # values put in here will be node id numbers
 	foreach my $at_nodes_atnm (keys %{$rh_at_nodes_refs}) {
-		# We need to make sure that when an attribute value is cleared, its key is deleted
 		$at_nodes_nids{$at_nodes_atnm} = $rh_at_nodes_refs->{$at_nodes_atnm}->{$NPROP_NODE_ID};
 	}
 
 	delete( $container->{$CPROP_ALL_NODES}->{$node->{$NPROP_NODE_ID}} );
 	$node->{$NPROP_AT_NREFS} = \%at_nodes_nids;
+	$node->{$NPROP_PP_NREF} = $pp_node;
 	$node->{$NPROP_CONTAINER} = undef;
 
 	$container->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node is gone.
@@ -2572,14 +2680,15 @@ sub move_before_sibling {
 			$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_DIFF_CONT' );
 		}
 	} else {
-		unless( $parent = $node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+		unless( $parent = $node->{$NPROP_PP_NREF} ) {
 			$pp_pseudonode or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_P_ARG_OR_PP_OR_PS' );
 		}
 	}
 
 	# Now get the Node list we're going to search through.
 
-	my $ra_search_list = $parent ? $parent->{$NPROP_CHILD_NODES} : 
+	my $ra_search_list = $parent ? 
+		($parent eq $node->{$NPROP_PP_NREF} ? $parent->{$NPROP_PRIM_CHILD_NREFS} : $parent->{$NPROP_LINK_CHILD_NREFS}) : 
 		$node->{$NPROP_CONTAINER}->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
 
 	# Now confirm the given Nodes are our parent and sibling.
@@ -2621,9 +2730,9 @@ sub get_child_nodes {
 		unless( $NODE_TYPES{$node_type} ) {
 			$node->_throw_error_message( 'SRT_N_GET_CH_NODES_BAD_TYPE' );
 		}
-		return( [grep { $_->{$NPROP_NODE_TYPE} eq $node_type } @{$node->{$NPROP_CHILD_NODES}}] );
+		return( [grep { $_->{$NPROP_NODE_TYPE} eq $node_type } @{$node->{$NPROP_PRIM_CHILD_NREFS}}] );
 	} else {
-		return( [@{$node->{$NPROP_CHILD_NODES}}] );
+		return( [@{$node->{$NPROP_PRIM_CHILD_NREFS}}] );
 	}
 }
 
@@ -2633,7 +2742,7 @@ sub add_child_node {
 	unless( ref($new_child) eq ref($node) ) {
 		$node->_throw_error_message( 'SRT_N_ADD_CH_NODE_BAD_ARG', { 'ARG' => $new_child } );
 	}
-	$new_child->set_node_ref_attribute( $ATTR_PP, $node ); # will die if not same Container
+	$new_child->set_primary_parent_attribute( $node ); # will die if not same Container
 		# will also die if the change would result in a circular reference
 }
 
@@ -2650,6 +2759,20 @@ sub add_child_nodes {
 
 ######################################################################
 
+sub get_referencing_nodes {
+	my ($node, $node_type) = @_;
+	if( defined( $node_type ) ) {
+		unless( $NODE_TYPES{$node_type} ) {
+			$node->_throw_error_message( 'SRT_N_GET_REF_NODES_BAD_TYPE' );
+		}
+		return( [grep { $_->{$NPROP_NODE_TYPE} eq $node_type } @{$node->{$NPROP_LINK_CHILD_NREFS}}] );
+	} else {
+		return( [@{$node->{$NPROP_LINK_CHILD_NREFS}}] );
+	}
+}
+
+######################################################################
+
 sub get_surrogate_id_chain {
 	my ($node) = @_;
 	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_GET_SID_CHAIN_NOT_IN_CONT' );
@@ -2659,7 +2782,7 @@ sub get_surrogate_id_chain {
 sub _get_surrogate_id_chain {
 	my ($node) = @_;
 	my $si_atvl = $node->get_surrogate_id_attribute( 1 ); # target SI lit/enum is being returned as a string
-	if( my $pp_node = $node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+	if( my $pp_node = $node->{$NPROP_PP_NREF} ) {
 		# Current Node has a primary-parent Node; append to its id chain.
 		my $elements = $pp_node->_get_surrogate_id_chain();
 		push( @{$elements}, $si_atvl );
@@ -2692,11 +2815,14 @@ sub _get_surrogate_id_chain_as_str {
 sub find_node_by_surrogate_id {
 	my ($node, $self_attr_name, $target_attr_value) = @_;
 	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NOT_IN_CONT' );
-	$node->expected_node_ref_attribute_types( $self_attr_name ); # dies if bad arg
+	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my $exp_node_types = ($self_attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} or 
+		$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$self_attr_name}) or 
+		$node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_INVAL_NM', { 'ATNM' => $self_attr_name } );
 	defined( $target_attr_value ) or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL' );
 	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
-	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
-	my %exp_p_node_types = map { ($_ => 1) } @{$type_info->{$TPI_AT_NREFS}->{$self_attr_name}};
+	my %exp_p_node_types = map { ($_ => 1) } @{$exp_node_types};
 	if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
 		return( $node->_find_node_by_surrogate_id_using_path( \%exp_p_node_types, $target_attr_value, $search_path ) );
 	} elsif( !defined( $target_attr_value->[0] ) ) {
@@ -2708,7 +2834,7 @@ sub find_node_by_surrogate_id {
 
 sub _find_node_by_surrogate_id_within_layers {
 	my ($node, $exp_p_node_types, $target_attr_value) = @_;
-	my $pp_node = $node->{$NPROP_AT_NREFS}->{$ATTR_PP};
+	my $pp_node = $node->{$NPROP_PP_NREF};
 
 	# Now determine who our siblings are.
 
@@ -2716,7 +2842,7 @@ sub _find_node_by_surrogate_id_within_layers {
 	if( $pp_node ) {
 		# We have a normal Node primary-parent, P.
 		# Search among all Nodes that have P as their primary-parent Node; these are our siblings.
-		@sibling_list = @{$pp_node->{$NPROP_CHILD_NODES}};
+		@sibling_list = @{$pp_node->{$NPROP_PRIM_CHILD_NREFS}};
 	} else {
 		# Either we have a pseudo-Node primary-parent, or no parent normal Node is defined for us.
 		# Search among all Nodes that have pseudo-Node primary-parents.
@@ -2767,23 +2893,23 @@ sub _find_node_by_surrogate_id_using_path {
 		if( $path_seg eq $S ) { # <self> is a no-op, existing for easier-to-read documentation only
 			# no-op
 		} elsif( $path_seg eq $P ) { # <primary-parent>
-			unless( $curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+			unless( $curr_node = $curr_node->{$NPROP_PP_NREF} ) {
 				return( undef ); # current Node's primary parent isn't set yet (it should be); get out
 			}
 		} elsif( $path_seg eq $R ) { # <root-of-kind>
-			while( $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} and 
-					$curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP}->{$NPROP_NODE_TYPE} eq $curr_node->{$NPROP_NODE_TYPE} ) {
-				$curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP};
+			while( $curr_node->{$NPROP_PP_NREF} and 
+					$curr_node->{$NPROP_PP_NREF}->{$NPROP_NODE_TYPE} eq $curr_node->{$NPROP_NODE_TYPE} ) {
+				$curr_node = $curr_node->{$NPROP_PP_NREF};
 			}
 		} elsif( $path_seg eq $C ) { # <primary-child>
 			# For simplicity we are assuming the $C is the end of the path; it's grand-child or bust.
-			foreach my $child_l1 (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+			foreach my $child_l1 (@{$curr_node->{$NPROP_PRIM_CHILD_NREFS}}) {
 				if( defined($qualifier_l1) ) {
 					# Given value is qualified; only look within the specified contexts.
 					my $si_atvl = $child_l1->get_surrogate_id_attribute( 1 ) or next;
 					$si_atvl eq $qualifier_l1 or next;
 				} # else Given value is unqualified; take any one that matches.
-				foreach my $child_l2 (@{$child_l1->{$NPROP_CHILD_NODES}}) {
+				foreach my $child_l2 (@{$child_l1->{$NPROP_PRIM_CHILD_NREFS}}) {
 					$exp_p_node_types->{$child_l2->{$NPROP_NODE_TYPE}} or next;
 					if( my $si_atvl = $child_l2->get_surrogate_id_attribute( 1 ) ) {
 						if( $si_atvl eq $unqualified_value ) {
@@ -2812,7 +2938,7 @@ sub _find_node_by_surrogate_id_using_path {
 	# We are at the end of the implicit search path.
 	# The required Node must be one of $curr_node's children.
 
-	foreach my $child (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+	foreach my $child (@{$curr_node->{$NPROP_PRIM_CHILD_NREFS}}) {
 		$exp_p_node_types->{$child->{$NPROP_NODE_TYPE}} or next;
 		if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
 			if( $si_atvl eq $unqualified_value ) {
@@ -2837,7 +2963,7 @@ sub find_child_node_by_surrogate_id {
 		# The given surrogate id chain is relative to the current Node.
 		my $curr_node = $node;
 		ELEM: foreach my $chain_element (@{$target_attr_value}) {
-			foreach my $child (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+			foreach my $child (@{$curr_node->{$NPROP_PRIM_CHILD_NREFS}}) {
 				if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
 					if( $si_atvl eq $chain_element ) {
 						$curr_node = $child;
@@ -2883,13 +3009,14 @@ sub _assert_in_node_deferrable_constraints {
 	}
 
 	# 1.2: Assert that any primary parent ("PP") attribute is set.
-	unless( defined( $node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) or $type_info->{$TPI_PP_PSEUDONODE} ) {
+	unless( defined( $node->{$NPROP_PP_NREF} ) or $type_info->{$TPI_PP_PSEUDONODE} ) {
 		$node->_throw_error_message( 'SRT_N_ASDC_PP_VAL_NO_SET' );
 	}
 
 	# 1.3: Assert that any surrogate id ("SI") attribute is set.
 	if( my $si_atnm = $type_info->{$TPI_SI_ATNM} ) {
-		my ($lit, $enum, $nref) = @{$si_atnm};
+		my (undef, $lit, $enum, $nref) = @{$si_atnm};
+		# Skip 'id', as that's redundant with test 1.1.
 		if( $lit ) {
 			unless( defined( $node->{$NPROP_AT_LITERALS}->{$lit} ) ) {
 				$node->_throw_error_message( 'SRT_N_ASDC_SI_VAL_NO_SET', { 'ATNM' => $lit } );
@@ -2908,7 +3035,7 @@ sub _assert_in_node_deferrable_constraints {
 	}
 
 	# 1.4: Assert that any always-mandatory ("MA") attributes are set.
-	if( my $mand_attrs = $type_info->{$TPI_MA_ATTRS} ) {
+	if( my $mand_attrs = $type_info->{$TPI_MA_ATNMS} ) {
 		my ($lits, $enums, $nrefs) = @{$mand_attrs};
 		foreach my $attr_name (@{$lits}) {
 			unless( defined( $node->{$NPROP_AT_LITERALS}->{$attr_name} ) ) {
@@ -3056,21 +3183,9 @@ sub _assert_child_comp_deferrable_constraints {
 				last; # avoid undef warnings in while expr due to unset $curr_node
 			}
 		}
-		my %children_were_output = ();
 		foreach my $parent_node (@parent_nodes) {
 			push( @parent_node_types, $parent_node->{$NPROP_NODE_TYPE} );
-			foreach my $child_node (@{$parent_node->{$NPROP_CHILD_NODES}}) {
-				if( my $child_main_parent = $child_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
-					if( $child_main_parent eq $parent_node ) {
-						# Only nav to child if we are its primary parent, not simply any parent.
-						unless( $children_were_output{$child_node} ) {
-							# Only nav to child once; a child may link to primary parent multiple times.
-							push( @child_nodes, $child_node );
-							$children_were_output{$child_node} = 1;
-						}
-					}
-				}
-			}
+			push( @child_nodes, @{$parent_node->{$NPROP_PRIM_CHILD_NREFS}} );
 		}
 	} else {
 		push( @parent_node_types, $pseudonode_name );
@@ -3080,6 +3195,7 @@ sub _assert_child_comp_deferrable_constraints {
 	# 1: Now assert that the surrogate id (SI) of each child Node is distinct.
 
 	my %type_child_si = map { (%{$TYPE_CHILD_SI_ATNMS{$_}||{}}) } @parent_node_types;
+	# Note: $TYPE_CHILD_SI_ATNMS only contains keys for [pseudo-|]Node types that can have primary-child Nodes.
 	if( scalar( keys %type_child_si ) ) {
 		my %examined_children = ();
 		foreach my $child_node (@child_nodes) {
@@ -3206,40 +3322,23 @@ sub get_all_properties {
 
 sub _get_all_properties {
 	my ($node, $links_as_si) = @_;
-	my %dump = ();
-
-	$dump{$NAMED_NODE_TYPE} = $node->{$NPROP_NODE_TYPE};
-
-	my $at_nodes_in = $node->{$NPROP_AT_NREFS};
-	$dump{$NAMED_ATTRS} = {
-		$ATTR_ID => $node->{$NPROP_NODE_ID},
-		%{$node->{$NPROP_AT_LITERALS}},
-		%{$node->{$NPROP_AT_ENUMS}},
-		(map { ( $_ => (
-				$links_as_si ? 
-				$at_nodes_in->{$_}->_get_surrogate_id_chain_as_str() : 
-				$at_nodes_in->{$_}->{$NPROP_NODE_ID}
-			) ) } 
-			grep { $_ ne $ATTR_PP } keys %{$at_nodes_in}),
-	};
-
-	my @children_out = ();
-	my %children_were_output = ();
-	foreach my $child (@{$node->{$NPROP_CHILD_NODES}}) {
-		if( my $child_main_parent = $child->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
-			if( $child_main_parent eq $node ) {
-				# Only output child if we are its primary parent, not simply any parent.
-				unless( $children_were_output{$child} ) {
-					# Only output child once; a child may link to primary parent multiple times.
-					push( @children_out, $child->_get_all_properties( $links_as_si ) );
-					$children_were_output{$child} = 1;
-				}
-			}
-		}
-	}
-	$dump{$NAMED_CHILDREN} = \@children_out;
-
-	return( \%dump );
+	my $at_nrefs_in = $node->{$NPROP_AT_NREFS};
+	return( {
+		$NAMED_NODE_TYPE => $node->{$NPROP_NODE_TYPE},
+		$NAMED_ATTRS => {
+			$ATTR_ID => $node->{$NPROP_NODE_ID},
+			# Note: We do not output $ATTR_PP => $NPROP_PP_NREF since it is redundant.
+			%{$node->{$NPROP_AT_LITERALS}},
+			%{$node->{$NPROP_AT_ENUMS}},
+			(map { ( $_ => (
+					$links_as_si ? 
+					$at_nrefs_in->{$_}->_get_surrogate_id_chain_as_str() : 
+					$at_nrefs_in->{$_}->{$NPROP_NODE_ID}
+				) ) } 
+				keys %{$at_nrefs_in}),
+		},
+		$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
+	} );
 }
 
 sub get_all_properties_as_perl_str {
@@ -4192,12 +4291,12 @@ usually 'si_name', before giving up on finding a Node to link.
 	my $ra_node_list = $model->get_child_nodes();
 	my $ra_node_list = $model->get_child_nodes( 'catalog' );
 
-This "getter" method returns a list of this Container's child Nodes, in a new
-array ref.  A Container's child Nodes are defined as being all Nodes in the
-Container whose Node Type defines them as always having a pseudo-Node parent. 
-If the optional argument NODE_TYPE is defined, then only child Nodes of that
-Node Type are returned; otherwise, all child Nodes are returned.  All Nodes are
-returned in the same order they were added.
+This "getter" method returns a list of this Container's primary-child Nodes, in
+a new array ref.  A Container's primary-child Nodes are defined as being all
+Nodes in the Container whose Node Type defines them as always having a
+pseudo-Node parent.  If the optional argument NODE_TYPE is defined, then only
+child Nodes of that Node Type are returned; otherwise, all child Nodes are
+returned.  All Nodes are returned in the same order they were added.
 
 =head2 find_node_by_id( NODE_ID )
 
@@ -4335,11 +4434,22 @@ This "setter" method will set or replace this Node's Id property if it can.  If
 this Node is in a Container, then the replacement will fail if some other Node 
 with the same Node Type and Node Id already exists in the same Container.
 
-=head2 expected_literal_attribute_type( ATTR_NAME )
+=head2 get_primary_parent_attribute()
 
-This "getter" method will return an enumerated value that explains which
-literal data type that values for this Node's literal attribute named in the
-ATTR_NAME argument must be.
+	my $parent = $node->get_primary_parent_attribute();
+
+This "getter" method returns the primary parent Node of the current Node, if
+there is one.
+
+=head2 clear_primary_parent_attribute()
+
+This "setter" method will clear this Node's primary parent attribute value, if
+it has one.
+
+=head2 set_primary_parent_attribute( ATTR_VALUE )
+
+This "setter" method will set or replace this Node's primary parent attribute
+value, if it has one, giving it the new value specified in ATTR_VALUE.
 
 =head2 get_literal_attribute( ATTR_NAME )
 
@@ -4372,12 +4482,6 @@ whose names and values are specified by keys and values of the ATTRS hash ref
 argument; this method will invoke set_literal_attribute() for each key/value
 pair.
 
-=head2 expected_enumerated_attribute_type( ATTR_NAME )
-
-This "getter" method will return an enumerated value that explains which
-enumerated data type that values for this Node's enumerated attribute named in the
-ATTR_NAME argument must be.
-
 =head2 get_enumerated_attribute( ATTR_NAME )
 
 This "getter" method will return the value for this Node's enumerated attribute
@@ -4408,14 +4512,6 @@ This "setter" method will set or replace multiple Node enumerated attributes,
 whose names and values are specified by keys and values of the ATTRS hash ref
 argument; this method will invoke set_enumerated_attribute() for each key/value
 pair.
-
-=head2 expected_node_ref_attribute_types( ATTR_NAME )
-
-This "getter" method will return one or more enumerated values that explain
-which Node Types that values for this Node's node-ref attribute named in the
-ATTR_NAME argument must be.  This method returns an array ref containing the
-enumerated values; often there is a single value only; if the array ref has no
-elements, then any Node Type is acceptable.
 
 =head2 get_node_ref_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
@@ -4463,13 +4559,20 @@ whose names and values are specified by keys and values of the ATTRS hash ref
 argument; this method will invoke set_node_ref_attribute() for each key/value
 pair.
 
-=head2 expected_attribute_major_type( ATTR_NAME )
+=head2 get_surrogate_id_attribute([ GET_TARGET_SI ])
 
-This "getter" method will return an enumerated value that explains which major
-data type that values for this Node's attribute named in the ATTR_NAME argument
-must be.  There are 4 possible return values: 'ID' (the Node Id), 'LITERAL' (a
-literal attribute), 'ENUM' (an enumerated attribute), and 'NODE' (a node ref 
-attribute).
+This "getter" method will return the value for this Node's surrogate id
+attribute.  The GET_TARGET_SI argument is relevant only for Node-ref attributes;
+its effects are explained by get_node_ref_attribute().
+
+=head2 clear_surrogate_id_attribute()
+
+This "setter" method will clear this Node's surrogate id attribute value.
+
+=head2 set_surrogate_id_attribute( ATTR_VALUE )
+
+This "setter" method will set or replace this Node's surrogate id attribute
+value, giving it the new value specified in ATTR_VALUE.
 
 =head2 get_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
@@ -4509,44 +4612,6 @@ This "setter" method will set or replace multiple Node attributes, whose names
 and values are specified by keys and values of the ATTRS hash ref argument;
 this method will invoke set_attribute() for each key/value pair.
 
-=head2 get_primary_parent_attribute()
-
-	my $parent = $node->get_primary_parent_attribute();
-
-This "getter" method returns the primary parent Node of the current Node, if
-there is one.
-
-=head2 clear_primary_parent_attribute()
-
-This "setter" method will clear this Node's primary parent attribute value, if
-it has one.
-
-=head2 set_primary_parent_attribute( ATTR_VALUE )
-
-This "setter" method will set or replace this Node's primary parent attribute
-value, if it has one, giving it the new value specified in ATTR_VALUE.
-
-=head2 expected_surrogate_id_attribute_name()
-
-This "getter" method will return the name of this Node's surrogate id attribute,
-which may be undefined.  For most Node types this is a distinct attribute, but
-for a few it is the 'id' attribute.
-
-=head2 get_surrogate_id_attribute([ GET_TARGET_SI ])
-
-This "getter" method will return the value for this Node's surrogate id
-attribute.  The GET_TARGET_SI argument is relevant only for Node-ref attributes;
-its effects are explained by get_node_ref_attribute().
-
-=head2 clear_surrogate_id_attribute()
-
-This "setter" method will clear this Node's surrogate id attribute value.
-
-=head2 set_surrogate_id_attribute( ATTR_VALUE )
-
-This "setter" method will set or replace this Node's surrogate id attribute
-value, giving it the new value specified in ATTR_VALUE.
-
 =head2 get_container()
 
 	my $model = $node->get_container();
@@ -4570,23 +4635,23 @@ which moves the Node from "Well Known" to "Alone" status.
 This "setter" method allows you to change the order of child Nodes under a
 common parent Node; specifically, it moves the current Node to a position just
 above/before the sibling Node specified in the SIBLING Node ref argument, if it
-can.  You can only invoke it on a Node that is "Well Known", since that is the
+can.  You can only invoke it on a Node that is in a Container, since that is the
 only time it exists in its parent's child list at all.  Since a Node can have
 multiple parent Nodes (and the sibling likewise), the optional PARENT argument
 lets you specify which parent's child list you want to move in; if you do not
-provide an PARENT value, then the current Node's primary parent Node is used,
-if possible.  This method will throw an exception if the current Node and the
-specified sibling or parent Nodes are not appropriately related to each other
-(parent <-> child).  If you want to move the current Node to follow the sibling
-instead, then invoke this method on the sibling.
+provide an PARENT value, then the current Node's primary parent Node (or
+pseudo-Node) is used, if possible.  This method will throw an exception if the
+current Node and the specified sibling or parent Nodes are not appropriately
+related to each other (parent <-> child).  If you want to move the current Node
+to follow the sibling instead, then invoke this method on the sibling.
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
-	my $ra_node_list = $node->get_child_nodes();
-	my $ra_node_list = $node->get_child_nodes( 'table' );
+	my $ra_node_list = $table_node->get_child_nodes();
+	my $ra_node_list = $table_node->get_child_nodes( 'table_field' );
 
-This "getter" method returns a list of this object's child Nodes, in a new
-array ref. If the optional argument NODE_TYPE is defined, then only child Nodes
+This "getter" method returns a list of this Node's primary-child Nodes, in a new
+array ref.  If the optional argument NODE_TYPE is defined, then only child Nodes
 of that Node Type are returned; otherwise, all child Nodes are returned.  All
 Nodes are returned in the same order they were added.
 
@@ -4594,10 +4659,10 @@ Nodes are returned in the same order they were added.
 
 	$node->add_child_node( $child );
 
-This "setter" method allows you to add a new child Node to this object, which
-is provided as the single NEW_CHILD Node ref argument.  The new child Node is
-appended to the list of existing child Nodes, and the current Node becomes the
-new or first primary parent Node of NEW_CHILD.
+This "setter" method allows you to add a new primary-child Node to this Node,
+which is provided as the single NEW_CHILD Node ref argument.  The new child Node
+is appended to the list of existing child Nodes, and the current Node becomes
+the new or first primary parent Node of NEW_CHILD.
 
 =head2 add_child_nodes( LIST )
 
@@ -4611,6 +4676,17 @@ add_child_node() for each element found in it.
 
 This "getter" method can only be invoked in a Node in a container, and it
 returns the current Node's surrogate id chain as an array ref.
+
+=head2 get_referencing_nodes([ NODE_TYPE ])
+
+	my $ra_node_list = $row_data_type_node->get_referencing_nodes();
+	my $ra_node_list = $row_data_type_node->get_referencing_nodes( 'table' );
+
+This "getter" method returns a list of this Node's link-child Nodes (which are
+other Nodes that refer to this one in a non-PP nref attribute) in a new array
+ref.  If the optional argument NODE_TYPE is defined, then only child Nodes of
+that Node Type are returned; otherwise, all child Nodes are returned.  All Nodes
+are returned in the same order they were added.
 
 =head2 find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
 
@@ -4632,15 +4708,15 @@ within just the locations that are supposed to be visible to this Node.
 	my $table_index_node = $table_node->find_child_node_by_surrogate_id( 'fk_father' );
 
 This "getter" method may only be called on Nodes that are in a Container, or it
-throws an exception.  This method searches for a child Node of the current Node
-whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if one is found
-then it is returned by reference; if none is found, then undef is returned.  The
-TARGET_ATTR_VALUE argument is treated as an array-ref; if it is in fact not one,
-that single value is used as a single-element array.  The search is
-multi-generational, one generation more childwards per array element; the first
-element matches a child of the invoked Node, the next element the child of the
-first matched child, and so on.  If said array ref has undef as its first
-element, then this method behaves the same as
+throws an exception.  This method searches for a primary-child Node of the
+current Node whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if
+one is found then it is returned by reference; if none is found, then undef is
+returned.  The TARGET_ATTR_VALUE argument is treated as an array-ref; if it is
+in fact not one, that single value is used as a single-element array.  The
+search is multi-generational, one generation more childwards per array element;
+the first element matches a child of the invoked Node, the next element the
+child of the first matched child, and so on.  If said array ref has undef as its
+first element, then this method behaves the same as
 Container.find_child_node_by_surrogate_id( TARGET_ATTR_VALUE ).
 
 =head2 assert_deferrable_constraints()
@@ -4761,8 +4837,9 @@ a Node that is not in a Container.
 This method is like build_node() except that it will set the new Node's primary
 parent to be the Node that this method was invoked on, using add_child_node();
 if this method was invoked on a Container, then it will work only for new Nodes
-that would have a pseudo-Node as their primary parent.  When creating a Node 
-with this method, you do not set any PP candidates in ATTRS.
+that would have a pseudo-Node as their primary parent.  When creating a Node
+with this method, you do not set any PP candidates in ATTRS (if a 'pp' attribute
+is given in ATTRS, it will be ignored).
 
 =head2 build_child_nodes( LIST )
 
@@ -4838,6 +4915,24 @@ This function by default returns a list of the valid Node Types that
 SQL::Routine recognizes; if the optional NODE_TYPE argument is given, it
 just returns true if that matches a valid type, and false otherwise.
 
+=head2 node_types_with_pseudonode_parents([ NODE_TYPE ])
+
+This function by default returns a Hash ref where the keys are the names of the
+Node Types whose primary parents can only be pseudo-Nodes, and where the values
+name the pseudo-Nodes they are the children of; if the optional NODE_TYPE
+argument is given, it just returns the pseudo-Node for that Node Type.
+
+=head2 node_types_with_primary_parent_attributes([ NODE_TYPE ])
+
+This function by default returns a Hash ref where the keys are the names of the
+Node Types that have a primary parent ("pp") attribute, and where the values are
+the Node Types that values for that attribute must be; if the optional NODE_TYPE
+argument is given, it just returns the valid Node Types for the primary parent
+attribute of that Node Type.  Since there may be multiple valid primary parent
+Node Types for the same Node Type, an array ref is returned that enumerates the
+valid types; often there is just one element; if the array ref has no elements,
+then all Node Types are valid.
+
 =head2 valid_node_type_literal_attributes( NODE_TYPE[, ATTR_NAME] )
 
 This function by default returns a Hash ref where the keys are the names of the
@@ -4865,30 +4960,7 @@ valid Node Types for the same attribute, an array ref is returned that
 enumerates the valid types; often there is just one element; if the array ref
 has no elements, then all Node Types are valid.
 
-=head2 major_type_of_node_type_attribute( NODE_TYPE, ATTR_NAME )
-
-This "getter" function returns the major type for the attribute of NODE_TYPE
-Nodes named ATTR_NAME, which is one of 'ID', 'LITERAL', 'ENUM' or 'NODE'.
-
-=head2 node_types_with_pseudonode_parents([ NODE_TYPE ])
-
-This function by default returns a Hash ref where the keys are the names of the
-Node Types whose primary parents can only be pseudo-Nodes, and where the values
-name the pseudo-Nodes they are the children of; if the optional NODE_TYPE
-argument is given, it just returns the pseudo-Node for that Node Type.
-
-=head2 node_types_with_primary_parent_attributes([ NODE_TYPE ])
-
-This function by default returns a Hash ref where the keys are the names of the
-Node Types that have a primary parent ("pp") attribute, and where the values are
-the Node Types that values for that attribute must be; if the optional NODE_TYPE
-argument is given, it just returns the valid Node Types for the primary parent
-attribute of that Node Type.  Since there may be multiple valid primary parent
-Node Types for the same Node Type, an array ref is returned that enumerates the
-valid types; often there is just one element; if the array ref has no elements,
-then all Node Types are valid.
-
-=head2 node_types_with_surrogate_id_attributes([ NODE_TYPE ])
+=head2 valid_node_type_surrogate_id_attributes([ NODE_TYPE ])
 
 This function by default returns a Hash ref where the keys are the names of the
 Node Types that have a surrogate id attribute, and where the values are the

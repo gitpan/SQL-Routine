@@ -2,7 +2,7 @@
 
 use 5.008001; use utf8; use strict; use warnings;
 
-BEGIN { $| = 1; print "1..11\n"; }
+BEGIN { $| = 1; print "1..17\n"; }
 
 ######################################################################
 # First ensure the modules to test will compile, are correct versions:
@@ -12,8 +12,8 @@ use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine '0.54';
-use SQL::Routine::L::en '0.24';
+use SQL::Routine '0.55';
+use SQL::Routine::L::en '0.25';
 
 ######################################################################
 # Here are some utility methods:
@@ -78,11 +78,22 @@ eval {
 	my $model = t_SRT_Verbose->create_and_populate_model( 'SQL::Routine' );
 	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
 
-	message( "Now see if the output is correct ..." );
+	message( "Now see if deferrable constraints are valid ..." );
 
-	my $expected_output = t_SRT_Verbose->expected_model_xml_output();
+	$model->assert_deferrable_constraints();
+	result( 1, "assert all deferrable constraints" );
+
+	message( "Now see if the NID-based output is correct ..." );
+
+	my $expected_output = t_SRT_Verbose->expected_model_nid_xml_output();
 	my $actual_output = $model->get_all_properties_as_xml_str();
-	result( $actual_output eq $expected_output, "verify serialization of objects" );
+	result( $actual_output eq $expected_output, "verify serialization of objects (NID)" );
+
+	message( "Now see if the SID-based output is correct ..." );
+
+	my $expected_output2 = t_SRT_Verbose->expected_model_sid_xml_output();
+	my $actual_output2 = $model->get_all_properties_as_xml_str( 1 );
+	result( $actual_output2 eq $expected_output2, "verify serialization of objects (SID)" );
 
 	message( "Now destroy the objects ..." );
 
@@ -100,16 +111,27 @@ message( "  Test model construction using terse wrapper interface." );
 ######################################################################
 
 eval {
-	message( "First populate some objects ..." );
+	message( "First populate some objects (with local def con) ..." );
 
-	my $model = t_SRT_Terse->create_and_populate_model( 'SQL::Routine' );
+	my $model = t_SRT_Terse->create_and_populate_model( 'SQL::Routine', 1 );
 	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
 
-	message( "Now see if the output is correct ..." );
+	message( "Now see if deferrable constraints are valid ..." );
 
-	my $expected_output = t_SRT_Terse->expected_model_xml_output();
+	$model->assert_deferrable_constraints();
+	result( 1, "assert all deferrable constraints" );
+
+	message( "Now see if the NID-based output is correct ..." );
+
+	my $expected_output = t_SRT_Terse->expected_model_nid_xml_output();
 	my $actual_output = $model->get_all_properties_as_xml_str();
-	result( $actual_output eq $expected_output, "verify serialization of objects" );
+	result( $actual_output eq $expected_output, "verify serialization of objects (NID)" );
+
+	message( "Now see if the SID-based output is correct ..." );
+
+	my $expected_output2 = t_SRT_Terse->expected_model_sid_xml_output();
+	my $actual_output2 = $model->get_all_properties_as_xml_str( 1 );
+	result( $actual_output2 eq $expected_output2, "verify serialization of objects (SID)" );
 
 	message( "Now destroy the objects ..." );
 
@@ -127,16 +149,27 @@ message( "  Test model construction using abstract wrapper interface." );
 ######################################################################
 
 eval {
-	message( "First populate some objects ..." );
+	message( "First populate some objects (with local def con) ..." );
 
-	my $model = t_SRT_Abstract->create_and_populate_model( 'SQL::Routine' );
+	my $model = t_SRT_Abstract->create_and_populate_model( 'SQL::Routine', 1 );
 	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
 
-	message( "Now see if the output is correct ..." );
+	message( "Now see if deferrable constraints are valid ..." );
 
-	my $expected_output = t_SRT_Abstract->expected_model_xml_output();
+	$model->assert_deferrable_constraints();
+	result( 1, "assert all deferrable constraints" );
+
+	message( "Now see if the NID-based output is correct ..." );
+
+	my $expected_output = t_SRT_Abstract->expected_model_nid_xml_output();
 	my $actual_output = $model->get_all_properties_as_xml_str();
-	result( $actual_output eq $expected_output, "verify serialization of objects" );
+	result( $actual_output eq $expected_output, "verify serialization of objects (NID)" );
+
+	message( "Now see if the SID-based output is correct ..." );
+
+	my $expected_output2 = t_SRT_Abstract->expected_model_sid_xml_output();
+	my $actual_output2 = $model->get_all_properties_as_xml_str( 1 );
+	result( $actual_output2 eq $expected_output2, "verify serialization of objects (SID)" );
 
 	message( "Now destroy the objects ..." );
 
