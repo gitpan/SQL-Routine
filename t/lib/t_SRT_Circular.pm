@@ -34,22 +34,22 @@ sub test_circular_ref_prevention {
 	my $model = $class->new_container();
 
 	my $catalog_bp = make_a_node( 'catalog', $model );
-	$catalog_bp->set_literal_attribute( 'name', 'The Catalog Blueprint' );
+	$catalog_bp->set_literal_attribute( 'si_name', 'The Catalog Blueprint' );
 	my $owner = make_a_child_node( 'owner', $catalog_bp, 'pp_catalog' );
 	my $schema = make_a_child_node( 'schema', $catalog_bp, 'pp_catalog' );
-	$schema->set_literal_attribute( 'name', 'gene' );
+	$schema->set_literal_attribute( 'si_name', 'gene' );
 	$schema->set_node_ref_attribute( 'owner', $owner );
 
 	my $vw1 = make_a_child_node( 'view', $schema, 'pp_schema' );
-	$vw1->set_literal_attribute( 'name', 'foo' );
+	$vw1->set_literal_attribute( 'si_name', 'foo' );
 	$vw1->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $vw2 = make_a_child_node( 'view', $vw1, 'pp_view' );
-	$vw2->set_literal_attribute( 'name', 'bar' );
+	$vw2->set_literal_attribute( 'si_name', 'bar' );
 	$vw2->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $vw3 = make_a_child_node( 'view', $vw2, 'pp_view' );
-	$vw3->set_literal_attribute( 'name', 'bz' );
+	$vw3->set_literal_attribute( 'si_name', 'bz' );
 	$vw3->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $test1_passed = 0;

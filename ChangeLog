@@ -1,3 +1,46 @@
+2004-11-10   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.49.
+
+	* New code file versions are: Routine.pm v0.49 and en.pm v0.19.
+
+	* This release constitutes a partial digestion of the recently imported
+	"SkipID" code, such that the functionality in question was rewritten in a
+	more elegant fashion.
+
+	* Corresponding Language.pod and Routine.pm update that saw the set of
+	"always mandatory" (MA) Node attributes divided into two groups, with one
+	group being promoted to a new "surrogate id" (SI) type.  Not all Nodes
+	have a SI attribute, but at least 2/3 of them do; each of those has exactly
+	one of them.  SI attributes are implicitly both always-mandatory and always
+	distinct under a common "primary-parent" (PP) Node.  All attributes that
+	were promoted to SI were also renamed to have a "si_" name prefix; most of
+	them were "name"/"si_name".  About half of the "Distinct Child Groups List"
+	constraints were removed, as the new SI distinctness constraints took over
+	their roles.  In Language.pod, all changes were in the NODE TYPES main
+	section, and per-Node sub-sections.  In Routine.pm, most changes were in
+	the %NODE_TYPES (and new %TYPE_CHILD_SI_ATNMS) data-dictionary and the
+	_assert*constraints() Node methods.  In en.pm, added 3 new keys used by the
+	SI constraints: SRT_N_ASDC_SI_VAL_NO_SET, SRT_N_ASDC_SI_NON_DISTINCT[_PSN].
+
+	* Updated all 4 t_SRT_*.pm test libraries to account for the attribute name
+	prefix additions; they did not require any other changes.  Made a similar 
+	update to the Routine.pm SYNOPSIS and other code examples.
+
+	* In Routine.pm, stripped down the %NODE_TYPES_EXTRA_DETAILS data
+	dictionary to just contain the 'search_paths'; the removed
+	'link_search_attr' and 'def_attr' were fully replaced by the new
+	$TPI_SI_ATNM in %NODE_TYPES.  Minor updates were made to these methods that
+	used the stripped values so they use the SI values:
+	_set_node_ref_attribute__*(), set_attributes().  As a result of the second
+	change, the "default" attribute of a Node is its surrogate id.
+
+	* Deleted these 3 information functions from Routine.pm:
+	mandatory_node_type_[literal|enumerated|node_ref]_attribute_names()
+
+	* In en.pm and Routine.pm, consolidated the SRT_N_ASDC_MA_VAL_NO_SET user
+	text message from these 3: SRT_N_ASDC_MA_[LIT|ENUM|NREF]_VAL_NO_SET.
+
 2004-11-05   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.48.

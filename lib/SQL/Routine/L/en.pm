@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 ######################################################################
 
@@ -359,18 +359,13 @@ my %text_strings = (
 		"a deferrable constraint was violated; ".
 		"none of its primary parent Node attributes ({ATNMS}) are are set; ".
 		"you must give a value to exactly one of them",
-	'SRT_N_ASDC_MA_LIT_VAL_NO_SET' => 
+	'SRT_N_ASDC_SI_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
-		"this Node's literal attribute named '{ATNM}' must always be given a value",
-	'SRT_N_ASDC_MA_ENUM_VAL_NO_SET' => 
+		"this Node's surrogate id attribute named '{ATNM}' must always be given a value",
+	'SRT_N_ASDC_MA_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"a deferrable constraint was violated; ".
-		"this Node's enumerated attribute named '{ATNM}' must always be given a value",
-	'SRT_N_ASDC_MA_NREF_VAL_NO_SET' => 
-		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"a deferrable constraint was violated; ".
-		"the node ref attribute named '{ATNM}' must always be given a value",
+		"a deferrable constraint was violated; the '{ATNM}' attribute must always be given a value",
 
 	'SRT_N_ASDC_MUTEX_TOO_MANY_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
@@ -404,6 +399,17 @@ my %text_strings = (
 		"a deferrable constraint was violated; ".
 		"the depended-on attribute '{DEP_ON}' has a value of '{DEP_ON_VAL}', which means that ".
 		"exactly one of these dependent attributes must be set: {ATNMS}",
+
+	'SRT_N_ASDC_SI_NON_DISTINCT' => 
+		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
+		"a deferrable constraint was violated; at least two of its child Nodes have ".
+		"an identical surrogate id value ('{VALUE}'); you must change ".
+		"either the '{C1NTYPE}' Node with Id '{C1NID}' or the '{C2NTYPE}' Node with Id '{C2NID}'",
+	'SRT_N_ASDC_SI_NON_DISTINCT_PSN' => 
+		"$CN.assert_deferrable_constraints(): concerning the '{PSNTYPE}' pseudo-Node; ".
+		"a deferrable constraint was violated; at least two of its child Nodes have ".
+		"an identical surrogate id value ('{VALUE}'); you must change ".
+		"either the '{C1NTYPE}' Node with Id '{C1NID}' or the '{C2NTYPE}' Node with Id '{C2NID}'",
 
 	'SRT_N_ASDC_CH_N_TOO_FEW_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".

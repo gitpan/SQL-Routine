@@ -1401,7 +1401,7 @@ The B<Attribute List> says what all of the attributes are, in order, along with
 each one's major+minor type, an indicator of whether it is a primary parent
 node candidate, and a description.  Each list element is in this format:
 
-	<attr-name> - <major-type>.<minor-type>[ - <parent-flag>|<mandatory-flag>] - <description>
+	<attr-name> - <major-type>.<minor-type>[ - <parent-flag>|<surrogate-id-flag>|<mandatory-flag>] - <description>
 
 In the above usage, the major-type is shortened from its full name like this:
 "literal" -> "L", "enumerated" -> "E", "node_ref" -> "N".  When the major-type
@@ -1410,12 +1410,7 @@ the combined major and minor types on the line.  Every Node type's
 "id"/"NODE_ID" attribute is implicitly always-mandatory; moreover, that
 attribute is implicitly always-distinct within Nodes of the same Node type.
 
-I<Note that any Node attributes whose attr-name is "name" (an L.cstr) have a
-special meaning that corresponds to the ANSI/ISO SQL:2003 standard's impression
-of a SQL "identifier", specifically an un-qualified SQL identifier.  (Eg, a
-table's "name" is the table's "identifier".)>
-
-The parent-flag indicates whether the attribute can be used to link the current
+The parent-flag indicates that the attribute can be used to link the current
 Node to a "primary parent" Node.  When a Container (or subset of its Nodes) is
 converted to a tree-like representation (such as XML), each Node will be output
 beneath its primary parent.  For each Node, it is mandatory for exactly one
@@ -1430,7 +1425,18 @@ by the fact that the attribute is both marked 'PP' and its minor type is the
 same as the Node type the attribute belongs to.  The most common such trees are
 made from "[view|routine]_expr" Nodes, but others are also possible.>
 
-The mandatory-flag indicates whether the attribute is always-mandatory, meaning
+The surrogate-id-flag indicates that the attribute holds the surrogate
+identifier for the Node; this attribute's value is guaranteed to be distinct
+for all Nodes that have the same primary-parent Node, or that have a
+pseudo-Node parent, though the values for two Nodes with two different
+primary-parent Nodes can be the same.  Every Node type's surrogate id attribute
+is always implicitly mandatory.  For most Node types, the surrogate id
+attribute is called 'si_name' and is an "L.cstr" data type; their values
+correspond to the ANSI/ISO SQL:2003 standard's impression of a SQL
+"identifier", specifically an un-qualified SQL identifier.  (Eg, a table's
+"si_name" is the table's "identifier".)  The flag says "SI".
+
+The mandatory-flag indicates that the attribute is always-mandatory, meaning
 the attribute must always be populated (not be null); in some cases, it means
 you explicitly provide a 'default' value such as zero.  The flag says "MA".
 
@@ -1540,8 +1546,8 @@ This pseudo-Node has two child Node-types: scalar_data_type, row_data_type.
 Distinct Child Groups List:
 
 	ak_name:
-		scalar_data_type - name
-		row_data_type - name
+		scalar_data_type - si_name
+		row_data_type - si_name
 
 =head2 scalar_data_type
 
@@ -1575,7 +1581,7 @@ the store_fixed attribute to true.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - the name this scalar data type is identified by
+	si_name - L.cstr - SI - the name this scalar data type is identified by
 	base_type - E.simple_scalar_type - MA - name of the base data type this data_type is customized from
 	num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
 	num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
@@ -1618,14 +1624,9 @@ Local Attribute Dependencies List:
 	num_precision:
 		num_scale
 
-Distinct Child Groups List:
-
-	ak_option:
-		scalar_data_type_opt - value
-
 Example List:
 
-	|id|name    |base     |np |ns|no|nu|mxoct|mxch|fx|chenc|tw|uc|pc|tp|cal|
+	|id|si_name |base     |np |ns|no|nu|mxoct|mxch|fx|chenc|tw|uc|pc|tp|cal|
 	|--|--------|---------|---|--|--|--|-----|----|--|-----|--|--|--|--|---|
 	| 1|bin1k   |STR_BIT  |   |  |  |  | 1000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 1000 octets
 	| 2|bin32k  |STR_BIT  |   |  |  |  |32000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 32000 octets
@@ -1667,7 +1668,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_scalar_data_type - N.scalar_data_type - PP - what "scalar_data_type" Node this option is associated with
-	value - L.misc - MA - this is the actual enumerated value that the scalar_data_type_opt Node represents
+	si_value - L.misc - SI - this is the actual enumerated value that the scalar_data_type_opt Node represents
 
 Example List:
 
@@ -1691,16 +1692,11 @@ rather than having to specify each component field separately.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - the name this row data type is identified by
+	si_name - L.cstr - SI - the name this row data type is identified by
 
 Child Quantity List:
 
 	row_data_type_field - 1
-
-Distinct Child Groups List:
-
-	ak_name:
-		row_data_type_field - name
 
 =head2 row_data_type_field
 
@@ -1711,7 +1707,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_row_data_type - N.row_data_type - PP - what row this field is a part of
-	name - L.cstr - MA - unique identifier for this field within the row
+	si_name - L.cstr - SI - unique identifier for this field within the row
 	scalar_data_type - N.scalar_data_type - MA - the user-customized scalar data type for this field
 
 =head2 blueprints
@@ -1721,8 +1717,8 @@ This pseudo-Node has two child Node-types: catalog, application.
 Distinct Child Groups List:
 
 	ak_name:
-		catalog - name
-		application - name
+		catalog - si_name
+		application - si_name
 
 =head2 catalog
 
@@ -1742,19 +1738,19 @@ users should be here.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the blueprint if you want; this isn't used when making SQL
+	si_name - L.cstr - SI - lets you label the blueprint if you want; this isn't used when making SQL
 	single_schema - L.bool - true, catalog lim to 1 schema, rendered in 1-sch prod w no nm prefix
 
 Distinct Child Groups List:
 
 	ak_name:
-		catalog_link - name
-		schema - name
-		role - name
+		catalog_link - si_name
+		schema - si_name
+		role - si_name
 
 Example List:
 
-	|id|name|
+	|id|si  |
 	|--|----|
 	| 1|    | - a default database/catalog, usually just used if it is the only database
 	| 2|gene| - a multi-schema genealogy database/catalog that you manage
@@ -1779,18 +1775,18 @@ more SQL statements pushed over the command line, and even the 'attach' /
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the blueprint if you want
+	si_name - L.cstr - SI - lets you label the blueprint if you want
 
 Distinct Child Groups List:
 
 	ak_name:
-		catalog_link - name
-		scalar_domain - name
-		row_domain - name
-		sequence - name
-		table - name
-		view - name
-		routine - name
+		catalog_link - si_name
+		scalar_domain - si_name
+		row_domain - si_name
+		sequence - si_name
+		table - si_name
+		view - si_name
+		routine - si_name
 
 =head2 owner
 
@@ -1840,7 +1836,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog - PP - the schema in this blueprint may use the unrealized catalog link
 	pp_application - N.application - PP - the routines in this app bp may use the unrealized catalog link
-	name - L.cstr - MA - the "catalog link" that is the front of the fully qualified remote schema object name
+	si_name - L.cstr - SI - the "catalog link" that is the front of the fully qualified remote schema object name
 	target - N.catalog - MA - this is what the link connects to
 
 =head2 schema
@@ -1869,22 +1865,22 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog - PP - the catalog that this schema/namespace is in
-	name - L.cstr - MA - the name this schema/namespace is identified by
+	si_name - L.cstr - SI - the name this schema/namespace is identified by
 	owner - N.owner - MA - the user that owns this schema
 
 Distinct Child Groups List:
 
 	ak_name:
-		scalar_domain - name
-		row_domain - name
-		sequence - name
-		table - name
-		view - name
-		routine - name
+		scalar_domain - si_name
+		row_domain - si_name
+		sequence - si_name
+		table - si_name
+		view - si_name
+		routine - si_name
 
 Example List:
 
-	|id|ca|name|ow|
+	|id|ca|si  |ow|
 	|--|--|----|--|
 	| 1| 1|foo | 1| - a default schema/namespace
 	| 2| 2|gene| 2| - store all the normal app data that constitutes a genealogy database
@@ -1899,7 +1895,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog - PP - the catalog that this role is in
-	name - L.cstr - MA - the name this role is identified by
+	si_name - L.cstr - SI - the name this role is identified by
 
 =head2 privilege_on
 
@@ -1925,11 +1921,6 @@ Exclusive Attribute Groups List:
 
 	privilege_on - schema,scalar_domain,row_domain,sequence,table,view,routine - MA
 
-Distinct Child Groups List:
-
-	ak_option:
-		privilege_for - priv_type
-
 =head2 privilege_for
 
 This type of Node details one privilege that a role has on some other entity
@@ -1939,7 +1930,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_priv_on - N.privilege_on - PP - what "privilege_on" Node this option is associated with
-	priv_type - E.privilege_type - MA - what manner of privilege this is
+	si_priv_type - E.privilege_type - SI - what manner of privilege this is
 
 =head2 scalar_domain
 
@@ -1953,7 +1944,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_schema - N.schema - PP - the schema that this domain is in, if any
 	pp_application - N.application - PP - the app-space that this domain is in, if any
-	name - L.cstr - MA - the name this domain is identified by
+	si_name - L.cstr - SI - the name this domain is identified by
 	data_type - N.scalar_data_type - MA - the core defining details of this domain
 
 =head2 row_domain
@@ -1967,7 +1958,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_schema - N.schema - PP - the schema that this domain is in, if any
 	pp_application - N.application - PP - the app-space that this domain is in, if any
-	name - L.cstr - MA - the name this domain is identified by
+	si_name - L.cstr - SI - the name this domain is identified by
 	data_type - N.row_data_type - MA - the core defining details of this domain
 
 =head2 sequence
@@ -1983,7 +1974,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_schema - N.schema - PP - the schema that this sequence generator is in
 	pp_application - N.application - PP - the app-space that this sequence generator is in
-	name - L.cstr - MA - the name this sequence generator is identified by
+	si_name - L.cstr - SI - the name this sequence generator is identified by
 	increment - L.sint - the interval between sequence numbers; defaults to 1 if not set
 	min_val - L.sint - the minimum value that the sequence can generate; no minimum if not set
 	max_val - L.sint - the maximum value that the sequence can generate; no maximum if not set
@@ -2010,7 +2001,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_schema - N.schema - PP - the schema that this table is in
 	pp_application - N.application - PP - the app-space that this table is in
-	name - L.cstr - MA - the name this table is identified by
+	si_name - L.cstr - SI - the name this table is identified by
 	row_data_type - N.row_data_type - defines the names and types of this table's column set
 	row_domain - N.row_domain - defines the names and types of this table's column set
 
@@ -2018,16 +2009,9 @@ Exclusive Attribute Groups List:
 
 	row_data_type - row_data_type,row_domain - MA
 
-Distinct Child Groups List:
-
-	ak_name:
-		table_index - name
-	ak_row_field
-		table_field - row_field
-
 Example List:
 
-	|id|sc|name        |
+	|id|sc|si_name     |
 	|--|--|------------|
 	| 1| 1|user_auth   | - authentication related details for application users
 	| 2| 1|user_profile| - public personal details for application users
@@ -2043,7 +2027,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_table - N.table - PP - what table this column is a part of
-	row_field - N.row_data_type_field - MA - defines the name and type of this column
+	si_row_field - N.row_data_type_field - SI - defines the name and type of this column
 	mandatory - L.bool - the col's "nullability characteristic; true, "known not nullable"; else, "possibly nullable"
 	default_val - L.misc - an optional default value for the column, or starting val for auto_inc
 	auto_inc - L.bool - when true, col val defaults from a special auto-incrementing sequence
@@ -2059,7 +2043,7 @@ Example List:
 
 	Note: The rows below are actually a join where table_field = row_data_type_field.
 
-	|id|tb|name         |dt|ma|def|inc|
+	|id|tb|si_name      |dt|ma|def|inc|
 	|--|--|-------------|--|--|---|---|
 	| 1| 1|user_id      | 9|1 |1  |1  | - unique internal id for user, not changeable
 	| 2| 1|login_name   |23|1 |   |   | - who user authenticates into app as
@@ -2100,7 +2084,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_table - N.table - PP - unique identifier for this table
-	name - L.cstr - MA - unique identifier for index within table
+	si_name - L.cstr - SI - unique identifier for index within table
 	index_type - E.table_index_type - MA - what type of index this is (eg: UNIQUE, FOREIGN)
 	f_table - N.table - foreign key constraining table
 
@@ -2115,14 +2099,12 @@ Child Quantity List:
 
 Distinct Child Groups List:
 
-	ak_table_field:
-		table_index_field - table_field
 	ak_f_table_field:
-		table_index_field - f_table_field
+		table_index_field - f_field
 
 Example List:
 
-	|id|tb|name            |type   |ftbl|
+	|id|tb|si_name         |type   |ftbl|
 	|--|--|----------------|-------|----|
 	| 1| 1|primary         |UNIQUE |    | - ensure all [user_id] are unique
 	| 2| 1|ak_login_name   |UNIQUE |    | - ensure all [login_name] are unique
@@ -2146,7 +2128,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_table_index - N.table_index - PP - unique identifier for index within table
-	field - N.row_data_type_field - MA - unique identifier for column within table
+	si_field - N.row_data_type_field - SI - unique identifier for column within table
 	f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
 
 Example List:
@@ -2234,7 +2216,7 @@ Attribute List:
 	pp_routine - N.routine - PP - parent routine of this one, if any
 	pp_schema - N.schema - PP - the schema that this view is in, if any
 	pp_application - N.application - PP - the app-space that this view is in, if any
-	name - L.cstr - MA - the name this view is identified by, if any
+	si_name - L.cstr - SI - the name this view is identified by, if any
 	view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
 	row_data_type - N.row_data_type - defines the names and types of this view's column set
 	row_domain - N.row_domain - defines the names and types of this view's column set
@@ -2268,12 +2250,6 @@ Local Attribute Dependencies List:
 
 Distinct Child Groups List:
 
-	ak_name:
-		view_arg - name
-	ak_src_name:
-		view_src - name
-	ak_row_field
-		view_field - row_field
 	ak_join:
 		view_join - lhs_src,rhs_src
 	ak_join_limit_one:
@@ -2323,7 +2299,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_view - N.view - PP - what named sub-query view this is an argument for
-	name - L.cstr - MA - name of the argument
+	si_name - L.cstr - SI - name of the argument
 	cont_type - E.container_type - MA - what basic container type the argument is
 	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY argument
 	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY argument
@@ -2353,7 +2329,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_view - N.view - PP - unique identifier for view
-	name - L.cstr - MA - unique "alias" identifier for source within view
+	si_name - L.cstr - SI - unique "alias" identifier for source within view
 	match_table - N.table - if set, the source is a table (and match_view must not be set)
 	match_view - N.view - if set, the source is another view (and match_table must not be set)
 	match_p_view_arg - N.view_arg - when view is a correlated subquery, use value of a ROW/RW_ARY argument to the view
@@ -2366,14 +2342,9 @@ Exclusive Attribute Groups List:
 
 	match - match_table,match_view,match_p_view_arg,match_p_routine_arg,match_p_routine_var - MA
 
-Distinct Child Groups List:
-
-	ak_match_field:
-		view_src_field - match_field
-
 Example List:
 
-	|id|vw|name        |mtb|mvw|
+	|id|vw|si_name     |mtb|mvw|
 	|--|--|------------|---|---|
 	| 1| 1|user_auth   |  1|   | - match "user_auth" table
 	| 2| 1|user_profile|  2|   | - match "user_profile" table
@@ -2397,7 +2368,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_src - N.view_src - PP - which view source this column is associated with
-	match_view_arg - N.view_arg - MA - which argument in the source view is represented
+	si_match_view_arg - N.view_arg - SI - which argument in the source view is represented
 
 =head2 view_src_field
 
@@ -2408,7 +2379,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_src - N.view_src - PP - which view source this column is associated with
-	match_field - N.row_data_type_field - MA - which field from the source table/view/var is represented
+	si_match_field - N.row_data_type_field - SI - which field from the source table/view/var is represented
 
 Example List:
 
@@ -2458,7 +2429,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_view - N.view - PP - what view this column is a result/interface for
-	row_field - N.row_data_type_field - MA - defines the name and type of this column
+	si_row_field - N.row_data_type_field - SI - defines the name and type of this column
 	src_field - N.view_src_field - simply match this src col rather than defining with a view_expr
 
 	is_writeable - L.bool - true when enough info is known to write changes to this column
@@ -2469,7 +2440,7 @@ Example List:
 
 	Note: The rows below are actually a join where view_field = row_data_type_field.
 
-	|id|vw|col_name     |dt|src|
+	|id|vw|si_name      |dt|src|
 	|--|--|-------------|--|---|
 	| 1| 1|user_id      | 9|  1| - unique internal id for user, not changeable
 	| 2| 1|login_name   |23|  2| - who user authenticates into app as
@@ -2705,7 +2676,7 @@ Attribute List:
 	pp_routine - N.routine - PP - parent routine of this one, if any; empty if this is the root routine
 	pp_schema - N.schema - PP - the schema that this routine is in, if any
 	pp_application - N.application - PP - the app-space that this routine is in, if any
-	name - L.cstr - MA - name routine ident by in a [schema, pp_routine, app], or name of trigger
+	si_name - L.cstr - SI - name routine ident by in a [schema, pp_routine, app], or name of trigger
 	routine_type - E.routine_type - MA - what kind of routine this is
 	return_cont_type - E.container_type - container type of function's return value
 	return_scalar_data_type - N.scalar_data_type - data type of a function's SCALAR/SC_ARY return value
@@ -2736,9 +2707,9 @@ Child Quantity List:
 Distinct Child Groups List:
 
 	ak_name:
-		routine_context - name
-		routine_arg - name
-		routine_var - name
+		routine_context - si_name
+		routine_arg - si_name
+		routine_var - si_name
 
 =head2 routine_context
 
@@ -2748,7 +2719,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_routine - N.routine - PP - what routine this context argument is for
-	name - L.cstr - MA - unique identifier for variable within view
+	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the context is
 	conn_link - N.catalog_link - for CONN context type, ref to cat link def the conn handle
 	curs_view - N.view - for CURSOR context type, ref to view def the cursor
@@ -2773,7 +2744,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_routine - N.routine - PP - what routine this argument is for
-	name - L.cstr - MA - unique identifier for variable within view
+	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the argument is
 	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY argument
 	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY argument
@@ -2800,7 +2771,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_routine - N.routine - PP - what routine this variable is in
-	name - L.cstr - MA - unique identifier for variable within view
+	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the variable is
 	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY variable
 	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY variable
@@ -2936,8 +2907,8 @@ data_link_product.
 Distinct Child Groups List:
 
 	ak_name:
-		data_storage_product - name
-		data_link_product - name
+		data_storage_product - si_name
+		data_link_product - si_name
 
 =head2 data_storage_product
 
@@ -2958,7 +2929,7 @@ different versions may not support the same features or interface.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the product in the model if you want
+	si_name - L.cstr - SI - lets you label the product in the model if you want
 	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
 	is_memory_based - L.bool - if true, db data is held entirely in RAM memory of our own process
 	is_file_based - L.bool - if true, db data held in named file(s) that we ref to open in our own process
@@ -2989,7 +2960,7 @@ different versions may not support the same features or interface.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the product in the model if you want
+	si_name - L.cstr - SI - lets you label the product in the model if you want
 	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
 	is_proxy - L.bool - if true, link product is a transparent proxy which calls another link prod (we may spec)
 
@@ -3001,8 +2972,8 @@ application_instance.
 Distinct Child Groups List:
 
 	ak_name:
-		catalog_instance - name
-		application_instance - name
+		catalog_instance - si_name
+		application_instance - si_name
 
 =head2 catalog_instance
 
@@ -3025,7 +2996,7 @@ users shouldn't log in as those.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the instance if you want; this isn't used when making SQL
+	si_name - L.cstr - SI - lets you label the instance if you want; this isn't used when making SQL
 	product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
 	blueprint - N.catalog - MA - what catalog blueprint describes this instance
 	file_path - L.cstr - Path on a file system for a file-based database, if applicable
@@ -3038,16 +3009,12 @@ Attribute List:
 
 Distinct Child Groups List:
 
-	ak_option:
-		catalog_instance_opt - key
 	ak_cat_link_inst:
 		catalog_link_instance - unrealized
-	ak_user_name:
-		user - name
 
 Example List:
 
-	|id|bp|name|
+	|id|bp|si  |
 	|--|--|----|
 	| 1| 1|    | - a default database/catalog, usually just used if it is the only database
 	| 2| 2|site| - a multi-schema genealogy database/catalog that you manage
@@ -3078,7 +3045,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog_instance - PP - the catalog_instance that this option customizes
-	key - L.cstr - MA - this is the option key that the the external code looks for
+	si_key - L.cstr - SI - this is the option key that the the external code looks for
 	value - L.misc - MA - this is the associated option value
 
 =head2 application_instance
@@ -3091,7 +3058,7 @@ knows about the blueprint for said instances.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - MA - lets you label the instance if you want
+	si_name - L.cstr - SI - lets you label the instance if you want
 	blueprint - N.application - MA - what application blueprint describes this instance
 
 Distinct Child Groups List:
@@ -3148,11 +3115,6 @@ Child Quantity List:
 
 	catalog_link_instance - 0 - 1
 
-Distinct Child Groups List:
-
-	ak_option:
-		catalog_link_instance_opt - key
-
 =head2 catalog_link_instance_opt
 
 The attributes in catalog_link_instance_opt Nodes mainly just have meaning to
@@ -3167,7 +3129,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_link - N.catalog_link_instance - PP - the catalog_link_instance that this option customizes
-	key - L.cstr - MA - this is the option key that the the external code looks for
+	si_key - L.cstr - SI - this is the option key that the the external code looks for
 	value - L.misc - MA - this is the associated option value
 
 =head2 user
@@ -3197,7 +3159,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_catalog - N.catalog_instance - PP - the catalog_instance that this user is in
-	name - L.cstr - the name this user is identified by, and what he authenticates himself with
+	si_name - L.cstr - SI - the name this user is identified by, and what he authenticates himself with
 	user_type - E.user_type - MA - what type of user this is; eg: schema owner vs data editor
 	match_owner - N.owner - the catalog that this user is in
 	password - L.cstr - the password this user provides when authenticating themself
@@ -3206,20 +3168,14 @@ Attribute List:
 Local Attribute Dependencies List:
 
 	user_type:
-		name - ROOT,SCHEMA_OWNER,DATA_EDITOR - MA
 		match_owner - SCHEMA_OWNER - MA
 		password - ROOT,SCHEMA_OWNER,DATA_EDITOR - MA
 
 	Note: In other words to the above, all user types *except* ANONYMOUS have a user name and password.
 
-Distinct Child Groups List:
-
-	ak_role:
-		user_role - role
-
 Example List:
 
-	|id|ci|ow|name    |pass  |sc|
+	|id|ci|ow|si_name |pass  |sc|
 	|--|--|--|--------|------|--|
 	| 1| 1| 1|        |      | 1| - a default and/or 'public' user, or for db without 'users'
 	| 2| 2| 2|ronsealy|K34dsD| 2| - Ron Sealy, owns all schemas in instance 2
@@ -3236,7 +3192,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp_user - N.user - PP - the user that a role is granted to
-	role - N.role - MA - the role that is being granted
+	si_role - N.role - SI - the role that is being granted
 
 =head2 circumventions
 
