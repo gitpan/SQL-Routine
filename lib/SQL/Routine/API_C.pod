@@ -1,3 +1,5 @@
+=encoding utf8
+
 =head1 NAME
 
 SQL::Routine::API_C - Describe the API for a C version of SQL::Routine
@@ -184,7 +186,6 @@ instead of C.
 			sqlrt_dt_node* ref; /* pointer to a Node */
 		} id_or_ref*        at_nrefs    ; /* (array of id_or_ref) attrs of Node which are Nodes */
 			/* Note: if it would be better, we may combine all at* into one longer union list */
-		sqlrt_dt_node_atnm  pp_node_atnm; /* name of at_nodes attribute which is our primary parent */
 		sqlrt_dt_container* container   ; /* (ref) what Container this Node lives in, if any */
 		sqlrt_dt_node_dll*  child_nodes ; /* (list of refs) recipr to Nodes whose at_nodes ref to us */
 	} sqlrt_dt_node;
@@ -208,6 +209,6 @@ instead of C.
 
 =head1 SEE ALSO
 
-SQL::Routine and the various other modules mentioned in its SEE ALSO.
+L<SQL::Routine> and the various other modules mentioned in its SEE ALSO.
 
 =cut

@@ -1,22 +1,21 @@
+#!perl
+
+use 5.008001; use utf8; use strict; use warnings;
+
+package SQL::Routine::L::en;
+our $VERSION = '0.22';
+
+######################################################################
+
+=encoding utf8
+
 =head1 NAME
 
 SQL::Routine::L::en - Localization of SQL::Routine for English
 
-=cut
-
-######################################################################
-
-package SQL::Routine::L::en;
-use 5.006;
-use strict;
-use warnings;
-our $VERSION = '0.21';
-
-######################################################################
-
 =head1 DEPENDENCIES
 
-Perl Version: 5.006
+Perl Version: 5.008001
 
 Standard Modules: I<none>
 
@@ -233,27 +232,6 @@ my %text_strings = (
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
-	'SRT_N_SET_PP_NODE_ATNM_NO_ARGS' => 
-		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"missing ATTR_NAME argument",
-	'SRT_N_SET_PP_NODE_ATNM_INVAL_NM' => 
-		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid ATTR_NAME argument; either there is no Node attribute named '{ATNM}' in this Node, ".
-		"or that attribute can not be used as the primary parent Node",
-	'SRT_N_SET_PP_NODE_ATNM_CIRC_REF' => 
-		"$CN.set_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid ATTR_NAME argument; this Node's Node ref attribute named '{ATNM}' is valued ".
-		"with a Node that is a direct or indirect child of this current Node, so that Node ".
-		"can not become the primary parent of this current Node; ".
-		"if it was, that would result in a circular reference chain",
-
-	'SRT_N_EST_PP_NODE_ATNM_NO_ARGS' => 
-		"$CN.estimate_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"missing NEW_PARENT argument",
-	'SRT_N_EST_PP_NODE_ATNM_BAD_ARG' => 
-		"$CN.estimate_pp_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"invalid NEW_PARENT argument; it is not a Node object, but rather is '{ARG}'",
-
 	'SRT_N_EXP_SI_AT_NO_SI' => 
 		"$CN.expected_surrogate_id_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"this Node type has no surrogate id attribute, so you can not do anything with it",
@@ -334,29 +312,15 @@ my %text_strings = (
 	'SRT_N_ADD_CH_NODE_BAD_ARG' => 
 		"$CN.add_child_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_CHILD argument; it is not a Node object, but rather is '{ARG}'",
-	'SRT_N_ADD_CH_NODE_NO_EST' => 
-		"$CN.add_child_node(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"this current Node can not be the primary parent of the given Node",
 
 	'SRT_N_ASDC_NID_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
-		"its Node ID must be given a value",
-	'SRT_N_ASDC_PP_NODE_ATNM_NOT_SET' => 
+		"its Node ID must always be given a value",
+	'SRT_N_ASDC_PP_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
-		"its Primary Parent Node Attribute Name must be given a value ".
-		"(this Node type does not have a pseudo-Node parent)",
-	'SRT_N_ASDC_PP_TOO_MANY_SET' => 
-		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"a deferrable constraint was violated; ".
-		"{NUMVALS} of its primary parent Node attributes ({ATNMS}) are set; ".
-		"you must change all but one of them to be undefined/null",
-	'SRT_N_ASDC_PP_ZERO_SET' => 
-		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
-		"a deferrable constraint was violated; ".
-		"none of its primary parent Node attributes ({ATNMS}) are are set; ".
-		"you must give a value to exactly one of them",
+		"its primary parent Node attribute ('pp') must always be given a value",
 	'SRT_N_ASDC_SI_VAL_NO_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
@@ -502,6 +466,6 @@ user text template string, if there is one, or undef if not.
 
 =head1 SEE ALSO
 
-perl(1), Locale::KeyedText, SQL::Routine.
+L<perl(1)>, L<Locale::KeyedText>, L<SQL::Routine>.
 
 =cut

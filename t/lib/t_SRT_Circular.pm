@@ -1,10 +1,12 @@
+#!perl
+
+use 5.008001; use utf8; use strict; use warnings;
+
 # This module is used when testing SQL::Routine.
 # These tests check that circular reference creation can be blocked.
 
 package # hide this class name from PAUSE indexer
 t_SRT_Circular;
-use strict;
-use warnings;
 
 ######################################################################
 
@@ -28,9 +30,8 @@ sub test_circular_ref_prevention {
 	$vw3->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $test1_passed = 0;
-	my $test2_passed = 0;
 	eval {
-		$vw2->set_node_ref_attribute( 'pp_view', $vw3 );
+		$vw2->set_primary_parent_attribute( $vw3 );
 	};
 	if( my $exception = $@ ) {
 		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
@@ -39,23 +40,10 @@ sub test_circular_ref_prevention {
 			}
 		}
 	}
-	eval {
-		$vw3->clear_pp_node_attribute_name();
-		$vw2->set_node_ref_attribute( 'pp_view', $vw3 );
-		$vw3->set_pp_node_attribute_name( 'pp_view' );
-	};
-	if( my $exception = $@ ) {
-		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_SET_PP_NODE_ATNM_CIRC_REF' ) {
-				$test2_passed = 1;
-			}
-		}
-	}
 
-	$model->assert_deferrable_constraints();
 	$model->destroy();
 
-	return( $test1_passed, $test2_passed );
+	return( $test1_passed );
 }
 
 ######################################################################

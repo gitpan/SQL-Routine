@@ -1,3 +1,116 @@
+2004-12-18   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.52.
+
+	* This distribution now requires Perl 5.008001 or higher; it was 5.006.
+
+	* All files in this distribution are now officially UTF-8 encoded, though
+	they continue to have no BOM, and they still have Unix line-breaks.  Any
+	files that contain code now have the "use utf8" pragma.  Any files that
+	contain POD now have "=encoding utf8" as the first POD command paragraph.
+
+	* All distro files that contain code, whether *.[pm|pl|PL|t], now begin with
+	"#!perl" on their first line, and the second line contains "use 5.008001;
+	use utf8; use strict; use warnings;"; all other code and POD is below those.
+	Within the *.pm files, the "package ... $VERSION ..." now appears above all
+	of the POD; also, the NAME and DEPENDENCIES POD now have nothing between
+	them.  Within the *.t files, there is no longer any BEGIN/END $loaded test,
+	so the test count has been decremented by one.
+
+	* Updated any SEE ALSO module references to be L<>.
+
+	* New code file versions are: Routine.pm v0.52 and en.pm v0.22.
+
+	* Updated external dependencies on Locale::KeyedText to v1.01.
+
+	* Multiple corresponding Language.pod and Routine.pm updates were made such
+	that it is now valid to define a single Node-ref attribute that can
+	reference more than one type of Node.  Taking advantage of this new feature,
+	many sets of mostly interchangeable Node-ref attributes were consolidated
+	into single Node-ref attributes.
+
+	* All primary-parent Node candidate attributes for each Node Type were
+	consolidated into a single attribute named 'pp'.  All pairs of related
+	attributes where one member pointed to a [scalar|row]_data_type Node and the
+	other pointed to a [scalar|row]_domain Node were consolidated each to single
+	attributes that can point to either a (bare) data-type or a domain (that
+	wraps a data type).  All pairs or triples of related attributes where one
+	member each pointed to a "routine_[context|arg|var]" were consolidated each
+	into single attributes that can point to all 2/3 types.  In the view_src
+	Node type, the 5 match_* attributes were consolidated into a single "match"
+	attribute; these 5 Node types are interchangeable since they all have their
+	interface defined by a row_data_type.  Similarly, the 2 'routine' attributes
+	'trigger_on_[table|view]' were consolidated to 'trigger_on'.  In the
+	privilege_on Node type, the 7 schema or schema object pointing attributes
+	were turned into the single si_priv_on attribute.  In the routine_expr Node
+	type, the 9 'actn_*' attributes were consolidated into the single 'act_on'.
+
+	* The sql_fragment Node type saw a different kind of consolidation.  Its 2
+	literal attributes "att_node_type" and "att_node_id" were replaced with a
+	single Node-ref attribute "attach_to" that can accept all Node types.
+
+	* Rewrote portions of the NODE TYPES main documentation in Language.pod to
+	account for the above changes, plus more stated below.  This was mainly in
+	the legend for the "Attribute List" sections.  The Attribute List format
+	declaration was written in EBNF format (or whatever format the SQL standard
+	is written in) for greater clarity.
+
+	* Multiple corresponding Language.pod and Routine.pm updates were made such
+	that there is no longer a "primary parent attribute name" (PP_NODE_ATNM)
+	Node object property; it is superfluous since we know the name is now always
+	"pp".  As a result of this, there have been numerous API and code
+	simplifications.  API_C.pod was updated to remove the sqlrt_dt_node struct 
+	member "pp_node_atnm".  
+
+	* Deleted Routine.pm methods: [get|clear|set]_pp_node_attribute_name(),
+	get_first_candidate_pp_node_attribute_name(),
+	estimate_pp_node_attribute_name().  Renamed the method get_pp_node() to
+	get_primary_parent_attribute().  Added methods:
+	[clear|set]_primary_parent_attribute().  Deleted these 5 en.pm user
+	messages: SRT_N_[SET|EST]_PP_NODE_ATNM_*.
+
+	* Renamed and updated method expected_node_ref_attribute_type(); the new
+	name has an 's' at the end and the method now returns an array ref.  Updated
+	methods: Node.new(), [get|clear|set]_node_ref_attribute(),
+	_set_node_ref_attribute__*(), move_before_sibling(), add_child_node().  Also
+	deleted the SRT_N_ADD_CH_NODE_NO_EST user message in en.pm.
+
+	* Updated Routine.pm methods: Container._assert_deferrable_constraints(), 
+	Node._assert_in_node_deferrable_constraints(), 
+	Node._assert_child_comp_deferrable_constraints().  Deleted the en.pm user 
+	text message SRT_N_ASDC_PP_NODE_ATNM_NOT_SET.  Replaced the two messages 
+	SRT_N_ASDC_PP_[TOO_MANY|ZERO]_SET with the one SRT_N_ASDC_PP_VAL_NO_SET.
+
+	* Updated the get_all_properties[|*]() and _serialize_as_*() methods in
+	multiple ways.  Any NO_INDENTS boolean arguments were removed; the methods
+	will now always output child Nodes indented under parent Nodes.  Now the
+	'pp' attribute of each Node is no longer output, since it carries
+	information that is redundant; its value for a given Node is the same as the
+	'id' of that Node's parent.  Now the *_xml_str() methods supply a proper XML
+	declaration tag at the start of their output, which also says it is UTF-8.
+
+	* Updated build_lonely_node() and build_node() so that they no longer take 
+	the PP_ATNM argument; also updated _build_node_is_child_or_not().
+
+	* Updated the information function valid_node_type_node_ref_attributes(),
+	deleted valid_node_type_parent_attribute_names() and added
+	node_types_with_primary_parent_attributes().
+
+	* Updated the t_SRT_Circular.pm test library to remove the second of the 2
+	tests, since the method it refers to no longer exists; there is now only a
+	single remaining point of entry where it is possible to request that a
+	circular reference is created, and this is tested.  Updated t_SRT_Verbose.pm
+	(and Circular) to strip any primary-parent attribute name specifications as
+	they are no longer necessary.  Updated all test files to account for any
+	attribute name changes from the consolidation.  Updated all test files to
+	account for changes to the way output XML is generated.  Updated
+	SQL_Routine.t such that the test count is decremented by one.
+
+	* Updated the Routine.pm SYNOPSIS documentation.
+
+	* Following the above changes, Routine.pm is now 13K smaller,
+	Language.pod is 5K smaller, and the t_SRT_*.pm set is 10K smaller.
+
 2004-11-26   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.51.

@@ -38,13 +38,13 @@ changed.
 
 DEPENDENCIES
 
-Perl Version: 5.006
+Perl Version: 5.008001
 
 Standard Modules: none
 
 Nonstandard Modules: 
 
-	Locale::KeyedText 1.00 (for error messages)
+	Locale::KeyedText 1.01 (for error messages)
 
 This module doesn't require anything else.
 

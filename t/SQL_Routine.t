@@ -1,35 +1,31 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl SQL_Routine.t'
+#!perl
 
-######################### We start with some black magic to print on failure.
+use 5.008001; use utf8; use strict; use warnings;
 
-BEGIN { $| = 1; print "1..12\n"; }
-END {print "not ok 1\n" unless $loaded;}
+BEGIN { $| = 1; print "1..10\n"; }
+
+######################################################################
+# First ensure the modules to test will compile, are correct versions:
+
 use lib 't/lib';
 use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine '0.51';
-use SQL::Routine::L::en '0.21';
-$loaded = 1;
-print "ok 1\n";
-use strict;
-use warnings;
-
-######################### End of black magic.
-
-# Set this to 1 to see complete result text for each test
-my $verbose = shift( @ARGV ) ? 1 : 0;  # set from command line
+use SQL::Routine '0.52';
+use SQL::Routine::L::en '0.22';
 
 ######################################################################
 # Here are some utility methods:
 
-my $test_num = 1;  # same as the first test, above
+# Set this to 1 to see complete result text for each test
+my $verbose = shift( @ARGV ) ? 1 : 0;  # set from command line
+
+my $test_num = 0;
 
 sub result {
-	$test_num++;
 	my ($worked, $detail) = @_;
+	$test_num++;
 	$verbose or 
 		$detail = substr( $detail, 0, 50 ).
 		(length( $detail ) > 47 ? "..." : "");
@@ -53,6 +49,7 @@ sub error_to_string {
 }
 
 ######################################################################
+# Now perform the actual tests:
 
 message( "START TESTING SQL::Routine - t_SRT_Circular" );
 message( "  Test that circular reference creation can be blocked." );
@@ -60,10 +57,9 @@ message( "  Test that circular reference creation can be blocked." );
 ######################################################################
 
 eval {
-	my ($test1_passed, $test2_passed) = 
+	my ($test1_passed) = 
 		t_SRT_Circular->test_circular_ref_prevention( 'SQL::Routine' );
 	result( $test1_passed, "prevent creation of circular refs - set nref attr" );
-	result( $test2_passed, "prevent creation of circular refs - set pp name" );
 };
 $@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
 
