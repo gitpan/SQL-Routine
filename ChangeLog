@@ -1,3 +1,119 @@
+2004-10-29   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Release 0.46.
+
+	* New code file versions are: Routine.pm v0.46 and en.pm v0.16.
+
+	* This is a major release, with multiple significant data-dictionary,
+	documentation, and test suite changes, but almost no changes to the code
+	proper.  Most changes were in Routine.pm, Language.pod, and
+	t_SQL_Routine.pm.  A few changes were made to en.pm or API_C.pod.
+
+	* Renamed all Node-ref attributes that are primary-parent candidates so
+	that their names start with "pp_".  Also renamed any related variable names
+	and property names and message key names in a similar fashion.  The Node
+	property 'p_node_atnm' is now 'pp_node_atnm', in both Routine.pm and
+	API_C.pod; that was the only change to API_C.pod.  Six message keys were
+	renamed in Routine.pm and en.pm; that was the only change to en.pm.  Also
+	changed the order of a few primary-parent attribute declarations so that
+	any which are self-references always appear first in the list.
+
+	* Eliminated the deprecated 'view_hierarchy' Node type; you should use
+	the already supported SQL:2003 recursive correlated subqueries instead.
+
+	* Replaced most of the 'view_type' enumerated type values; the new list is
+	[ALIAS, JOINED, GROUPED, COMPOUND, INSERT, UPDATE, DELETE]; the old list
+	was [MATCH, SINGLE, MULTIPLE, COMPOUND, SUBQUERY, RECURSIVE].  Removed the
+	'view' Node attribute 'match_all_cols'.  Added the 'view' Node attribute
+	'recursive'.  Added the new Node type 'view_compound_elem', which specifies
+	operands for compound views explicitly, just as 'view_join' explicitly gave
+	joined view operands; as a result of this change, it is now possible for a
+	compound view to have subqueries; the subquery-defining views are not
+	included as compound operands implicitly due to their presence.
+
+	* Reversed all code and documentation changes made by release 0.44 that
+	removed the 'elements' level-2 pseudo-Node; it is now useful again.  The
+	restored documentation was also cleaned up.
+
+	* Renamed the 'simple_data_type' enumerated type to 'simple_scalar_type'.
+
+	* Split the 'domain' Node type into the 'scalar_data_type' and
+	'scalar_domain' Node types; 'scalar_data_type' Nodes are the same as the
+	old 'domain' Nodes (complete with '*_opt' child Nodes) except that they
+	live directly under 'elements', and not other Nodes; each 'scalar_domain'
+	Node (optional) simply declares a schema object that is defined by a
+	'scalar_data_type' Node, and can live where the old 'domain' Nodes lived. 
+	As a result of this change, you now can choose whether each individual data
+	type becomes a named schema object of its own or not.  Updated any other
+	Node type attributes that referenced 'domain' Nodes so that each one can
+	choose whether to reference a 'data_type' or 'domain' Node.
+
+	* Updated most Node types with new or changed attributes so that they are
+	now almost as saavy with collection data types as they are with scalar data
+	types.  Routine variables and arguments and return values can now properly
+	define all of these container types: SCALAR, SC_ARY, ROW, RW_ARY.  As can
+	routine statements and expressions, and view expressions, and correlated
+	view arguments.  Added 3 new Node types 'row_data_type' (with child
+	'row_data_type_field') and 'row_domain'.  The general features and living
+	arrangements of the 'row_*' Node types correspond to the 3 'scalar_*' Node
+	types.  Most Node types that referenced domains before now reference the
+	row type definitions.
+
+	* Changed how the core column definitions for tables and views are done;
+	now a 'row_data_type' will be created for each distinct table and view,
+	which the 'table' or 'view' Node references in a new attribute-pair; this
+	row_data_type declares the names and scalar data types for a table's or
+	view's complete column set.  All other table or view related Node types now
+	reference 'row_data_type_field' Nodes instead of '[table|view]_col' Nodes,
+	since they are the core column definitions now.  Additional details for
+	columns are still stored in reduced versions of the old two Node types,
+	which have been renamed to '[table|col]_field'; these reduced Node types
+	are no longer mandatory, and only need to be used for their added value. 
+	All other Node types and attributes named '[*_|]col[|_*]' were renamed to
+	'[*_|]field[|_*]', as were any similarly named code variables or functions.
+
+	* Updated the 'view_src[|_field]' Nodes so that you now have 5 options for
+	sources rather than 2; a source can match a table or a view as before, or
+	it can match a local routine arg or var or correlated view arg that has a
+	ROW or RW_ARY type; all 5 of these are conceptually a row set.
+
+	* Changed how standard views for 'SELECT' and 'INSERT' statements are
+	defined; now every row is selected or inserted as a single unit, either
+	into or from row variables that are declared with the same 'row_data_type'
+	as the view; the 4 new 'view' Node attributes
+	'[set|ins]_p_routine_[arg|var]' say where to either select into or insert
+	from.  Renamed the standard function 'SELECT_INTO' to 'SELECT'; the
+	'SELECT' and 'INSERT' standard functions are overloaded to select or insert
+	either a single row or a full rowset; what they do is controlled by the
+	container type of the aforementioned source/target variable that is
+	associated with the view; a 'ROW' will cause a single row, while a 'RW_ARY'
+	will cause multiple rows.  The way that views for 'UPDATE' or 'DELETE'
+	statements work is unchanged; they continue to be controlled through scalar
+	variables associated with the views in their 'SET' or 'WHERE' SQL clauses.
+	The 2 view_field attributes that were used by "select into" are now gone.
+
+	* Renamed any table index attributes and related variables from
+	'[*_|]ind[|_*]' to '[*_|]index[|_*]'.
+
+	* Renamed the 'view_join' attribute 'join_type' to 'join_op'.
+
+	* Multiple updates to t_SQL_Routine.pm.  All of the domain declarations
+	were replaced with data-type declarations.  The table declaration now has a
+	row_data_type declaration split out from it.  The "fetch_all_persons"
+	routine now does an ordinary SELECT and returns a RW_ARY, rather than the
+	more complicated process of declaring, opening, and returning a CURSOR;
+	that is more like how people would often accomplish the task in real life. 
+	The "insert_a_person" also had a lot of changes, where it lost about half
+	of its size; the new version takes a single ROW argument instead of four
+	SCALAR arguments, and the new INSERT built-in takes that as a single unit. 
+	Mostly correspondence to all the attribute name changes, besides.  The
+	SYNOPSIS in Routine.pm also had similar changes.
+
+	* Cleaned up the LANGUAGE CONCEPT STRUCTURE in Language.pod to remove
+	and/or correct some redundant details.  Removed a large chunk of antiquated
+	documentation from the 'view_expr' Node type.  Also, some other small
+	documentation cleanups in Language.pod and Routine.pm.
+
 2004-10-26   Darren Duncan <perl@DarrenDuncan.net>
 
 	* Release 0.45.

@@ -7,8 +7,8 @@ BEGIN { $| = 1; print "1..6\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use lib 't/lib';
 use t_SQL_Routine;
-use SQL::Routine '0.45';
-use SQL::Routine::L::en '0.15';
+use SQL::Routine '0.46';
+use SQL::Routine::L::en '0.16';
 $loaded = 1;
 print "ok 1\n";
 use strict;

@@ -175,18 +175,18 @@ instead of C.
 	} sqlrt_dt_node_atnm;
 
 	typedef struct {
-		sqlrt_dt_node_type  node_type  ; /* what type of Node this is */
-		sqlrt_dt_scale      node_id    ; /* uniq ident for Node within Container+Type */
-		sqlrt_dt_literal*   at_literals; /* (array) attrs of Node which are literals */
-		sqlrt_dt_enum_item* at_enums   ; /* (array) attrs of Node which are enumerated values */
+		sqlrt_dt_node_type  node_type   ; /* what type of Node this is */
+		sqlrt_dt_scale      node_id     ; /* uniq ident for Node within Container+Type */
+		sqlrt_dt_literal*   at_literals ; /* (array) attrs of Node which are literals */
+		sqlrt_dt_enum_item* at_enums    ; /* (array) attrs of Node which are enumerated values */
 		union { /* when 'container' is null, use 'id'; when it isn't null, use 'ref' */
 			sqlrt_dt_scale id ; /* id that has to be resolved to point to a Node */
 			sqlrt_dt_node* ref; /* pointer to a Node */
-		} id_or_ref*        at_nrefs   ; /* (array of id_or_ref) attrs of Node which are Nodes */
+		} id_or_ref*        at_nrefs    ; /* (array of id_or_ref) attrs of Node which are Nodes */
 			/* Note: if it would be better, we may combine all at* into one longer union list */
-		sqlrt_dt_node_atnm  p_node_atnm; /* name of at_nodes attribute which is our primary parent */
-		sqlrt_dt_container* container  ; /* (ref) what Container this Node lives in, if any */
-		sqlrt_dt_node_dll*  child_nodes; /* (list of refs) recipr to Nodes whose at_nodes ref to us */
+		sqlrt_dt_node_atnm  pp_node_atnm; /* name of at_nodes attribute which is our primary parent */
+		sqlrt_dt_container* container   ; /* (ref) what Container this Node lives in, if any */
+		sqlrt_dt_node_dll*  child_nodes ; /* (list of refs) recipr to Nodes whose at_nodes ref to us */
 	} sqlrt_dt_node;
 
 	typedef struct {

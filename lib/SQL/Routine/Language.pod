@@ -192,7 +192,7 @@ This is a brief list of major non-supported features (at present), or current li
 	- multiple distinct values per row field (this violates level-1 normalization)
 	- complex domains and compound user-defined data types
 	- 'set' data types
-	- collection types, such as arrays, stored in tables
+	- collection types, such as arrays, stored in table fields
 	- reference data types, stored in tables
 	- table hierarchies or subtables; anything not a "base table" or "viewed table"
 	- object data types
@@ -245,21 +245,22 @@ Ultimately, adding native support for a feature is better.
 
 =head1 LANGUAGE CONCEPT STRUCTURE
 
-SQL::Routine manages SQL concepts that we arrange into 4 main categories for
-convenience: 'blueprints', 'tools', 'sites', 'circumventions'.
+SQL::Routine manages SQL concepts that we arrange into 5 main categories for
+convenience: 'elements', 'blueprints', 'tools', 'sites', 'circumventions'.
 
-The first of these, 'blueprints', is the most important; it describes
-completely the composition and behaviour of your database schemas and
-application-level routines that talk to them.  For all intents and purposes, it
-is part of your core application code and would get distributed as such; like
-your core application code, everyone's installation will be identical.  We
-describe most model structures in 'blueprints', including database tables (with
-constraints), arbitrarily complex database views, and various kinds of routines
-(such as stored procedures, user defined functions, and basic DML like selects,
-inserts, updates, deletes), both those stored in a database schema or in an
-application.  We can represent multiple database catalogs and applications at
-once, whether or not they talk to each other; how they inter-relate is also
-represented.
+The first two of these, 'elements' and 'blueprints', are the most important;
+they describe completely the composition and behaviour of your database schemas
+and application-level routines that talk to them.  For all intents and
+purposes, they are part of your core application code and would get distributed
+as such; like your core application code, everyone's installation will be
+identical.  We keep simple and widely re-used details in 'elements', such as
+scalar and row data type definitions.  We describe most model structures in
+'blueprints', including database tables (with constraints), arbitrarily complex
+database views, and various kinds of routines (such as stored procedures, user
+defined functions, and basic DML like selects, inserts, updates, deletes), both
+those stored in a database schema or in an application.  We can represent
+multiple database catalogs and applications at once, whether or not they talk
+to each other; how they inter-relate is also represented.
 
 The second two categories, 'tools' and 'sites', are effectively locale or
 site-specific configuration data, and each installation of your application
@@ -278,7 +279,7 @@ The last category, 'circumventions', is used to implement SQL::Routine's
 understands but nothing in the SQL::Routine code does.
 
 While a database and application are actually being *used* (post-installation
-at a site), structures belonging to each of the 4 categories would be stored
+at a site), structures belonging to each of the 5 categories would be stored
 persistantly in two main places.  One of these is the native schema of a
 database itself.  The second of these is structures that are not stored in a
 database, but in an application that uses the database.  Many structures, such
@@ -298,17 +299,26 @@ node type beneath its parent; a value of 'M' means 'many' and '1' means 'one'.
 The node attribute 'r' indicates recursion, where a node can be a child of
 another of the same type (eg: a sub-query or sub-routine).
 
-	<root c="1">
+	<root>
+		<elements c="1">
+			<scalar_data_type c="M">
+				<scalar_data_type_opt c="M" />
+			</scalar_data_type>
+			<row_data_type c="M">
+				<row_data_type_field c="M" />
+			</row_data_type>
+		</elements>
 		<blueprints c="1">
 			<catalog c="M">
 				<owner c="M" />
 				<catalog_link c="M" />
 				<schema c="M">
-					<domain c="M" />
+					<scalar_domain c="M" />
+					<row_domain c="M" />
 					<sequence c="M" />
 					<table c="M" />
-					<view c="M" r="Y" />
-					<routine c="M" r="Y" />
+					<view c="M" />
+					<routine c="M" />
 				</schema>
 				<role c="M">
 					<privilege_on c="M">
@@ -318,11 +328,12 @@ another of the same type (eg: a sub-query or sub-routine).
 			</catalog>
 			<application c="M">
 				<catalog_link c="M" />
-				<domain c="M" />
+				<scalar_domain c="M" />
+				<row_domain c="M" />
 				<sequence c="M" />
 				<table c="M" />
-				<view c="M" r="Y" />
-				<routine c="M" r="Y" />
+				<view c="M" />
+				<routine c="M" />
 			</application>
 		</blueprints>
 		<tools c="1">
@@ -332,15 +343,13 @@ another of the same type (eg: a sub-query or sub-routine).
 		<sites c="1">
 			<catalog_instance c="M">
 				<catalog_instance_opt c="M" />
-				<catalog_link_instance c="M" r="Y" />
+				<catalog_link_instance c="M" />
 				<user c="M">
 					<user_role c="M" />
 				</user>
 			</catalog_instance>
 			<application_instance c="M">
-				<catalog_link_instance c="M" r="Y">
-					<catalog_link_instance_opt c="M" />
-				</catalog_link_instance>
+				<catalog_link_instance c="M" />
 			</application_instance>
 		</sites>
 		<circumventions c="1">
@@ -348,40 +357,40 @@ another of the same type (eg: a sub-query or sub-routine).
 		</circumventions>
 	</root>
 
-	<domain c="M">
-		<domain_opt c="M" />
-	</domain>
-
-	<table c="M">
-		<table_col c="M" />
-		<table_ind c="M">
-			<table_ind_col c="M" />
-		</table_ind>
+	<table>
+		<table_field c="M" />
+		<table_index c="M">
+			<table_index_field c="M" />
+		</table_index>
 	</table>
 
-	<view c="M" r="Y">
+	<view r="Y">
 		<view_arg c="M" />
 		<view_src c="M">
 			<view_src_arg c="M" />
-			<view_src_col c="M" />
+			<view_src_field c="M" />
 		</view_src>
-		<view_col c="M" />
+		<view_field c="M" />
 		<view_join c="M">
-			<view_join_col c="M" />
+			<view_join_field c="M" />
 		</view_join>
-		<view_hierarchy c="1" />
+		<view_compound_elem c="M" />
 		<view_expr c="M" r="Y" />
 	</view>
 
-	<routine c="M" r="Y">
+	<routine r="Y">
+		<view c="M" />
 		<routine_context c="1" />
 		<routine_arg c="M" />
-		<view c="M" r="Y" />
 		<routine_var c="M" />
 		<routine_stmt c="M">
 			<routine_expr c="M" r="Y" />
 		</routine_stmt>
 	</routine>
+
+	<catalog_link_instance r="Y">
+		<catalog_link_instance_opt c="M" />
+	</catalog_link_instance>
 
 For the most part, each 'concept' shown in the tree above corresponds to a
 single SQL::Routine Node Type.  Each Node Type is explained in further
@@ -389,7 +398,7 @@ detail below.
 
 Besides the Node it is a child of, a Node can reference other Nodes almost
 anywhere else in the tree, with the following exceptions: 1. Considering the
-order of the 4 main categories above, Nodes in any category can not reference
+order of the 5 main categories above, Nodes in any category can not reference
 Nodes in a later category; they can only reference self or earlier; 2. Nodes in
 'tools' can't reference anything else; 3. Catalog Nodes can't reference
 Application Nodes.
@@ -901,13 +910,14 @@ with 'routine_stmt' Nodes.
 
 	CURSOR_FETCH() 
 		purpose:
-			- Reads a row from an opened cursor and puts it in a row/list variable.
+			- Reads one row from an opened cursor and puts it in a ROW variable.
 		context:
 			- CURSOR_CX - CURSOR - An open cursor to provide our action context.
 
-	SELECT_INTO() 
+	SELECT() 
 		purpose:
-			- Fetches one row from a table/view and puts it in a row/list variable.
+			- Fetches either one row or all rows from a table/view and puts it in a ROW/RW_ARY variable.
+			- The container type of the target variable determines how many rows are fetched.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
@@ -915,7 +925,8 @@ with 'routine_stmt' Nodes.
 
 	INSERT() 
 		purpose:
-			- Inserts a row into a table/view.
+			- Inserts the contents of a ROW/RW_ARY variable into a table/view.
+			- The container type of the source variable determines how many rows are inserted.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
@@ -923,7 +934,8 @@ with 'routine_stmt' Nodes.
 
 	UPDATE() 
 		purpose:
-			- Updates a row in a table/view.
+			- Updates between zero and all rows in a table/view.
+			- The "where clause" of the view determines how many rows are updated.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
@@ -931,7 +943,8 @@ with 'routine_stmt' Nodes.
 
 	DELETE() 
 		purpose:
-			- Deletes a row in a table/view.
+			- Deletes between zero and all rows in a table/view.
+			- The "where clause" of the view determines how many rows are deleted.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
@@ -983,9 +996,9 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 
 	CAST() 
 		purpose:
-			- Cast a single child expression into a different data-type specified by a domain node.
+			- Cast a single child expression into a different data-type specified by a scalar_domain node.
 		args:
-			- CAST_TARGET - SRT_NODE:domain - The data type to cast the operand as.
+			- CAST_TARGET - SRT_NODE:scalar_data_type - The data type to cast the operand as.
 			- CAST_OPERAND - SCALAR - The data value we are casting into a data type.
 		returns:
 			- SCALAR - The new value having the target data type.
@@ -1127,6 +1140,65 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 	it such as Oracle does.  It looks like "DECLARE <var name> <type name> [DEFAULT <expr>]".
 	The standard also says "SET foo = expr;" rather than the "foo := expr;" as in Oracle.
 
+=head2 simple_scalar_type
+
+These represent the basic scalar data value types that can be used to further
+qualify variables (or literals) whose container_type is SCALAR.  The 1999 SQL
+standard indicates 5 classes of simple (Predefined) data types: Numeric,
+String, Boolean, Datetime, Interval; all of the data types in those classes are
+represented by at least one of the following enumerated values.  The 2003 SQL
+standard adds a 6th one, XML, but we will ignore that one for the moment; you 
+can store XML in a STR_CHAR.
+
+	NUM_INT   - an exact integral or whole number/numeric
+	NUM_EXA   - an exact decimal or fractional number/numeric
+	NUM_APR   - an approximately represented number/numeric (eg: floating point) 
+	STR_BIT   - a string of bits or generic binary data (can store anything)
+	STR_CHAR  - a string of characters (encoding spec defined separately) 
+	BOOLEAN   - only two values: false or true 
+	DATM_FULL - a full datetime ('timestamp') having both YMD and HMS components
+	DATM_DATE - a valid Gregorian (says the 2003,1999 standard) date having just YMD
+	DATM_TIME - a valid time of day having just HMS components
+	INTRVL_YM - a time duration having year-month (YM) intervals (year or month or both)
+	INTRVL_DT - a time duration having day-time (DHMS) intervals (but not year or month)
+
+=head2 char_enc_type
+
+These represent the set of known character string encodings or named sets of
+characters (character repertoires) that can be used by character data, with
+Unicode (or UTF-8 specifically) being the recommended one to use when possible,
+and with Ascii being the most common legacy encoding. Encodings are only
+applicable to data whose simple_scalar_type is STR_CHAR.
+
+	UTF8   - unicode UTF-8  (always byte-order preserving; no big/little endian, usually 1 octet)
+	UTF16  - unicode UTF-16 (has big/little endian versions)
+	UTF32  - unicode UTF-32 (has big/little endian versions)
+	ASCII  - 8-bit ascii    
+	ANSEL  - 8-bit ansel (a standard-defined super-set of ascii, used by libraries, genealogy)
+	EBCDIC - 8-bit ebcdic   
+
+	Others will be added as appropriate.
+	Note that some of these examples may be wrong for practical use and be changed later.
+
+=head2 calendar
+
+These represent the set of known calendars which a date and time (data) can be
+relative to and counted with.  For each, year zero could be at a different
+event, and other differences like what months or other yearly divisions there
+are would also distinguish the calendars.  Use "absolute" if you don't want to
+pick any calendar in particular.  These are only applicable to data whose
+simple_scalar_type is DATM_FULL or DATM_DATE (or perhaps DATM_TIME also).
+
+	ABS - "absolute", for non-calendar-specific dates and times
+	GRE - the Gregorian calendar
+	JUL - the Julian/Roman calendar
+	CHI - the Chinese calendar
+	HEB - the Hebrew calendar
+	ISL - the Islamic calendar
+	JPN - the Japanese calendar
+
+	Note that some of these examples may be wrong for practical use and be changed later.
+
 =head2 privilege_type
 
 These represent the basic types of privileges that database roles can be granted, and
@@ -1150,64 +1222,6 @@ most of them aren't mentioned in section 12.3 (p739) of SQL:2003.
 Aside from ALL, SELECT, DELETE, INSERT, UPDATE, the SQL:2003 standard also 
 defines REFERENCES, USAGE, TRIGGER, UNDER, EXECUTE, but I don't yet understand 
 what most of these mean.
-
-=head2 simple_data_type
-
-These represent the basic scalar data value types that can be used to further qualify
-variables (or literals) whose container_type is SCALAR.  The 1999 SQL standard
-indicates 5 classes of simple (Predefined) data types: Numeric, String,
-Boolean, Datetime, Interval; all of the data types in those classes are
-represented by one of the following enumerated values.  The 2003 SQL standard
-adds a 6th one, XML, but we will ignore that one for the moment.
-
-	NUM_INT   - an exact integral or whole number/numeric
-	NUM_EXA   - an exact decimal or fractional number/numeric
-	NUM_APR   - an approximately represented number/numeric (eg: floating point) 
-	STR_BIT   - a string of bits or generic binary data (can store anything)
-	STR_CHAR  - a string of characters (encoding spec defined separately) 
-	BOOLEAN   - only two values: false or true 
-	DATM_FULL - a full datetime ('timestamp') having both YMD and HMS components
-	DATM_DATE - a valid Gregorian (says the 2003,1999 standard) date having just YMD
-	DATM_TIME - a valid time of day having just HMS components
-	INTRVL_YM - a time duration having year-month (YM) intervals (year or month or both)
-	INTRVL_DT - a time duration having day-time (DHMS) intervals (but not year or month)
-
-=head2 char_enc_type
-
-These represent the set of known character string encodings or named sets of
-characters (character repertoires) that can be used by character data, with
-Unicode (or UTF-8 specifically) being the recommended one to use when possible,
-and with Ascii being the most common legacy encoding. Encodings are only
-applicable to data whose simple_data_type is STR_CHAR.
-
-	UTF8   - unicode UTF-8  (always byte-order preserving; no big/little endian, usually 1 octet)
-	UTF16  - unicode UTF-16 (has big/little endian versions)
-	UTF32  - unicode UTF-32 (has big/little endian versions)
-	ASCII  - 8-bit ascii    
-	ANSEL  - 8-bit ansel (a standard-defined super-set of ascii, used by libraries, genealogy)
-	EBCDIC - 8-bit ebcdic   
-
-	Others will be added as appropriate.
-	Note that some of these examples may be wrong for practical use and be changed later.
-
-=head2 calendar
-
-These represent the set of known calendars which a date and time (data) can be
-relative to and counted with.  For each, year zero could be at a different
-event, and other differences like what months or other yearly divisions there
-are would also distinguish the calendars.  Use "absolute" if you don't want to
-pick any calendar in particular.  These are only applicable to data whose
-simple_data_type is DATM_FULL or DATM_DATE (or perhaps DATM_TIME also).
-
-	ABS - "absolute", for non-calendar-specific dates and times
-	GRE - the Gregorian calendar
-	JUL - the Julian/Roman calendar
-	CHI - the Chinese calendar
-	HEB - the Hebrew calendar
-	ISL - the Islamic calendar
-	JPN - the Japanese calendar
-
-	Note that some of these examples may be wrong for practical use and be changed later.
 
 =head2 table_index_type
 
@@ -1233,17 +1247,13 @@ of views are very similar in structure, but they are not the same; by setting th
 view_type of a view, you are saying which differences apply to that view and 
 possibly any child views.  
 
-	MATCH - matches single table/view exactly, result cols must equal match col, no grouping, can 'set','where','order'
-	SINGLE - a "simple" view/query with a single source in 'from', no [jn, comp, sub-q, rcr]
-	MULTIPLE - a "normal" view/query (with joins), not a compound query, has no sub-queries, is fully self-defined
-	COMPOUND - consists of several "select ..." (each defined by a child view) connected by a compound operator
-	SUBQUERY - contains subqueries but not recursive, either in "from", "where", elsewhere
-	RECURSIVE - a recursive query, either invoking itself in a "with" clause, or using "start-with connect-by"
-
-	Note that 'main' views are never RECURSIVE (they are SUBQUERY); only 
-	nested queries (subqueries) declared in a 'with' clause can be recursive.
-	That is, all recursive views have another view as their parent.
-	An exception is those that use start-with...
+	ALIAS    - view is an alias for a single other view, or a table, or a ROW/RW_ARY routine var/arg
+	JOINED   - view is a non-grouped query having >= 1 other views joined together
+	GROUPED  - view is a grouped query having >= 1 other views joined together
+	COMPOUND - view is a compound query of >= 1 other views
+	INSERT   - view is an "insert statement" definition
+	UPDATE   - view is an "update statement" definition
+	DELETE   - view is a "delete statement" definition
 
 =head2 compound_operator
 
@@ -1285,8 +1295,8 @@ into common rows on related row values.  This is the most common way of
 These represent the standard parts of a view/query definition that are not in the
 "from" part.  
 
-	RESULT - the result list at the top; one item per "view_col" per view
-	SET    - when outer view used by an "insert" or "update", this is the "set" part
+	RESULT - the SQL "select list" part; one item per view column/field
+	SET    - when outermost view is an "update statement", this is the "set" part
 	FROM   - when view source in "from" part is a named subquery with args, these are arg values
 	WHERE  - the SQL "where" part
 	GROUP  - the SQL "group by" part
@@ -1300,8 +1310,8 @@ These represent the standard parts of a view/query definition that are not in th
 	clause, such as OLAP extensions ... or it may not.
 
 	Note that details for the INTO portion of a "select|fetch into" query is
-	stored in view_col Nodes, and so isn't represented by the view_part
-	enumerated list.
+	stored in 'view' Nodes, and so isn't represented by the view_part
+	enumerated list.  So is the SET portion of an "insert statement".
 
 	According to SQL:2003 Foundation 7.11 (p331), the WINDOW clause in a query seems 
 	to contain/replace the likes of ORDER BY, LIMIT/MAXR, OFFSET/SKIPR, but it is 
@@ -1521,7 +1531,188 @@ in which "Example List" rows/Nodes appear is significant.
 =head2 root
 
 This pseudo-Node is the root of a SQL::Routine and has as its children the
-other 4 pseudo-Nodes: blueprints, tools, sites, circumventions.
+other 5 pseudo-Nodes: elements, blueprints, tools, sites, circumventions.
+
+=head2 elements
+
+This pseudo-Node has two child Node-types: scalar_data_type, row_data_type.
+
+Distinct Child Groups List:
+
+	ak_name:
+		scalar_data_type - name
+		row_data_type - name
+
+=head2 scalar_data_type
+
+This type of Node describes a user-defined customization of a base
+simple_scalar_type, the latter of which SQL::Routine recognizes in code.  This
+customization encompases several things: 1. The scalar_data_type can be
+referenced by entities such as domain definitions, table column definitions,
+view column definitions, and routine variables, as their "data type"; 2. The
+scalar_data_type can impose restrictions within the base data type as to what
+values can be stored (eg: a STR_CHAR may only be 30 characters long, or a
+NUM_EXA may only be 5 digits wide with 2 digits on the right of the radix
+point); 3. The scalar_data_type can define simple pre or post processing of
+values, such as trimming of bounding whitespace or uppercasing its contents.
+
+For example, the user may decide to create a custom data type called
+"currency", which is a decimal number of precision 15 and a scale of 2.  Or,
+they may want to have an "ip address" type, which is a string that can hold 15
+characters (how ips are normally displayed to humans).  Or, they may want a
+custom SIN or telephone-no or person-name type.  They can then refer to these
+custom types everywhere as if they were types built-in to the database.
+
+Note that SQL::Routine does not support the antiquated notion of having
+separate fixed-width and variable-width character strings as being distinct
+base data types.  That is an implementation detail which database products
+should not expose in the user interface, or if they do, it should be demoted to
+an "optimization" feature used with a single character string type.  When you
+make a scalar_data_type using the STR_CHAR base_type, it will have the
+semantics of SQL's "VARCHAR" by default; you can make it like "CHAR" by setting
+the store_fixed attribute to true.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	name - L.cstr - MA - the name this scalar data type is identified by
+	base_type - E.simple_scalar_type - MA - name of the base data type this data_type is customized from
+	num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
+	num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
+	num_octets - L.uint - for integral or inexact (floating point) numbers, fixed storage size in octets
+	num_unsigned - L.bool - for numbers, true means only values >= 0 may be stored
+	max_octets - L.uint - maximum size in octets for a binary/bit string
+	max_chars - L.uint - maximum size in characters for a character string
+	store_fixed - L.bool - when true then try to reserve max size on disk even if not all used
+	char_enc - E.char_enc_type - which character encoding to use
+	trim_white - L.bool - when true then trim lead/trailing whitespace on save into STR_CHAR field/var
+	uc_latin - L.bool - do we uppercase latin chars in STR_CHAR before writing (no change on reading)
+	lc_latin - L.bool - do we lowercase latin chars in STR_CHAR before writing (no change on reading)
+	pad_char - L.cstr - when store_fixed is true then pad actual value with this to max size on save
+	trim_pad - L.bool - when store_fixed is true then trim padding on read from STR_CHAR field/var
+	calendar - E.calendar - what calendar the date and time (or date only) is in
+	with_zone - L.sint - if timestamp/time to include a 'with time zone', this says what time zone
+	range_min - L.misc - when applicable, what the allowed minimum value is (for bounds/check constraint)
+	range_max - L.misc - when applicable, what the allowed maximum value is (for bounds/check constraint)
+
+Exclusive Attribute Groups List:
+
+	num_size - num_precision,num_octets
+
+Local Attribute Dependencies List:
+
+	base_type:
+		num_precision - NUM_INT,NUM_EXA,NUM_APR
+		num_scale - NUM_EXA,NUM_APR
+		num_octets - NUM_INT,NUM_APR
+		num_unsigned - NUM_INT,NUM_EXA,NUM_APR
+		max_octets - STR_BIT - MA
+		max_chars - STR_CHAR - MA
+		char_enc - STR_CHAR - MA
+		trim_white - STR_CHAR
+		uc_latin,lc_latin - STR_CHAR
+		pad_char - STR_CHAR
+		trim_pad - STR_CHAR
+		calendar - DATM_FULL,DATM_DATE - MA
+		with_zone - DATM_FULL,DATM_DATE,DATM_TIME
+	num_precision:
+		num_scale
+
+Distinct Child Groups List:
+
+	ak_option:
+		scalar_data_type_opt - value
+
+Example List:
+
+	|id|name    |base     |np |ns|no|nu|mxoct|mxch|fx|chenc|tw|uc|pc|tp|cal|
+	|--|--------|---------|---|--|--|--|-----|----|--|-----|--|--|--|--|---|
+	| 1|bin1k   |STR_BIT  |   |  |  |  | 1000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 1000 octets
+	| 2|bin32k  |STR_BIT  |   |  |  |  |32000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 32000 octets
+	| 3|str4    |STR_CHAR |   |  |  |  |     |   4|1 |ASCII|1 |1 |20|1 |   | - a fix-w 4 char ascii cstr, uppercased, spc-pad
+	| 4|str10   |STR_CHAR |   |  |  |  |     |  10|1 |ASCII|1 |  |20|1 |   | - a fix-w 10 char ascii cstr, case-preserve, spc-pad
+	| 5|str30   |STR_CHAR |   |  |  |  |     |  30|  |ASCII|1 |  |  |  |   | - a fix-w 30 char ascii cstr, case-preserving
+	| 6|str2k   |STR_CHAR |   |  |  |  |     |2000|  |UTF8 |  |  |  |  |   | - a var-w 2000 char unicode cstr, case-preserving
+	| 7|byte    |NUM_INT  |   |  | 1|  |     |    |  |     |  |  |  |  |   | - an 8-bit precise int btwn           -128 and           +127
+	| 8|short   |NUM_INT  |   |  | 2|  |     |    |  |     |  |  |  |  |   | - a 16-bit precise int btwn        -32,768 and        +32,767
+	| 9|int     |NUM_INT  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit precise int btwn -2,147,483,648 and +2,147,483,647
+	|10|long    |NUM_INT  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit precise int btwn        -(2^63) and      +(2^63)-1
+	|11|ubyte   |NUM_INT  |   |  | 1|1 |     |    |  |     |  |  |  |  |   | - an 8-bit precise integer between 0 and           +255
+	|12|ushort  |NUM_INT  |   |  | 2|1 |     |    |  |     |  |  |  |  |   | - a 16-bit precise integer between 0 and        +65,535
+	|13|uint    |NUM_INT  |   |  | 4|1 |     |    |  |     |  |  |  |  |   | - a 32-bit precise integer between 0 and +4,294,967,295
+	|14|ulong   |NUM_INT  |   |  | 8|1 |     |    |  |     |  |  |  |  |   | - a 64-bit precise integer between 0 and      +(2^64)-1
+	|15|float   |NUM_APR  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit imprecise fractional number
+	|16|double  |NUM_APR  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit imprecise fractional number
+	|17|dec10p2 |NUM_EXA  | 10| 2|  |  |     |    |  |     |  |  |  |  |   | - a precise 10-digit num with hundredths scale
+	|18|dec255  |NUM_EXA  |255|  |  |  |     |    |  |     |  |  |  |  |   | - a precise 255-digit num with arbitrary scale
+	|19|boolean |BOOLEAN  |   |  |  |  |     |    |  |     |  |  |  |  |   | - a boolean; only 2 values of false or true
+	|20|datetime|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |ABS| - a date and time or date, non-calendar specific
+	|21|dtchines|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |CHI| - a date and time or date, in the Chinese calendar
+	|22|sex     |STR_CHAR |   |  |  |  |     |   1|  |     |  |  |  |  |   | - a 1-char string, constrained to 'M' and 'F'
+	|23|str20   |STR_CHAR |   |  |  |  |     |  20|  |     |  |  |  |  |   | - a 20-char string
+	|24|str100  |STR_CHAR |   |  |  |  |     | 100|  |     |  |  |  |  |   | - a 100-char string
+	|25|str250  |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a 250-char string
+	|26|entitynm|STR_CHAR |   |  |  |  |     |  30|  |     |  |  |  |  |   | - a short string suitable for naming things
+	|27|generic |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a longer string that most kinds of data will fit in
+
+=head2 scalar_data_type_opt
+
+When a "scalar_data_type" Node is meant to impose an enumerated list
+restriction, meaning that only a specific set of values may be stored, then you
+use a "scalar_data_type_opt" Node to define each enumerated value that is
+allowed.  Keep in mind that the SQL NULL (undefined) value is always distinct
+from anything in this option list.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	pp_scalar_data_type - N.scalar_data_type - PP - what "scalar_data_type" Node this option is associated with
+	value - L.misc - MA - this is the actual enumerated value that the scalar_data_type_opt Node represents
+
+Example List:
+
+	|id|dt|v|
+	|--|--|-|
+	| 1|22|M| - "sex" is "Male"
+	| 2|22|F| - "sex" is "Female"
+
+=head2 row_data_type
+
+This type of Node describes the core of a row composite data type, one of which
+contains a list of named and typed scalar fields.  Each 'table' (base table)
+and 'view' (viewed table or query definition) Node has a single associated
+'row' Node that defines its "interface"; each 'table' and 'view' is composed of
+a set of rows (usually unordered) that all have the same type.  Any routine
+variable with a container type of 'ROW' is defined by an associated 'row' Node,
+as is any 'RW_ARY' variable, which is an ordered set (array) of rows of the
+same type.  Some database actions can act on a generic row as a single unit, 
+rather than having to specify each component field separately.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	name - L.cstr - MA - the name this row data type is identified by
+
+Child Quantity List:
+
+	row_data_type_field - 1
+
+Distinct Child Groups List:
+
+	ak_name:
+		row_data_type_field - name
+
+=head2 row_data_type_field
+
+This type of Node describes a single field in a row data type, and has details
+that are specific to that field, primarily a name and data type.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	pp_row_data_type - N.row_data_type - PP - what row this field is a part of
+	name - L.cstr - MA - unique identifier for this field within the row
+	scalar_data_type - N.scalar_data_type - MA - the user-customized scalar data type for this field
 
 =head2 blueprints
 
@@ -1594,7 +1785,8 @@ Distinct Child Groups List:
 
 	ak_name:
 		catalog_link - name
-		domain - name
+		scalar_domain - name
+		row_domain - name
 		sequence - name
 		table - name
 		view - name
@@ -1611,7 +1803,7 @@ schema owner.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog - PP - the catalog that this user is in
+	pp_catalog - N.catalog - PP - the catalog that this user is in
 
 Example List:
 
@@ -1646,8 +1838,8 @@ schema name, one is using a partially qualified name.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog - PP - the schema in this blueprint may use the unrealized catalog link
-	application - N.application - PP - the routines in this app bp may use the unrealized catalog link
+	pp_catalog - N.catalog - PP - the schema in this blueprint may use the unrealized catalog link
+	pp_application - N.application - PP - the routines in this app bp may use the unrealized catalog link
 	name - L.cstr - MA - the "catalog link" that is the front of the fully qualified remote schema object name
 	target - N.catalog - MA - this is what the link connects to
 
@@ -1676,14 +1868,15 @@ anyway, if practical.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog - PP - the catalog that this schema/namespace is in
+	pp_catalog - N.catalog - PP - the catalog that this schema/namespace is in
 	name - L.cstr - MA - the name this schema/namespace is identified by
 	owner - N.owner - MA - the user that owns this schema
 
 Distinct Child Groups List:
 
 	ak_name:
-		domain - name
+		scalar_domain - name
+		row_domain - name
 		sequence - name
 		table - name
 		view - name
@@ -1705,7 +1898,7 @@ user privileges.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog - PP - the catalog that this role is in
+	pp_catalog - N.catalog - PP - the catalog that this role is in
 	name - L.cstr - MA - the name this role is identified by
 
 =head2 privilege_on
@@ -1719,9 +1912,10 @@ privilege_for Nodes, which are children of the privilege_on Node.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	role - N.role - PP - the role that this privilege is granted to
+	pp_role - N.role - PP - the role that this privilege is granted to
 	schema - N.schema - if the privilege relates to a whole schema, this is the schema
-	domain - N.domain - if the privilege type is domain-related, this is the domain
+	scalar_domain - N.scalar_domain - if the privilege type is scalar_domain-related, this is the scalar_domain
+	row_domain - N.row_domain - if the privilege type is row_domain-related, this is the row_domain
 	sequence - N.sequence - if the privilege type is sequence-related, this is the sequence
 	table - N.table - if the privilege type is table-related, this is the table
 	view - N.view - if the privilege type is view-related, this is the view
@@ -1729,7 +1923,7 @@ Attribute List:
 
 Exclusive Attribute Groups List:
 
-	privilege_on - schema,domain,sequence,table,view,routine - MA
+	privilege_on - schema,scalar_domain,row_domain,sequence,table,view,routine - MA
 
 Distinct Child Groups List:
 
@@ -1744,142 +1938,37 @@ that is defined by this Node's privilege_on parent Node.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	priv_on - N.privilege_on - PP - what "privilege_on" Node this option is associated with
+	pp_priv_on - N.privilege_on - PP - what "privilege_on" Node this option is associated with
 	priv_type - E.privilege_type - MA - what manner of privilege this is
 
-=head2 domain
+=head2 scalar_domain
 
-This type of Node describes a named user-defined customization of a base
-simple_data_type, the latter of which SQL::Routine recognizes in code. This
-customization encompases several things: 1. The domain has its own name /
-identifier that can be referenced by entities such as table column definitions,
-view column definitions, and routine variables, as their "data type"; 2. The
-domain can impose restrictions within the base data type as to what values can
-be stored (eg: a STR_CHAR may only be 30 characters long, or a NUM_EXA may only
-be 5 digits wide with 2 digits on the right of the radix point); 3. The
-domain can define simple pre or post processing of values, such as trimming of
-bounding whitespace or uppercasing its contents.
-
-For example, the user may decide to create a custom data type called
-"currency", which is a decimal number of precision 15 and a scale of 2.  Or,
-they may want to have an "ip address" type, which is a string that can hold 15
-characters (how ips are normally displayed to humans).  Or, they may want a
-custom SIN or telephone-no or person-name type.  They can then refer to these
-custom types everywhere as if they were types built-in to the database.
-
-Note that SQL::Routine does not support the antiquated notion of having
-separate fixed-width and variable-width character strings as being distinct
-base data types.  That is an implementation detail which database products
-should not expose in the user interface, or if they do, it should be demoted to
-an "optimization" feature used with a single character string type.  When you
-make a domain using the STR_CHAR base_type, it will have the semantics of
-SQL's "VARCHAR" by default; you can make it like "CHAR" by setting the
-store_fixed attribute to true.
+This type of Node allows you to store a 'scalar_data_type' definition as a
+named database schema object, and reference it by its own identifier as the
+"data type" of such entities as table column definitions, view column
+definitions, and routine variables.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	schema - N.schema - PP - the schema that this domain is in, if any
-	application - N.application - PP - the app-space that this domain is in, if any
-	name - L.cstr - MA - the name this domain (user customized data type) is identified by
-	base_type - E.simple_data_type - MA - name of the base data type this data_type is customized from
-	num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
-	num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
-	num_octets - L.uint - for integral or inexact (floating point) numbers, fixed storage size in octets
-	num_unsigned - L.bool - for numbers, true means only values >= 0 may be stored
-	max_octets - L.uint - maximum size in octets for a binary/bit string
-	max_chars - L.uint - maximum size in characters for a character string
-	store_fixed - L.bool - when true then try to reserve max size on disk even if not all used
-	char_enc - E.char_enc_type - which character encoding to use
-	trim_white - L.bool - when true then trim lead/trailing whitespace on save into STR_CHAR field/var
-	uc_latin - L.bool - do we uppercase latin chars in STR_CHAR before writing (no change on reading)
-	lc_latin - L.bool - do we lowercase latin chars in STR_CHAR before writing (no change on reading)
-	pad_char - L.cstr - when store_fixed is true then pad actual value with this to max size on save
-	trim_pad - L.bool - when store_fixed is true then trim padding on read from STR_CHAR field/var
-	calendar - E.calendar - what calendar the date and time (or date only) is in
-	with_zone - L.sint - if timestamp/time to include a 'with time zone', this says what time zone
-	range_min - L.misc - when applicable, what the allowed minimum value is (for bounds/check constraint)
-	range_max - L.misc - when applicable, what the allowed maximum value is (for bounds/check constraint)
+	pp_schema - N.schema - PP - the schema that this domain is in, if any
+	pp_application - N.application - PP - the app-space that this domain is in, if any
+	name - L.cstr - MA - the name this domain is identified by
+	data_type - N.scalar_data_type - MA - the core defining details of this domain
 
-Exclusive Attribute Groups List:
+=head2 row_domain
 
-	num_size - num_precision,num_octets
-
-Local Attribute Dependencies List:
-
-	base_type:
-		num_precision - NUM_INT,NUM_EXA,NUM_APR
-		num_scale - NUM_EXA,NUM_APR
-		num_octets - NUM_INT,NUM_APR
-		num_unsigned - NUM_INT,NUM_EXA,NUM_APR
-		max_octets - STR_BIT - MA
-		max_chars - STR_CHAR - MA
-		char_enc - STR_CHAR - MA
-		trim_white - STR_CHAR
-		uc_latin,lc_latin - STR_CHAR
-		pad_char - STR_CHAR
-		trim_pad - STR_CHAR
-		calendar - DATM_FULL,DATM_DATE - MA
-		with_zone - DATM_FULL,DATM_DATE,DATM_TIME
-	num_precision:
-		num_scale
-
-Distinct Child Groups List:
-
-	ak_option:
-		domain_opt - value
-
-Example List:
-
-	|id|name    |base     |np |ns|no|nu|mxoct|mxch|fx|chenc|tw|uc|pc|tp|cal|
-	|--|--------|---------|---|--|--|--|-----|----|--|-----|--|--|--|--|---|
-	| 1|bin1k   |STR_BIT  |   |  |  |  | 1000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 1000 octets
-	| 2|bin32k  |STR_BIT  |   |  |  |  |32000|    |  |     |  |  |  |  |   | - a hunk of binary data of maximum 32000 octets
-	| 3|str4    |STR_CHAR |   |  |  |  |     |   4|1 |ASCII|1 |1 |20|1 |   | - a fix-w 4 char ascii cstr, uppercased, spc-pad
-	| 4|str10   |STR_CHAR |   |  |  |  |     |  10|1 |ASCII|1 |  |20|1 |   | - a fix-w 10 char ascii cstr, case-preserve, spc-pad
-	| 5|str30   |STR_CHAR |   |  |  |  |     |  30|  |ASCII|1 |  |  |  |   | - a fix-w 30 char ascii cstr, case-preserving
-	| 6|str2k   |STR_CHAR |   |  |  |  |     |2000|  |UTF8 |  |  |  |  |   | - a var-w 2000 char unicode cstr, case-preserving
-	| 7|byte    |NUM_INT  |   |  | 1|  |     |    |  |     |  |  |  |  |   | - an 8-bit precise int btwn           -128 and           +127
-	| 8|short   |NUM_INT  |   |  | 2|  |     |    |  |     |  |  |  |  |   | - a 16-bit precise int btwn        -32,768 and        +32,767
-	| 9|int     |NUM_INT  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit precise int btwn -2,147,483,648 and +2,147,483,647
-	|10|long    |NUM_INT  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit precise int btwn        -(2^63) and      +(2^63)-1
-	|11|ubyte   |NUM_INT  |   |  | 1|1 |     |    |  |     |  |  |  |  |   | - an 8-bit precise integer between 0 and           +255
-	|12|ushort  |NUM_INT  |   |  | 2|1 |     |    |  |     |  |  |  |  |   | - a 16-bit precise integer between 0 and        +65,535
-	|13|uint    |NUM_INT  |   |  | 4|1 |     |    |  |     |  |  |  |  |   | - a 32-bit precise integer between 0 and +4,294,967,295
-	|14|ulong   |NUM_INT  |   |  | 8|1 |     |    |  |     |  |  |  |  |   | - a 64-bit precise integer between 0 and      +(2^64)-1
-	|15|float   |NUM_APR  |   |  | 4|  |     |    |  |     |  |  |  |  |   | - a 32-bit imprecise fractional number
-	|16|double  |NUM_APR  |   |  | 8|  |     |    |  |     |  |  |  |  |   | - a 64-bit imprecise fractional number
-	|17|dec10p2 |NUM_EXA  | 10| 2|  |  |     |    |  |     |  |  |  |  |   | - a precise 10-digit num with hundredths scale
-	|18|dec255  |NUM_EXA  |255|  |  |  |     |    |  |     |  |  |  |  |   | - a precise 255-digit num with arbitrary scale
-	|19|boolean |BOOLEAN  |   |  |  |  |     |    |  |     |  |  |  |  |   | - a boolean; only 2 values of false or true
-	|20|datetime|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |ABS| - a date and time or date, non-calendar specific
-	|21|dtchines|DATM_FULL|   |  |  |  |     |    |  |     |  |  |  |  |CHI| - a date and time or date, in the Chinese calendar
-	|22|sex     |STR_CHAR |   |  |  |  |     |   1|  |     |  |  |  |  |   | - a 1-char string, constrained to 'M' and 'F'
-	|23|str20   |STR_CHAR |   |  |  |  |     |  20|  |     |  |  |  |  |   | - a 20-char string
-	|24|str100  |STR_CHAR |   |  |  |  |     | 100|  |     |  |  |  |  |   | - a 100-char string
-	|25|str250  |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a 250-char string
-	|26|entitynm|STR_CHAR |   |  |  |  |     |  30|  |     |  |  |  |  |   | - a short string suitable for naming things
-	|27|generic |STR_CHAR |   |  |  |  |     | 250|  |     |  |  |  |  |   | - a longer string that most kinds of data will fit in
-
-=head2 domain_opt
-
-When a "domain" Node is meant to impose an enumerated list restriction, meaning 
-that only a specific set of values may be stored, then you use a "domain_opt" 
-Node to define each enumerated value that is allowed.  Keep in mind that the 
-SQL NULL (undefined) value is always distinct from anything in this option list.
+This type of Node allows you to store a 'row_data_type' definition as a
+named database schema object, and reference it by its own identifier as the
+"data type" of such entities as routine variables.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	domain - N.domain - PP - what "domain" Node this option is associated with
-	value - L.misc - MA - this is the actual enumerated value that the domain_opt Node represents
-
-Example List:
-
-	|id|do|v|
-	|--|--|-|
-	| 1|22|M| - "sex" is "Male"
-	| 2|22|F| - "sex" is "Female"
+	pp_schema - N.schema - PP - the schema that this domain is in, if any
+	pp_application - N.application - PP - the app-space that this domain is in, if any
+	name - L.cstr - MA - the name this domain is identified by
+	data_type - N.row_data_type - MA - the core defining details of this domain
 
 =head2 sequence
 
@@ -1892,8 +1981,8 @@ standards.  The standard says that only integers can be produced by sequences.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	schema - N.schema - PP - the schema that this sequence generator is in
-	application - N.application - PP - the app-space that this sequence generator is in
+	pp_schema - N.schema - PP - the schema that this sequence generator is in
+	pp_application - N.application - PP - the app-space that this sequence generator is in
 	name - L.cstr - MA - the name this sequence generator is identified by
 	increment - L.sint - the interval between sequence numbers; defaults to 1 if not set
 	min_val - L.sint - the minimum value that the sequence can generate; no minimum if not set
@@ -1904,14 +1993,14 @@ Attribute List:
 
 =head2 table
 
-This type of Node describes the core (single cardinality) description of a
-database table, which is the single core concept of any database; it is where
-the "data" that the database exists to store is kept.  Each table has one or
-more columns, which define its "interface", and one or more indexes or
-constraints for data integrity.  SQL:2003,1999 calls this a "base table".
+This type of Node describes the core of a database table, which is the single
+core concept of any database; it is where the "data" that the database exists
+to store is kept.  Each table has one or more columns, which define its
+"interface", and one or more indexes or constraints for data integrity. 
+SQL:2003,1999 calls this a "base table".
 
-SQL::Routine supports the concept of temporary tables such that you say a
-table is temporary by putting it in the application space rather than the
+SQL::Routine supports the concept of temporary tables such that you say a table
+is temporary by putting it in the application space rather than the
 catalog-schema space.  This makes the most sense, since temporary tables only
 persist during an active database connection, and they do not exist in the same
 name-space of any database schema.
@@ -1919,19 +2008,20 @@ name-space of any database schema.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	schema - N.schema - PP - the schema that this table is in
-	application - N.application - PP - the app-space that this table is in
+	pp_schema - N.schema - PP - the schema that this table is in
+	pp_application - N.application - PP - the app-space that this table is in
 	name - L.cstr - MA - the name this table is identified by
+	row_data_type - N.row_data_type - defines the names and types of this table's column set
+	row_domain - N.row_domain - defines the names and types of this table's column set
 
-Child Quantity List:
+Exclusive Attribute Groups List:
 
-	table_col - 1
+	row_data_type - row_data_type,row_domain - MA
 
 Distinct Child Groups List:
 
 	ak_name:
-		table_col - name
-		table_ind - name
+		table_index - name
 
 Example List:
 
@@ -1942,7 +2032,7 @@ Example List:
 	| 3| 1|user_pref   | - application preference values for users
 	| 4| 1|person      | - core data node in a genealogical program
 
-=head2 table_col
+=head2 table_field
 
 This type of Node describes a single table column, and has details that are
 specific to that column.
@@ -1950,10 +2040,9 @@ specific to that column.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	table - N.table - PP - unique identifier for this table
-	name - L.cstr - MA - unique identifier for column within table
-	domain - N.domain - MA - the user-customized data type for this column
-	mandatory - L.bool - MA - the col's "nullability characteristic; true, "known not nullable"; false, "possibly nullable"
+	pp_table - N.table - PP - what table this column is a part of
+	row_field - N.row_data_type_field - MA - defines the name and type of this column
+	mandatory - L.bool - the col's "nullability characteristic; true, "known not nullable"; else, "possibly nullable"
 	default_val - L.misc - an optional default value for the column, or starting val for auto_inc
 	auto_inc - L.bool - when true, col val defaults from a special auto-incrementing sequence
 	default_seq - N.sequence - when set, the column defaults to a value from this named sequence
@@ -1966,7 +2055,9 @@ Exclusive Attribute Groups List:
 
 Example List:
 
-	|id|tb|name         |do|ma|def|inc|
+	Note: The rows below are actually a join where table_field = row_data_type_field.
+
+	|id|tb|name         |dt|ma|def|inc|
 	|--|--|-------------|--|--|---|---|
 	| 1| 1|user_id      | 9|1 |1  |1  | - unique internal id for user, not changeable
 	| 2| 1|login_name   |23|1 |   |   | - who user authenticates into app as
@@ -1994,38 +2085,38 @@ Example List:
 	|24| 4|father_id    | 9|0 |   |   | - person_id of this person's father, if known
 	|25| 4|mother_id    | 9|0 |   |   | - person_id of this person's mother, if known
 
-=head2 table_ind
+=head2 table_index
 
 This type of Node describes a single table index, and has details that are
 specific to that index.
 
 Note that the primary key for a table is defined to be the first (by sequence)
-ind_type=UNIQUE/UFOREIGN index where all of the index columns are required.  If
+index_type=UNIQUE/UFOREIGN index where all of the index columns are required.  If
 no table indexes qualify then the table has no primary key.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	table - N.table - PP - unique identifier for this table
+	pp_table - N.table - PP - unique identifier for this table
 	name - L.cstr - MA - unique identifier for index within table
-	ind_type - E.table_index_type - MA - what type of index this is (eg: UNIQUE, FOREIGN)
+	index_type - E.table_index_type - MA - what type of index this is (eg: UNIQUE, FOREIGN)
 	f_table - N.table - foreign key constraining table
 
 Local Attribute Dependencies List:
 
-	ind_type:
+	index_type:
 		f_table - FOREIGN,UFOREIGN - MA
 
 Child Quantity List:
 
-	table_ind_col - 1
+	table_index_field - 1
 
 Distinct Child Groups List:
 
-	ak_table_col:
-		table_ind_col - table_col
-	ak_f_table_col:
-		table_ind_col - f_table_col
+	ak_table_field:
+		table_index_field - table_field
+	ak_f_table_field:
+		table_index_field - f_table_field
 
 Example List:
 
@@ -2044,21 +2135,21 @@ Example List:
 	|11| 4|fk_father       |FOREIGN|   4| - link child to father
 	|12| 4|fk_mother       |FOREIGN|   4| - link child to mother
 
-=head2 table_ind_col
+=head2 table_index_field
 
-This type of Node intersects between a table_ind and a table_col; it says which
-table columns are involved in each table index.
+This type of Node intersects between a table_index and a table field/col; it
+says which table columns are involved in each table index.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	table_ind - N.table_ind - PP - unique identifier for index within table
-	table_col - N.table_col - MA - unique identifier for column within table
-	f_table_col - N.table_col - when the index type is a foreign key, this is the constraining column
+	pp_table_index - N.table_index - PP - unique identifier for index within table
+	field - N.row_data_type_field - MA - unique identifier for column within table
+	f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
 
 Example List:
 
-	|id|ind|col|fcol|
+	|id|ind|fld|ffld|
 	|--|---|---|----|
 	| 1|  1|  1|    | - ensure all [user_id] are unique
 	| 2|  2|  2|    | - ensure all [login_name] are unique
@@ -2093,14 +2184,14 @@ insert, update, or delete rows through some views/queries as with a table.
 Views are often fully defined using a set of multiple linked Nodes of varying
 Node Types, which makes them fully customizable.  However, a short-cut is
 available which allows a view to be defined entirely with as few as two Nodes,
-one "view" having type of MATCH and one "view_src".  This short cut is mainly
+one "view" having type of ALIAS and one "view_src".  This short cut is mainly
 for use when we want to simulate full direct table access, which is needed for
 mass back-ups or restores of tables, or when implementing a utility that lets
 users make direct changes to a table.  Other part-way short cuts are available
 too.
 
-The view_join[/_col] Nodes that belong to a "view" ("viewed table") Node,
-together with the view_src[/_col] Nodes that the former reference, define the
+The view_join[/_field] Nodes that belong to a "view" ("viewed table") Node,
+together with the view_src[/_field] Nodes that the former reference, define the
 single (recursive) "joined table" (see SQL:2003 Foundations 7.7, p312) that is
 the basis for the "viewed table".  In the joined table, every field value
 matches exactly a (or several identical) value in a source table or view. 
@@ -2137,67 +2228,77 @@ to the rows being changed.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	schema - N.schema - PP - the schema that this view is in, if any
-	application - N.application - PP - the app-space that this view is in, if any
-	routine - N.routine - PP - parent routine of this one, if any
-	p_view - N.view - PP - parent view of this one, if any; empty if this is the root view
+	pp_view - N.view - PP - parent view of this one, if any; empty if this is the root view
+	pp_routine - N.routine - PP - parent routine of this one, if any
+	pp_schema - N.schema - PP - the schema that this view is in, if any
+	pp_application - N.application - PP - the app-space that this view is in, if any
 	name - L.cstr - MA - the name this view is identified by, if any
-	view_type - E.view_type - MA - what kind of view this is; eg: match, single, mult, compound, has-subq, recursive
-	match_all_cols - L.bool - if true, this view matches every col (like '*'); if false, view_col has list
+	view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
+	row_data_type - N.row_data_type - defines the names and types of this view's column set
+	row_domain - N.row_domain - defines the names and types of this view's column set
+	recursive - L.bool - if true, this view is a recursive correlated subquery
 	compound_op - E.compound_operator - how to merge any child rowsets/views of this one together, if any
 	distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
-	may_write - L.bool - true when we should at least try allowing updates through the view
+	may_write - L.bool - true when we should at least try allowing updates through the selecting view
+	set_p_routine_arg - N.routine_arg - the ROW/RW_ARY routine arg we are setting value of via "select into"
+	set_p_routine_var - N.routine_var - the ROW/RW_ARY routine var we are setting value of via "select into"
+	ins_p_routine_arg - N.routine_arg - the ROW/RW_ARY routine arg we are inserting into the table/view
+	ins_p_routine_var - N.routine_var - the ROW/RW_ARY routine var we are inserting into the table/view
 
 	Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
 	a false or undefined value results in "[SELECT|UNION|...] ALL".
 
 Local Attribute Dependencies List:
 
+	pp_view:
+		recursive
 	view_type:
-		match_all_cols - MATCH
+		row_data_type,row_domain - ALIAS,JOINED,GROUPED,COMPOUND,INSERT - MA
+		recursive - JOINED,GROUPED,COMPOUND
 		compound_op - COMPOUND - MA
-
-Child Quantity List:
-
-	view_hierarchy - 0 - 1
+		distinct_rows - JOINED,GROUPED,COMPOUND
+		may_write - ALIAS,JOINED,GROUPED,COMPOUND
+		set_p_routine_arg,set_p_routine_var - ALIAS,JOINED,GROUPED,COMPOUND
+		ins_p_routine_arg,ins_p_routine_var - INSERT - MA
+ 
+	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp_routine set.
+ 	Note: Not expressable yet; if pp_routine set and view_type is [A,J,G,C], then one of set_* must be set.
 
 Distinct Child Groups List:
 
 	ak_name:
 		view_arg - name
-		view_col - name
 	ak_src_name:
 		view_src - name
 	ak_join:
 		view_join - lhs_src,rhs_src
 	ak_join_limit_one:
 		view_join - rhs_src
-	ak_expr_set_result_col:
-		view_expr - set_result_col
-	ak_expr_set_src_col:
-		view_expr - set_src_col
+	ak_expr_set_result_field:
+		view_expr - set_result_field
+	ak_expr_set_src_field:
+		view_expr - set_src_field
 	ak_expr_call_src_arg:
 		view_expr - call_src_arg
 
 Example List:
 
-	|id|type    |ac|
-	|--|--------|--|
-	| 1|MULTIPLE|  | - user - joins the "user_auth" and "user_profile" tables
-	| 2|MULTIPLE|  | - person_with_parents - joins the "person" table with itself twice
-	| 3|SINGLE  |  | - user_theme - shows how many users use each theme pref value
-	| 4|MATCH   | 1| - get_person - simply the "person" table
-	| 5|MATCH   | 1| - get_user - simply the "user" view
-	| 6|MATCH   | 1| - get_pwp - simply the "person_with_parents" view
-	| 7|MATCH   | 1| - get_theme - simply the "user_theme" view
+	|id|type   |
+	|--|-------|
+	| 1|JOINED | - user - joins the "user_auth" and "user_profile" tables
+	| 2|JOINED | - person_with_parents - joins the "person" table with itself twice
+	| 3|GROUPED| - user_theme - shows how many users use each theme pref value
+	| 4|ALIAS  | - get_person - simply the "person" table
+	| 5|JOINED | - get_user - simply the "user" view
+	| 6|JOINED | - get_pwp - simply the "person_with_parents" view
+	| 7|ALIAS  | - get_theme - simply the "user_theme" view
 
 =head2 view_arg
 
-When this view is a named sub-query, declared in the "with" clause of the main
-query/view, then it can take arguments to define its caller context; each
-"view_arg" Node you attach to a "view" Node names an argument.  This Node type
-is not used for anything else; it is not like a routine arg that doubles for an
-app host param.
+When this view is a correlated subquery, then it takes one or more arguments to
+define its operating context; each "view_arg" Node you attach to a "view" Node
+names an argument declaration.  This Node type is not used for anything else;
+it is not like a routine arg that doubles for an app host param.
 
 The presence or absense of arguments in a view (assuming they are not
 'constant') determines whether the view is correlated or uncorrelated when used
@@ -2217,9 +2318,25 @@ or does not take any arguments.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	view - N.view - PP - what named sub-query view this is an argument for
+	pp_view - N.view - PP - what named sub-query view this is an argument for
 	name - L.cstr - MA - name of the argument
-	domain - N.domain - MA - the user-customized data type for this argument
+	cont_type - E.container_type - MA - what basic container type the argument is
+	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY argument
+	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY argument
+	row_data_type - N.row_data_type - user customized data type of ROW/RW_ARY argument
+	row_domain - N.row_domain - user customized data type of ROW/RW_ARY argument
+
+Exclusive Attribute Groups List:
+
+	data_type - scalar_data_type,scalar_domain,row_data_type,row_domain - MA
+
+	Notes: This helps force cont_type to be one of [SCALAR,ROW,SC_ARY,RW_ARY].
+
+Local Attribute Dependencies List:
+
+	cont_type:
+		scalar_data_type,scalar_domain - SCALAR,SC_ARY - MA
+		row_data_type,row_domain - ROW,RW_ARY - MA
 
 =head2 view_src
 
@@ -2231,23 +2348,24 @@ would be a unique alias for it.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	view - N.view - PP - unique identifier for view
+	pp_view - N.view - PP - unique identifier for view
 	name - L.cstr - MA - unique "alias" identifier for source within view
 	match_table - N.table - if set, the source is a table (and match_view must not be set)
 	match_view - N.view - if set, the source is another view (and match_table must not be set)
-	catalog_link - N.catalog_link - if match_* in another catalog, say via which catalog link
+	match_p_view_arg - N.view_arg - when view is a correlated subquery, use value of a ROW/RW_ARY argument to the view
+	match_p_routine_arg - N.routine_arg - use value of a ROW/RW_ARY argument to the current routine
+	match_p_routine_var - N.routine_var - use value of a ROW/RW_ARY variable declared in the current routine
+	catalog_link - N.catalog_link - if match_[table|view] in another catalog, say via which catalog link
 	may_write - L.bool - alternately to the same 'view' attribute, say here which exact sources we want to 'select for update'
 
 Exclusive Attribute Groups List:
 
-	match - match_table,match_view - MA
+	match - match_table,match_view,match_p_view_arg,match_p_routine_arg,match_p_routine_var - MA
 
 Distinct Child Groups List:
 
-	ak_table_col:
-		view_src_col - match_table_col
-	ak_view_col:
-		view_src_col - match_view_col
+	ak_match_field:
+		view_src_field - match_field
 
 Example List:
 
@@ -2266,18 +2384,18 @@ Example List:
 
 =head2 view_src_arg
 
-When a view_src matches a named subquery that has arguments, a view_src_arg
-Node is used to correlate a subquery view_arg for the view that uses the
-view_src.  This allows such named subqueries to be passed argument values when
-used in a "from" clause.
+When a view_src matches a named correlated subquery (has arguments), a
+view_src_arg Node is used to correlate a subquery view_arg for the view that
+uses the view_src.  This allows such named subqueries to be passed argument
+values when used in a "from" clause.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	src - N.view_src - PP - which view source this column is associated with
+	pp_src - N.view_src - PP - which view source this column is associated with
 	match_view_arg - N.view_arg - MA - which argument in the source view is represented
 
-=head2 view_src_col
+=head2 view_src_field
 
 This type of Node describes a column in a source table or view that is used by
 this view, as specified in the view_src table.
@@ -2285,15 +2403,12 @@ this view, as specified in the view_src table.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	src - N.view_src - PP - which view source this column is associated with
-	match_table_col - N.table_col - which column from the source table is represented, if applicable
-	match_view_col - N.view_col - which column from the source view is represented, if applicable
-
-Exclusive Attribute Groups List:
-
-	match_col - match_table_col,match_view_col - MA
+	pp_src - N.view_src - PP - which view source this column is associated with
+	match_field - N.row_data_type_field - MA - which field from the source table/view/var is represented
 
 Example List:
+
+	Note: This example is out of date, based on a time when there were separate col Nodes for tables/views.
 
 	|id|vs|mtc|mvc|
 	|--|--|---|---|
@@ -2329,7 +2444,7 @@ Example List:
 	|30| 8|   |  1| - "m"."user_id"
 	|31| 8|   |  2| - "m"."login_name"
 
-=head2 view_col
+=head2 view_field
 
 This type of Node describes a single view column public interface, and has
 details that are specific to that column; the view column implementation (where
@@ -2338,24 +2453,19 @@ the data comes from or goes to) is not described here.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	view - N.view - PP - what view this column is a result/interface for
-	name - L.cstr - MA - unique identifier for column within view
-	domain - N.domain - MA - the user-customized data type for this column
-	set_routine_arg - N.routine_arg - the routine arg we are setting value of via select "into"
-	set_routine_var - N.routine_var - the routine var we are setting value of via select "into"
-	src_col - N.view_src_col - simply match this src col rather than defining with a view_expr
+	pp_view - N.view - PP - what view this column is a result/interface for
+	row_field - N.row_data_type_field - MA - defines the name and type of this column
+	src_field - N.view_src_field - simply match this src col rather than defining with a view_expr
 
 	is_writeable - L.bool - true when enough info is known to write changes to this column
 	mandatory - L.bool - true when corresponding value must always be populated
 	is_key - L.bool - true when this column is a part of unique id for source table or for view row
 
-Exclusive Attribute Groups List:
-
-	select_into - set_routine_arg,set_routine_var
-
 Example List:
 
-	|id|vw|col_name     |do|src|
+	Note: The rows below are actually a join where view_field = row_data_type_field.
+
+	|id|vw|col_name     |dt|src|
 	|--|--|-------------|--|---|
 	| 1| 1|user_id      | 9|  1| - unique internal id for user, not changeable
 	| 2| 1|login_name   |23|  2| - who user authenticates into app as
@@ -2394,45 +2504,44 @@ other source, which in many databases is illegal.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	view - N.view - PP - unique identifier for this view
+	pp_view - N.view - PP - unique identifier for this view
 	lhs_src - N.view_src - MA - which view source is on the left side of the join
 	rhs_src - N.view_src - MA - which view source is on the right side of the join
-	join_type - E.join_operator - MA - what kind of table/view join is being done
+	join_op - E.join_operator - MA - what kind of table/view join is being done
 
 Child Quantity List:
 
-	view_join_col - 1
+	view_join_field - 1
 
 Distinct Child Groups List:
 
-	ak_lhs_col:
-		view_join_col - lhs_src_col
-	ak_rhs_col:
-		view_join_col - rhs_src_col
+	ak_lhs_field:
+		view_join_field - lhs_src_field
+	ak_rhs_field:
+		view_join_field - rhs_src_field
 
 Example List:
 
-	|id|vw|lhs|rhs|type|
+	|id|vw|lhs|rhs|op  |
 	|--|--|---|---|----|
 	| 1| 1|  1|  2|LEFT| - "user_auth" left join "user_profile"
 	| 2| 2|  3|  4|LEFT| - "self" left join "father"
 	| 3| 2|  3|  5|LEFT| - "self" left join "mother"
 
-=head2 view_join_col
+=head2 view_join_field
 
-This type of Node describes a This is an intersection table between view_join
-and either table_col or view_col; it says which table or view columns are
-involved in each view join.  Each Node of this Node Type uniquely corresponds
-to part of a join operation being done between two sources (each a table or a
-view), both in the same view.  There is one Node for each pair
-of source columns (one from each source) that are being matched.
+This type of Node intersects between a view_src and a table/view/var field/col;
+it says which table or view columns are involved in each view join.  Each Node
+of this Node Type uniquely corresponds to part of a join operation being done
+between two sources in the same view.  There is one Node for each pair of
+source columns (one from each source) that are being matched.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	join - N.view_join - PP - which view join this column is associated with
-	lhs_src_col - N.view_src_col - MA - which column from the left source is being matched on
-	rhs_src_col - N.view_src_col - MA - which column from the right source is being matched on
+	pp_join - N.view_join - PP - which view join this column is associated with
+	lhs_src_field - N.view_src_field - MA - which column from the left source is being matched on
+	rhs_src_field - N.view_src_field - MA - which column from the right source is being matched on
 
 Example List:
 
@@ -2442,34 +2551,15 @@ Example List:
 	| 2| 2| 25| 19| - on "father"."person_id" = "self"."father_id"
 	| 3| 3| 26| 21| - on "mother"."person_id" = "self"."mother_id"
 
-=head2 view_hierarchy
+=head2 view_compound_elem
 
-This type of Node describes an n-level hierarchical join to be part of a view
-compound definition (similar to Oracle's start-with-connect-by feature).  Only
-one is allowed per view.
-
-Note: While SQL::Routine supports the SQL:2003/1999 "with" syntax, that
-among its other powers can do powerful hierarchical queries, I have provided
-"view_hierarchy" as a way of invoking simpler Oracle-style "start-with
-connect-by" tersely.
-
-I<Note: view_hierarchy should be considered a deprecated feature.>
+This type of Node specifies a source that is an operand in a compound view.
 
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	view - N.view - PP - what view this has a part in defining
-	start_src_col - N.view_src_col - MA - which source column is checked against to determine the root of the hierarchy
-	start_literal - L.misc - if start_src_col is being compared to a literal, then store the literal value here
-	start_view_arg - N.view_arg - when view is a "with" sub-query, use value of an argument to the view
-	start_routine_arg - N.routine_arg - use value of an arg to the current routine
-	start_routine_var - N.routine_var - use value of a variable declared in the current routine
-	conn_src_col - N.view_src_col - MA - which source column contains a record's own identifier against which children match
-	p_conn_src_col - N.view_src_col - MA - which source column contains the value of a parent identifier
-
-Exclusive Attribute Groups List:
-
-	start_val - start_literal,start_view_arg,start_routine_arg,start_routine_var - MA
+	pp_view - N.view - PP - this is the resulting compound view
+	operand - N.view_src - MA - this is an operand in the compound view
 
 =head2 view_expr
 
@@ -2484,23 +2574,14 @@ most related parts of the "from" clause (except for invoked 'with' subquery
 arguments), compound operations (such as "union"), and any hierarchical
 operations.  See the other view_* tables for those.
 
-The "order by" described by this table is applied prior to any compound view
-merge operations; since those operations tend to change the order of rows, it
-would only make sense to use this when your view only has one source
-is not a compound view.  If this is a compound view, or you only want to sort by
-output columns, then use the sort_priority field in view_col to sort instead,
-which has much simpler syntax, and is evaluated after all compound view merging
-is done.
-
 This type of Node describes a sub-expression that is part of one of several
-optional main/root expressions in a view definition. All of these
+optional main/root expressions in a view definition.  All of these
 sub-expressions form a hierarchy where children are "arguments" to their parent
 expressions.  There can only be one root expression for a "where" and a
 "having" part, and that is expected to return a boolean value.  The "group by"
 and "order by" parts can each have multiple root expressions, each of which is
 part of an ordered list of "columns" arranged in the priority that they are
-applied.  The "start with" and "connect by" can only have one root expression
-each.
+applied.
 
 This type of Node also describes details that would only be used in Inserts or 
 Updates, where applicable; this allows you to set values based on expressions 
@@ -2509,11 +2590,11 @@ or function calls, and not just literal values.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	p_expr - N.view_expr - PP - parent expression of this one, if any; empty if this is the root expression
-	view - N.view - PP - what view this expression has a part in defining
+	pp_expr - N.view_expr - PP - parent expression of this one, if any; empty if this is the root expression
+	pp_view - N.view - PP - what view this expression has a part in defining
 	view_part - E.view_part - what "part" of a view definition this is defining
-	set_result_col - N.view_col - the view interface/result column we are defining the value of
-	set_src_col - N.view_src_col - this is the column we are setting the value of in insert or update op
+	set_result_field - N.row_data_type_field - the view interface/result column we are defining the value of
+	set_src_field - N.view_src_field - this is the column we are setting the value of in insert or update op
 	call_src_arg - N.view_src_arg - arg of named subquery used in "from" we are passing value to
 	call_view_arg - N.view_arg - if parent expr set valf_call_view, name view arg that curr expr passes value to
 	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
@@ -2522,10 +2603,11 @@ Attribute List:
 	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
 	cont_type - E.container_type - MA - what basic container type the expression value is
 	valf_literal - L.misc - use a literal value, such as number or string
-	domain - N.domain - cast or declare curr literal expr into this data type / domain
-	valf_src_col - N.view_src_col - use the value of a local view source column
-	valf_result_col - N.view_col - match a result column; used mainly with MATCH view, or in 'having','order' sql elsewhere
-	valf_p_view_arg - N.view_arg - when view is a "with" sub-query, use value of an argument to the view
+	scalar_data_type - N.scalar_data_type - cast or declare curr literal expr into this data type / domain
+	scalar_domain - N.scalar_domain - cast or declare curr literal expr into this data type / domain
+	valf_src_field - N.view_src_field - use the value of a local view source column
+	valf_result_field - N.row_data_type_field - match a result column; used mainly in 'having' or 'order' sql
+	valf_p_view_arg - N.view_arg - when view is a correlated subquery, use value of an argument to the view
 	valf_p_routine_cxt - N.routine_context - use value of a context arg to the current routine
 	valf_p_routine_arg - N.routine_arg - use value of an arg to the current routine
 	valf_p_routine_var - N.routine_var - use value of a variable declared in the current routine
@@ -2537,16 +2619,16 @@ Attribute List:
 
 Exclusive Attribute Groups List:
 
-	expr_root_view_part - p_expr,view_part - MA
+	expr_root_view_part - pp_expr,view_part - MA
 
 Local Attribute Dependencies List:
 
 	view_part:
-		set_result_col - RESULT - MA
-		set_src_col - SET - MA
+		set_result_field - RESULT - MA
+		set_src_field - SET - MA
 		call_src_arg - FROM - MA
 	valf_literal:
-		domain - MA
+		scalar_data_type,scalar_domain - MA
 	valf_call_uroutine:
 		catalog_link
 
@@ -2601,54 +2683,6 @@ Example List:
 
 	Notes: The example 'routine_var' values are actually incorrect and will be changed to id numbers.
 
-Had there been separate Node types for the above based on view part, here are their descriptions:
-
-view_col_def: This type of Node describes a sub-expression that is part of an
-interface/output column definition in a view; this is an intersection table
-between view_col and each compound view member; there needs to be one full expression for
-every view_col/view-compound-member combination in a view.  These expressions
-are used in the first part of the SQL "where" clause, before "from"; these are
-not intended to affect how many columns or rows the view returns, but only what
-the exact content of each column is.  All of these sub-expressions form a
-hierarchy where children are "arguments" to their parent expressions; the root
-expression is supposed to return the same type of value as the domain specified
-in the view_col record.
-
-view_src_filter: Each Node of this type uniquely corresponds to a
-sub-expression that is part of a filter definition in a view.  This
-filter definition is run against the rows in the view sources just after or
-while they are being joined, and it is supposed to eliminate most or all of the
-source rows that we don't want to keep.  In other words, the whole expression
-becomes the "where" clause in the generated SQL, where applicable (it runs
-prior to the SQL "group by").  All of these sub-expressions form a hierarchy
-where children are "arguments" to their parent expressions; the root expression
-is supposed to return a boolean value.
-
-view_grp: When any Nodes of this type exist for a particular view,
-each one matches a source column, and the rows returned by the view
-will be grouped (self-merged) so that each row has a unique permutation of
-values in the columns being grouped on.  Also, when any view_grp records are
-used, that view may only use the columns being grouped on in its
-output column definition.  Certain standard functions can only be used when
-grouping.
-
-view_grp_filter: This type of Node describes a sub-expression that is part of a
-filter definition in a view.  This filter definition is run against
-the rows after they have been grouped; it is supposed to do additional
-filtering that could only be done after grouping, such as when the
-sub-expression uses standard functions that only work in a grouping SQL select.
-This whole expression becomes the "having" clause in the generated SQL, where
-applicable.  All of these sub-expressions form a hierarchy where children are
-"arguments" to their parent expressions; the root expression is supposed to
-return a boolean value.
-
-view_order: This type of Node says what order to return the rows for a view
-compound or entire view in; there is one record for each solumn that is being
-sorted by. They correspond to the SQL "order by".  Also, when any view_grp
-records are used, that view may only use the columns being grouped on
-in its output column definition.  Certain standard functions can only be used
-when grouping.
-
 =head2 routine
 
 This type of Node describes the core (single cardinality) description of a
@@ -2664,13 +2698,16 @@ that may change soon.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	schema - N.schema - PP - the schema that this routine is in, if any
-	application - N.application - PP - the app-space that this routine is in, if any
-	p_routine - N.routine - PP - parent routine of this one, if any; empty if this is the root routine
-	name - L.cstr - MA - name routine ident by in a [schema, p_routine, app], or name of trigger
+	pp_routine - N.routine - PP - parent routine of this one, if any; empty if this is the root routine
+	pp_schema - N.schema - PP - the schema that this routine is in, if any
+	pp_application - N.application - PP - the app-space that this routine is in, if any
+	name - L.cstr - MA - name routine ident by in a [schema, pp_routine, app], or name of trigger
 	routine_type - E.routine_type - MA - what kind of routine this is
 	return_cont_type - E.container_type - container type of function's return value
-	return_domain - N.domain - domain of a function's scalar return value
+	return_scalar_data_type - N.scalar_data_type - data type of a function's SCALAR/SC_ARY return value
+	return_scalar_domain - N.scalar_domain - data type of a function's SCALAR/SC_ARY return value
+	return_row_data_type - N.row_data_type - data type of a function's ROW/RW_ARY return value
+	return_row_domain - N.row_domain - data type of a function's ROW/RW_ARY return value
 	trigger_on_table - N.table - the table that the trigger watches
 	trigger_on_view - N.view - the view that the trigger watches
 	trigger_event - E.basic_trigger_event - when a trigger executes
@@ -2684,7 +2721,8 @@ Local Attribute Dependencies List:
 		trigger_event - TRIGGER - MA
 		trigger_per_stmt - TRIGGER - MA
 	return_cont_type:
-		return_domain - SCALAR - MA
+		return_scalar_data_type,return_scalar_domain - SCALAR,SC_ARY - MA
+		return_row_data_type,return_row_domain - ROW,RW_ARY - MA
 
 Child Quantity List:
 
@@ -2705,7 +2743,7 @@ This type of Node describes a special context argument variable to a routine.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	routine - N.routine - PP - what routine this context argument is for
+	pp_routine - N.routine - PP - what routine this context argument is for
 	name - L.cstr - MA - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the context is
 	conn_link - N.catalog_link - for CONN context type, ref to cat link def the conn handle
@@ -2730,17 +2768,21 @@ This type of Node describes an input and/or output argument variable to a routin
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	routine - N.routine - PP - what routine this argument is for
+	pp_routine - N.routine - PP - what routine this argument is for
 	name - L.cstr - MA - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the argument is
-	domain - N.domain - user customized data type of scalar arg
+	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY argument
+	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY argument
+	row_data_type - N.row_data_type - user customized data type of ROW/RW_ARY argument
+	row_domain - N.row_domain - user customized data type of ROW/RW_ARY argument
 	conn_link - N.catalog_link - put ref to catalog_link defining this db conn handle here
 	curs_view - N.view - put reference to the view defining this cursor here
 
 Local Attribute Dependencies List:
 
 	cont_type:
-		domain - SCALAR - MA
+		scalar_data_type,scalar_domain - SCALAR,SC_ARY - MA
+		row_data_type,row_domain - ROW,RW_ARY - MA
 		conn_link - CONN - MA
 		curs_view - CURSOR - MA
 
@@ -2753,10 +2795,13 @@ current routine is a package, these are package-level variables.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	routine - N.routine - PP - what routine this variable is in
+	pp_routine - N.routine - PP - what routine this variable is in
 	name - L.cstr - MA - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the variable is
-	domain - N.domain - user customized data type of scalar variable
+	scalar_data_type - N.scalar_data_type - user customized data type of SCALAR/SC_ARY variable
+	scalar_domain - N.scalar_domain - user customized data type of SCALAR/SC_ARY variable
+	row_data_type - N.row_data_type - user customized data type of ROW/RW_ARY variable
+	row_domain - N.row_domain - user customized data type of ROW/RW_ARY variable
 	init_lit_val - L.misc - an initial value for a SCALAR var can go here
 	is_constant - L.bool - this says a SCALAR value may not be changed
 	conn_link - N.catalog_link - put the catalog_link defining db conn handle here
@@ -2766,7 +2811,8 @@ Attribute List:
 Local Attribute Dependencies List:
 
 	cont_type:
-		domain - SCALAR - MA
+		scalar_data_type,scalar_domain - SCALAR,SC_ARY - MA
+		row_data_type,row_domain - ROW,RW_ARY - MA
 		init_lit_val - SCALAR
 		is_constant - SCALAR
 		conn_link - CONN - MA
@@ -2783,7 +2829,7 @@ in child expression Nodes.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	routine - N.routine - PP - what routine this statement is in
+	pp_routine - N.routine - PP - what routine this statement is in
 	block_routine - N.routine - this child routine defs contents of BEGIN ... END
 	assign_dest_cxt - N.routine_context - this context arg may be where the expression result goes
 	assign_dest_arg - N.routine_arg - this 'out' arg may be where the expression result goes
@@ -2794,7 +2840,7 @@ Attribute List:
 
 	If 'block_routine' is set, the routine statement declares a compound
 	statement that can contain other statements; eg BEGIN ... END.  If either
-	of 'assign_dest_[arg|var]' is set, the action is an assignment of an
+	of 'assign_dest_[cxt|arg|var]' is set, the action is an assignment of an
 	expression value to a variable (SQL:2003 calls it 'SET').  If either of
 	'call_[s|u]routine' is set, the action is to call that built-in or routine.
 
@@ -2832,15 +2878,16 @@ the statement.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	p_expr - N.routine_expr - PP - parent expression of this one, if any; empty if this is the root expression
-	p_stmt - N.routine_stmt - PP - unique identifier for routine routine_stmt this expression is part of
+	pp_expr - N.routine_expr - PP - parent expression of this one, if any; empty if this is the root expression
+	pp_stmt - N.routine_stmt - PP - unique identifier for routine routine_stmt this expression is part of
 	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
 	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
 	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
 	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
 	cont_type - E.container_type - MA - what basic container type the expression value is
 	valf_literal - L.misc - use a literal value, such as number or string
-	domain - N.domain - cast or declare curr literal expr into this data type / domain
+	scalar_data_type - N.scalar_data_type - cast or declare curr literal expr into this data type / domain
+	scalar_domain - N.scalar_domain - cast or declare curr literal expr into this data type / domain
 	valf_p_routine_cxt - N.routine_context - use value of a context arg to the current routine
 	valf_p_routine_arg - N.routine_arg - use value of an arg to the current routine
 	valf_p_routine_var - N.routine_var - use value of a variable declared in the current routine
@@ -2850,7 +2897,8 @@ Attribute List:
 	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
 	actn_catalog_link - N.catalog_link - if act-on sroutine arg should be a catalog_link Node, this is it
 	actn_schema - N.schema - if act-on sroutine arg should be a schema Node, this is it
-	actn_domain - N.domain - if act-on sroutine arg should be a domain Node, this is it
+	actn_scalar_domain - N.scalar_domain - if act-on sroutine arg should be a scalar_domain Node, this is it
+	actn_row_domain - N.row_domain - if act-on sroutine arg should be a row_domain Node, this is it
 	actn_sequence - N.sequence - if act-on sroutine arg should be a sequence Node, this is it
 	actn_table - N.table - if act-on sroutine arg should be a table Node, this is it
 	actn_view - N.view - if act-on sroutine arg should be a view Node, this is it
@@ -2860,10 +2908,10 @@ Attribute List:
 Local Attribute Dependencies List:
 
 	cont_type:
-		actn_catalog_link,actn_schema,actn_domain,actn_sequence,actn_table,
+		actn_catalog_link,actn_schema,actn_scalar_domain,actn_row_domain,actn_sequence,actn_table,
 			actn_view,actn_routine,actn_user - SRT_NODE - MA
 	valf_literal:
-		domain - MA
+		scalar_data_type,scalar_domain - MA
 	valf_call_uroutine:
 		catalog_link
 
@@ -3025,7 +3073,7 @@ model.  Or in the first case, whether multiple catalogs should get combined.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog_instance - PP - the catalog_instance that this option customizes
+	pp_catalog - N.catalog_instance - PP - the catalog_instance that this option customizes
 	key - L.cstr - MA - this is the option key that the the external code looks for
 	value - L.misc - MA - this is the associated option value
 
@@ -3077,9 +3125,9 @@ Node gets used, which points to the address of the proxy.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	p_link - N.catalog_link_instance - PP - parent link of this one (that which calls this), if any
-	catalog - N.catalog_instance - PP - the schema in this instance may use the actual catalog link
-	application - N.application_instance - PP - the routines in this app inst may use the actual catalog link
+	pp_link - N.catalog_link_instance - PP - parent link of this one (that which calls this), if any
+	pp_catalog - N.catalog_instance - PP - the schema in this instance may use the actual catalog link
+	pp_application - N.application_instance - PP - the routines in this app inst may use the actual catalog link
 	product - N.data_link_product - MA - what product implements this; determines driver to use
 	unrealized - N.catalog_link - the unrealized catalog link that we are 'implementing'
 	target - N.catalog_instance - this is what the link connects to
@@ -3089,8 +3137,8 @@ Attribute List:
 
 Exclusive Attribute Groups List:
 
-	link_root_unrealized - p_link,unrealized - MA
-	link_root_target - p_link,target - MA
+	link_root_unrealized - pp_link,unrealized - MA
+	link_root_target - pp_link,target - MA
 
 Child Quantity List:
 
@@ -3114,7 +3162,7 @@ model or at runtime host parameters.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	link - N.catalog_link_instance - PP - the catalog_link_instance that this option customizes
+	pp_link - N.catalog_link_instance - PP - the catalog_link_instance that this option customizes
 	key - L.cstr - MA - this is the option key that the the external code looks for
 	value - L.misc - MA - this is the associated option value
 
@@ -3144,7 +3192,7 @@ schema, then it should have an additional database user for that purpose.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	catalog - N.catalog_instance - PP - the catalog_instance that this user is in
+	pp_catalog - N.catalog_instance - PP - the catalog_instance that this user is in
 	name - L.cstr - the name this user is identified by, and what he authenticates himself with
 	user_type - E.user_type - MA - what type of user this is; eg: schema owner vs data editor
 	match_owner - N.owner - the catalog that this user is in
@@ -3183,7 +3231,7 @@ specific role, and the privileges that come with it.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	user - N.user - PP - the user that a role is granted to
+	pp_user - N.user - PP - the user that a role is granted to
 	role - N.role - MA - the role that is being granted
 
 =head2 circumventions

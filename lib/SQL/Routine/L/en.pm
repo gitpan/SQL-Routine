@@ -10,7 +10,7 @@ package SQL::Routine::L::en;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 ######################################################################
 
@@ -227,24 +227,24 @@ my %text_strings = (
 		"$CN.set_attributes(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTRS argument; it is not a hash ref, but rather is '{ARG}'",
 
-	'SRT_N_SET_P_NODE_ATNM_NO_ARGS' => 
+	'SRT_N_SET_PP_NODE_ATNM_NO_ARGS' => 
 		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing ATTR_NAME argument",
-	'SRT_N_SET_P_NODE_ATNM_INVAL_NM' => 
+	'SRT_N_SET_PP_NODE_ATNM_INVAL_NM' => 
 		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTR_NAME argument; either there is no Node attribute named '{ATNM}' in this Node, ".
 		"or that attribute can not be used as the primary parent Node",
-	'SRT_N_SET_P_NODE_ATNM_CIRC_REF' => 
+	'SRT_N_SET_PP_NODE_ATNM_CIRC_REF' => 
 		"$CN.set_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid ATTR_NAME argument; this Node's Node ref attribute named '{ATNM}' is valued ".
 		"with a Node that is a direct or indirect child of this current Node, so that Node ".
 		"can not become the primary parent of this current Node; ".
 		"if it was, that would result in a circular reference chain",
 
-	'SRT_N_EST_P_NODE_ATNM_NO_ARGS' => 
+	'SRT_N_EST_PP_NODE_ATNM_NO_ARGS' => 
 		"$CN.estimate_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"missing NEW_PARENT argument",
-	'SRT_N_EST_P_NODE_ATNM_BAD_ARG' => 
+	'SRT_N_EST_PP_NODE_ATNM_BAD_ARG' => 
 		"$CN.estimate_parent_node_attribute_name(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"invalid NEW_PARENT argument; it is not a Node object, but rather is '{ARG}'",
 
@@ -327,7 +327,7 @@ my %text_strings = (
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
 		"its Node ID must be given a value",
-	'SRT_N_ASDC_P_NODE_ATNM_NOT_SET' => 
+	'SRT_N_ASDC_PP_NODE_ATNM_NOT_SET' => 
 		"$CN.assert_deferrable_constraints(): concerning the '{NTYPE}' Node with Id '{NID}'; ".
 		"a deferrable constraint was violated; ".
 		"its Primary Parent Node Attribute Name must be given a value ".

@@ -1,11 +1,5 @@
 TODO
 
-- Implement the ROW, SC_ARY, RW_ARY container types for use as
-routine variables, arguments, return values.  Update views to handle them. 
-Possible generalization between those and the 'table' Node.  These are
-necessary for many TRIGGER implementations.  Also useful for user-defined
-routines that want to return all rows from a select or cursor as an array.
-
 - Continue fleshing out the standard_routine enumerated type documentation.
 
 - Add more deferred constraints to reduce erroneous models.
