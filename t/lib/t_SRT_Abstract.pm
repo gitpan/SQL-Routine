@@ -19,7 +19,7 @@ sub create_and_populate_model {
 	my $model = $class->new_container();
 	$model->auto_assert_deferrable_constraints( 1 );
 	$model->auto_set_node_ids( 1 );
-	$model->use_abstract_interface( 1 );
+	$model->may_match_surrogate_node_ids( 1 );
 
 	##### NEXT SET CATALOG ELEMENT-TYPE DETAILS #####
 
@@ -155,12 +155,11 @@ sub create_and_populate_model {
 	##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
 
 	my $catalog = $model->build_child_node_tree( 
-		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'si_name' => 'The Catalog Blueprint' } } ); 
-
-	my $owner = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'owner' } ); 
+		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'si_name' => 'The Catalog Blueprint' }, 
+		'CHILDREN' => [ { 'NODE_TYPE' => 'owner', 'ATTRS' => { 'si_name' => 'Gene\'s Owner' } } ] } ); 
 
 	my $schema = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'schema', 
-		'ATTRS' => { 'si_name' => 'gene', 'owner' => $owner, } } ); 
+		'ATTRS' => { 'si_name' => 'gene', 'owner' => 'Gene\'s Owner', } } ); 
 
 	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
 			'ATTRS' => { 'si_name' => 'person', 'row_data_type' => 'person', }, 'CHILDREN' => [ 
@@ -472,7 +471,7 @@ sub expected_model_xml_output {
 	</elements>
 	<blueprints>
 		<catalog id="83" si_name="The Catalog Blueprint">
-			<owner id="84" />
+			<owner id="84" si_name="Gene\'s Owner" />
 			<schema id="85" si_name="gene" owner="84">
 				<table id="86" si_name="person" row_data_type="28">
 					<table_field id="87" si_row_field="29" mandatory="1" default_val="1" auto_inc="1" />

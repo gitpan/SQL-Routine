@@ -1,3 +1,108 @@
+2005-02-11   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.53.
+
+	* New code file versions are: Routine.pm v0.53 and en.pm v0.23.
+
+	* This is a snapshot release, showing a mid-way point through an upgrade
+	cycle.  It reimplemements several features such that they do everything they
+	did before, but little more.  Release v0.54 will extend these.  Any updates
+	to the test suite were as minimal as possible; large updates will happen in
+	release v0.54.
+
+	* Added a second test to t_SRT_Circular.pm that validates whether
+	SQL::Routine will prevent setting a Node to be its own parent Node (the
+	single pre-existing test validates prevention of setting a Node's child to
+	be its parent).  SQL::Routine v0.52 fails this test, but the behaviour has
+	been fixed in v0.53; the set_node_ref_attribute() method is what was fixed.
+
+	* Added new "si_name" attribute to "owner" Nodes; this change required 
+	updates in Language.pod, Routine.pm, and all 4 t_*.pm files.
+
+	* The main updates in this release are concerned with having more complete
+	and more elegant support for using SQL::Routine without ever seeing Node
+	Ids; all functionality that was imported from the "SkipID" module several
+	releases back has now been rewritten.  And so, v0.53 is now the easiest to
+	use and most SQL-like release yet, with input and output formats that most 
+	closely resemble standard English.
+
+	* In Language.pod, added new "Ancestor Attribute Correlation List"
+	sub-section (incomplete) in NODE TYPES, and added <wrap-attr> to "Attribute
+	List".  Updated corresponding details for these Node types, both in
+	Language.pod and Routine.pm: row_domain, table, table_field,
+	table_index_field, view, view_arg, view_src_field, view_field,
+	view_join_field, view_expr, routine_arg, routine_var.
+
+	* Large updates to the STRUCTURE documentation to explain terms like
+	"parent" and "child", plus details on primary-parents and surrogate ids. 
+	Added new NODE IDENTITY ATTRIBUTES documentation section (incomplete) and
+	removed the ABOUT THE OPTIONAL ABSTRACT INTERFACE section.  Removed the
+	second BUGS paragraph.  Minor SYNOPSIS update.
+
+	* Removed internal data dictionary structure %NODE_TYPES_EXTRA_DETAILS; it
+	has been replaced by a smattering of $TPI_WR_ATNM and $TPI_ANCES_ATCORS
+	(both keys are brand new) in the standard data dictionary %NODE_TYPES.
+
+	* Renamed the Container property "use abstracts" to "may match snids";
+	renamed the corresponding build_container() method argument; renamed the
+	use_abstract_interface() method to may_match_surrogate_node_ids().  The
+	function of this property has not changed from previous releases; setting it
+	true will cause set_node_ref_attribute(), and all of its wrapper methods, to
+	accept more value formats.
+
+	* Renamed the Container method get_node() to find_node_by_id();
+	corresponding change to an en.pm user text message.
+
+	* Updated 11 user text messages and the 3 methods
+	set_[literal|enumerated|node_ref]_attribute() to specify the names of the
+	Node attributes that are failing to be set to inappropriate input values;
+	before, the messages just said what kind of bad input there was.
+
+	* Updated the get_node_ref_attribute[|s]() methods, and the
+	get_attribute[|s]() methods, and the get_surrogate_id_attribute() method;
+	all 5 of them now have an additional GET_TARGET_SI boolean attribute.  When
+	this attribute is true, and the invocant Node is in a Container, then these
+	methods will now return the Surrogate Id value of the other Node that the
+	current Node links to (lookup may be recursive), rather than the actual Node
+	reference value of the attribute, which is otherwise returned.
+
+	* Updated the node_types_with_surrogate_id_attributes() information function
+	to return an attribute name for all Node types; it now returns 'id' (the
+	Node Id) for Node types that don't have an explicit Surrogate Id attribute.
+
+	* Updated the expected_surrogate_id_attribute_name() method so it no longer
+	throws an exception if the invocant Node doesn't have an explicit Surrogate
+	Id attribute (it now returns 'id' instead).  Fixed the 3 methods just
+	beneath it so that they don't mis-spell the method's name.
+
+	* Added new Node methods [|_]get_surrogate_id_chain(), which return an array
+	ref containing the Surrogate Id values of the invocant Node and all of its
+	primary-parent ancestor Nodes, including pseudo-Node names; this can be used
+	by a user to quickly find any Node within the Node tree.  Also added new 
+	private method get_surrogate_id_chain_as_str().
+
+	* Updated most of the user text messages in en.pm to display a third
+	variable for identifying the Node that the message concerns; in addition to
+	the Node Type and the Node Id, each message now displays the Surrogate Id
+	Chain.  The only update in Routine.pm to specifically enable this feature 
+	was in the _throw_error_message() method, though that invokes get*chain*().
+
+	* Updated the get_all_properties[|*]() methods to take a new LINKS_AS_SI
+	boolean argument that, when true, makes them output the Surrogate Id Chain
+	value of a parent Node as its child's Node-ref attribute value, rather than
+	the parent's Node Id; this should mean easier debugging when Node Ids are
+	generated, and the output most closely resembles SQL strings.
+
+	* Added 3 new Node methods: find_node_by_surrogate_id(),
+	_find_node_by_surrogate_id_within_layers(),
+	_find_node_by_surrogate_id_using_path(); these are rewritten versions of the
+	now-removed _set_node_ref_attribute__*() methods.
+
+	* Refactored the set_node_ref_attribute() code that handles input 
+	Surrogate Node Id values vs Node Id values.
+
+	* Corrected some spelling mistakes and made other minor changes.
+
 2004-12-18   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.52.
@@ -1069,7 +1174,7 @@
 	* Updated Language.pod and SyntaxModel.pm to add the boolean attribute
 	is_memory_based to data_storage_product Nodes, and to the Node type's
 	"type" mutex group.  Also added the 3 [local_dsn, login_user, login_pass]
-	cstr attributes to catalog_instance Nodes, so you have flexability to set 
+	cstr attributes to catalog_instance Nodes, so you have flexibility to set 
 	either those or the corresponding catalog_link_instance attributes.
 
 	* Renamed the methods [Container|Node].[_]test_deferrable_constraints() to

@@ -8,7 +8,7 @@ SQL::Routine::Language - What language or grammar SQL::Routine speaks
 
 This file is part of the SQL::Routine library (libSQLRT).
 
-SQL::Routine is Copyright (c) 1999-2004, Darren R. Duncan.  All rights
+SQL::Routine is Copyright (c) 1999-2005, Darren R. Duncan.  All rights
 reserved. Address comments, suggestions, and bug reports to
 B<perl@DarrenDuncan.net>, or visit "http://www.DarrenDuncan.net" for more
 information.
@@ -695,7 +695,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
 	CATALOG_VERIFY() 
 		purpose:
 			- Compares a provided db spec to an actual database.
-			- Functions analagously to CATALOG_INFO() except that no changes
+			- Functions analogously to CATALOG_INFO() except that no changes
 			are made to the SQL::Routine::Container; existing Nodes therein are
 			compared to instead.
 		args:
@@ -885,7 +885,7 @@ with 'routine_stmt' Nodes.
 	REC_DELETE(view)  - deletes exist recs from a table or view of multiple tables
 	REC_REPLACE(view) - either updates or inserts recs if they exist or not
 	REC_CLONE(view)   - creates a clone of a record in same table/view (if possible)
-	REC_LOCK(view)    - places a lock on recs for a consistant read plus update
+	REC_LOCK(view)    - places a lock on recs for a consistent read plus update
 	REC_UNLOCK(view)  - releases an existing lock on recs
 
 	RETURN() 
@@ -1396,22 +1396,25 @@ parents go, because those details are explained in terms of "child Nodes".
 
 For each Node Type, there are several detail lists: B<Attribute List>,
 B<Exclusive Attribute Groups List>, B<Local Attribute Dependencies List>,
-B<Child Quantity List>, B<Distinct Child Groups List>.
+B<Ancestor Attribute Correlation List>, B<Child Quantity List>, B<Distinct Child
+Groups List>.
 
 The B<Attribute List> says what all of the attributes are, in order, along with
 each one's major+minor type, an indicator of whether it is a primary parent
 node candidate, and a description.  Each list element is in this format:
 
-	<attr> ::= <id-attr>|<pp-attr>|<si-attr>|<detail-attr> - <description>
+	<attr> ::= <id-attr>|<pp-attr>|<si-attr>|<wrap-attr>|<detail-attr> - <description>
 	<id-attr> ::= id - NODE_ID
 	<pp-attr> ::= pp - N.<node-type-list>
 	<si-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr> - <surrogate-id-flag>
+	<wrap-attr> ::= <attr-name> - <nref-attr> - <wrapper-flag>[ - <mandatory-flag>]
 	<detail-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr>[ - <mandatory-flag>]
 	<literal-attr> ::= <attr-name> - L.<literal-type>
 	<enum-attr> ::= <attr-name> - E.<enumerated-type>
 	<nref-attr> ::= <attr-name> - N.<node-type-list>
 	<node-type-list> ::= *|(<node-type>(,<node-type>){0,})
 	<surrogate-id-flag> ::= SI
+	<wrapper-flag> ::= WR
 	<mandatory-flag> ::= MA
 
 Every Node type's "id"/"NODE_ID" attribute is implicitly always-mandatory;
@@ -1435,15 +1438,23 @@ the attribute belongs to.  The most common such trees are made from
 "[view|routine]_expr" Nodes, but others are also possible.>
 
 The surrogate-id-flag indicates that the attribute holds the surrogate
-identifier for the Node; this attribute's value is guaranteed to be distinct
-for all Nodes that have the same primary-parent Node, or that have a
-pseudo-Node parent, though the values for two Nodes with two different
-primary-parent Nodes can be the same.  Every Node type's surrogate id attribute
-is always implicitly mandatory.  For most Node types, the surrogate id
-attribute is called 'si_name' and is an "L.cstr" data type; their values
-correspond to the ANSI/ISO SQL:2003 standard's impression of a SQL
-"identifier", specifically an un-qualified SQL identifier.  (Eg, a table's
-"si_name" is the table's "identifier".)
+identifier for the Node; this attribute's value is guaranteed to be distinct for
+all Nodes that have the same primary-parent Node, or that have a pseudo-Node
+parent, though the values for two Nodes with two different primary-parent Nodes
+can be the same.  Every Node type's surrogate id attribute is always implicitly
+mandatory.  For most Node types, the surrogate id attribute is called 'si_name'
+and is an "L.cstr" data type; their values correspond to the ANSI/ISO SQL:2003
+standard's impression of a SQL "identifier", specifically an un-qualified SQL
+identifier.  (Eg, a table's "si_name" is the table's "identifier".)  For a few
+Node types (eg, 'view_expr'), there is no distinct surrogate-id attribute; in
+situations where you want to use a "surrogate id" for all Node types, it is safe
+to use the normal Node id for that purpose in its place.
+
+The wrapper-flag indicates that the Node type containing this attribute is
+implemented mainly as a wrapper or alias for another Node type, where the Node
+in question is linked through this Node-ref attribute.  Certain activities that
+want to examine child Nodes of the linking Node can consider the children of the
+linked Node to be the linking Node's children.
 
 The mandatory-flag indicates that the attribute is always-mandatory, meaning
 the attribute must always be populated (not be null); in some cases, it means
@@ -1465,8 +1476,8 @@ constraints.  One deferrable constraint is that a Node's NODE_ID attribute must
 be set; that is, this constraint is only deferrable for Nodes that are not in
 Containers.  Another deferrable constraint is that a Node's primary-parent
 attribute must be set, if the Node has one.  Another deferrable constraint is
-that any "MA" attributes are populated.  All "Attribute List" deferrable
-constraints can be tested on Nodes of any status, including "Alone".
+that any "SI" and "WR" and "MA" attributes are populated.  All "Attribute List"
+deferrable constraints can be tested on Nodes of any status, including "Alone".
 
 The B<Exclusive Attribute Groups List> says what groups of mutually exclusive
 attributes there are for a Node type; no more than one member of a group may
@@ -1502,6 +1513,26 @@ attributes shown on the same line (comma-delimited), then they are a
 mutual-exclusion group; only one of those may be set when the conditions say
 that any may be set.  All "Local Attribute Dependencies List" constraints are
 deferrable and can be tested on Nodes of any status, including "Alone".
+
+The B<Ancestor Attribute Correlation List> says what Node ref attributes in a
+Node must correlate with what other Node ref attributes in one of its
+primary-ancestor Nodes, such that the Node referenced by the current Node's
+attribute must be a child of the Node referenced by said ancestor's attribute. 
+For example, the si_row_field attribute of a table_field Node must point to a
+child Node of what the latter's parent "table" Node's row_data_type or
+row_domain attribute points to.  Each list element is in this format:
+
+	<correlation> ::= <dep-attr-name> - <step>(.<step>){0,} - <description>
+	<step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>
+	<self> ::= S
+	<primary-parent> ::= P
+	<root-of-type> ::= R
+	<primary-child> ::= C
+
+	Note that 'S' is a no-op, displayed for easier documentation reading
+	Note that if a Node at the end of the above process has a WR field, it is implicitly followed.
+	If 'C' is used, search text must be array of degree N+1 where N is the number of 'C'.
+	If 'C' is not used, search text is not an array / has one scalar value.
 
 The B<Child Quantity List> says when a Node must have a specific number of
 primary-child Nodes of a particular Node type (usually >= 1).  Each list
@@ -1757,6 +1788,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.catalog - the catalog that this user is in
+	si_name - L.cstr - SI - the name this owner is identified by
 
 =head2 catalog_link
 
@@ -1888,7 +1920,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.schema,application - the schema|app-space that this domain is in
 	si_name - L.cstr - SI - the name this domain is identified by
-	data_type - N.row_data_type - MA - the core defining details of this domain
+	data_type - N.row_data_type - WR - MA - the core defining details of this domain
 
 =head2 sequence
 
@@ -1929,7 +1961,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.schema,application - the schema|app-space that this base table is in
 	si_name - L.cstr - SI - the name this table is identified by
-	row_data_type - N.row_data_type,row_domain - MA - defines the names and types of this table's column set
+	row_data_type - N.row_data_type,row_domain - WR - MA - defines the names and types of this table's column set
 
 =head2 table_field
 
@@ -1951,6 +1983,10 @@ Attribute List:
 Exclusive Attribute Groups List:
 
 	default - default_val,default_seq
+
+Ancestor Attribute Correlation List:
+
+	si_row_field - S.P - match child of S.P(table).row_data_type(row_data_type)
 
 =head2 table_index
 
@@ -1994,6 +2030,11 @@ Attribute List:
 	pp - N.table_index - unique identifier for index within table
 	si_field - N.row_data_type_field - SI - unique identifier for column within table
 	f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
+
+Ancestor Attribute Correlation List:
+
+	si_field - S.P.P - match child of S.P(table_index).P(table).row_data_type(row_data_type)
+	f_field - S.P.f_table - match child of S.P(table_index).f_table(table).row_data_type(row_data_type)
 
 =head2 view
 
@@ -2055,13 +2096,15 @@ you would want to make a second view which uses the first as its source, and
 the second/outer view would have a more restrictive 'where' clause that limits
 to the rows being changed.
 
+You can "create temporary view" by storing the view in an application space.
+
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.view,routine,schema,application - parent view|routine of this one, or the schema|app-space that this view is in
 	si_name - L.cstr - SI - the name this view is identified by, if any
 	view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
-	row_data_type - N.row_data_type,row_domain - defines the names and types of this view's column set
+	row_data_type - N.row_data_type,row_domain - WR - defines the names and types of this view's column set
 	recursive - L.bool - if true, this view is a recursive correlated subquery
 	compound_op - E.compound_operator - how to merge any child rowsets/views of this one together, if any
 	distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
@@ -2120,7 +2163,7 @@ starts and before it ends) because it uses one or more values generated by the
 outer query (for example, it may fire once per each row either examined or
 returned by the outer query); this kind is more complicated to implement or
 emulate.  The term "correlated" is the standard term for this differentiation. 
-The difference between correlated vs un- is analagous to a routine that takes
+The difference between correlated vs un- is analogous to a routine that takes
 or does not take any arguments.
 
 Attribute List:
@@ -2130,7 +2173,7 @@ Attribute List:
 	si_name - L.cstr - SI - name of the argument
 	cont_type - E.container_type - MA - what basic container type the argument is
 	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
-	row_data_type - N.row_data_type,row_domain - user customized data type of ROW/RW_ARY argument
+	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
 
 Exclusive Attribute Groups List:
 
@@ -2187,6 +2230,10 @@ Attribute List:
 	pp - N.view_src - which view source this column is associated with
 	si_match_field - N.row_data_type_field - SI - which field from the source table/view/var is represented
 
+Ancestor Attribute Correlation List:
+
+	si_match_field - S.P.match - match child of S.P(view_src).match(table|*).row_data_type(row_data_type)
+
 =head2 view_field
 
 This type of Node describes a single view column public interface, and has
@@ -2203,6 +2250,10 @@ Attribute List:
 	is_writeable - L.bool - true when enough info is known to write changes to this column
 	mandatory - L.bool - true when corresponding value must always be populated
 	is_key - L.bool - true when this column is a part of unique id for source table or for view row
+
+Ancestor Attribute Correlation List:
+
+	si_row_field - S.P - match child of S.P(view).row_data_type(row_data_type)
 
 =head2 view_join
 
@@ -2247,6 +2298,11 @@ Attribute List:
 	pp - N.view_join - which view join this column is associated with
 	lhs_src_field - N.view_src_field - MA - which column from the left source is being matched on
 	rhs_src_field - N.view_src_field - MA - which column from the right source is being matched on
+
+Ancestor Attribute Correlation List:
+
+	lhs_src_field - S.P.lhs_src - match child of S.P(view_join).lhs_src(view_src)
+	rhs_src_field - S.P.rhs_src - match child of S.P(view_join).rhs_src(view_src)
 
 =head2 view_compound_elem
 
@@ -2324,6 +2380,11 @@ Local Attribute Dependencies List:
 		scalar_data_type - MA
 	valf_call_uroutine:
 		catalog_link
+
+Ancestor Attribute Correlation List:
+
+	set_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
+	valf_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
 
 Distinct Child Groups List:
 
@@ -2420,7 +2481,7 @@ Attribute List:
 	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the argument is
 	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
-	row_data_type - N.row_data_type,row_domain - user customized data type of ROW/RW_ARY argument
+	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
 	conn_link - N.catalog_link - put ref to catalog_link defining this db conn handle here
 	curs_view - N.view - put reference to the view defining this cursor here
 
@@ -2445,7 +2506,7 @@ Attribute List:
 	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the variable is
 	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY variable
-	row_data_type - N.row_data_type,row_domain - user customized data type of ROW/RW_ARY variable
+	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY variable
 	init_lit_val - L.misc - an initial value for a SCALAR var can go here
 	is_constant - L.bool - this says a SCALAR value may not be changed
 	conn_link - N.catalog_link - put the catalog_link defining db conn handle here
@@ -2861,7 +2922,7 @@ mandatory string property named 'type' (eg: 'database_open', 'table_create',
 'data_insert'), which sets the context for all of its other properties, which
 are in a hash property named 'args'.  Elements of 'args' often include other
 Model class objects like 'Table' or 'DataType'.  Like all Model objects, this
-is static and context-independant; it is intended to be serialized and passed
+is static and context-independent; it is intended to be serialized and passed
 to code like DBI->prepare().   While host params are often used with them (such
 as values to insert or update, or record matching conditions), it is always up
 to the calling code to resolve the host params such as with a user prompt (as

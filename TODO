@@ -1,6 +1,6 @@
 TODO
 
-- Rewrite the "abstract interface" code and associated data dictionary.
+- Rewrite the SYNOPSIS documentation to emphasize the simplest-to-use API.
 
 - Continue fleshing out the standard_routine enumerated type documentation.
 

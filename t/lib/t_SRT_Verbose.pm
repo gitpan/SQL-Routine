@@ -97,6 +97,7 @@ sub create_and_populate_model {
 
 	# Define the unrealized database user that owns our primary schema:
 	my $owner = make_a_child_node( 'owner', $catalog_bp );
+	$owner->set_literal_attribute( 'si_name', 'Gene\'s Owner' );
 
 	# Define the primary schema that holds our data:
 	my $schema = make_a_child_node( 'schema', $catalog_bp );
@@ -580,7 +581,7 @@ sub expected_model_xml_output {
 	</elements>
 	<blueprints>
 		<catalog id="10" si_name="The Catalog Blueprint">
-			<owner id="11" />
+			<owner id="11" si_name="Gene\'s Owner" />
 			<schema id="12" si_name="gene" owner="11">
 				<row_domain id="13" si_name="person_type" data_type="3" />
 				<table id="14" si_name="person" row_data_type="13">

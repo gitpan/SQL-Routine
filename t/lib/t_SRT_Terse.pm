@@ -56,7 +56,7 @@ sub create_and_populate_model {
 		{ 'id' => 27, 'si_name' => 'generic' , 'base_type' => 'STR_CHAR', 'max_chars' => 250, 'char_enc' => 'ASCII', },
 	) ] );
 
-	my $sex = $model->get_node( '22' );
+	my $sex = $model->find_node_by_id( '22' );
 	$sex->build_child_node_trees( [ map { { 'NODE_TYPE' => 'scalar_data_type_opt', 'ATTRS' => $_ } } (
 		{ 'id' => 28, 'si_value' => 'M', },
 		{ 'id' => 29, 'si_value' => 'F', },
@@ -158,7 +158,7 @@ sub create_and_populate_model {
 
 	my $catalog = $model->build_child_node_tree( 
 		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 31, 'si_name' => 'The Catalog Blueprint' }, 
-		'CHILDREN' => [ { 'NODE_TYPE' => 'owner', 'ATTRS' => { 'id' =>  32, } } ] } ); 
+		'CHILDREN' => [ { 'NODE_TYPE' => 'owner', 'ATTRS' => { 'id' =>  32,  'si_name' => 'Gene\'s Owner', } } ] } ); 
 
 	my $schema = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'schema', 
 		'ATTRS' => { 'id' => 33, 'si_name' => 'gene', 'owner' => 32, } } ); 
@@ -572,7 +572,7 @@ sub expected_model_xml_output {
 	</elements>
 	<blueprints>
 		<catalog id="31" si_name="The Catalog Blueprint">
-			<owner id="32" />
+			<owner id="32" si_name="Gene\'s Owner" />
 			<schema id="33" si_name="gene" owner="32">
 				<table id="44" si_name="person" row_data_type="304">
 					<table_field id="520" si_row_field="220" mandatory="1" default_val="1" auto_inc="1" />

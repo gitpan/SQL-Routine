@@ -16,7 +16,7 @@ sub test_circular_ref_prevention {
 	$model->auto_set_node_ids( 1 );
 
 	my $catalog_bp = $model->build_child_node( 'catalog', 'The Catalog Blueprint' );
-	my $owner = $catalog_bp->build_child_node( 'owner' );
+	my $owner = $catalog_bp->build_child_node( 'owner', 'Gene\'s Owner' );
 	my $schema = $catalog_bp->build_child_node( 'schema', 'gene' );
 	$schema->set_node_ref_attribute( 'owner', $owner );
 
@@ -30,6 +30,7 @@ sub test_circular_ref_prevention {
 	$vw3->set_enumerated_attribute( 'view_type', 'UPDATE' );
 
 	my $test1_passed = 0;
+	my $test2_passed = 0;
 	eval {
 		$vw2->set_primary_parent_attribute( $vw3 );
 	};
@@ -40,10 +41,20 @@ sub test_circular_ref_prevention {
 			}
 		}
 	}
+	eval {
+		$vw2->set_primary_parent_attribute( $vw2 );
+	};
+	if( my $exception = $@ ) {
+		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
+			if( $exception->get_message_key() eq 'SRT_N_SET_NREF_AT_CIRC_REF' ) {
+				$test2_passed = 1;
+			}
+		}
+	}
 
 	$model->destroy();
 
-	return( $test1_passed );
+	return( $test1_passed, $test2_passed );
 }
 
 ######################################################################

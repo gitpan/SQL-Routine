@@ -3,7 +3,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.52';
+our $VERSION = '0.53';
 
 use Locale::KeyedText '1.01';
 
@@ -29,7 +29,7 @@ Nonstandard Modules:
 
 This file is part of the SQL::Routine library (libSQLRT).
 
-SQL::Routine is Copyright (c) 1999-2004, Darren R. Duncan.  All rights
+SQL::Routine is Copyright (c) 1999-2005, Darren R. Duncan.  All rights
 reserved. Address comments, suggestions, and bug reports to
 B<perl@DarrenDuncan.net>, or visit "http://www.DarrenDuncan.net" for more
 information.
@@ -82,7 +82,7 @@ my $CPROP_AUTO_SET_NIDS = 'auto_set_nids'; # boolean - false by def
 	# When this flag is true, SQL::Routine will automatically generate and set a Node Id for 
 	# a Node that lacks one as soon as there is an attempt to put that Node in this Container.
 	# When this flag is false, a missing Node Id will cause an exception to be raised instead.
-my $CPROP_USE_ABSTRACTS = 'use_abstracts'; # boolean - false by def
+my $CPROP_MAY_MATCH_SNIDS = 'may_match_snids'; # boolean - false by def
 	# When this flag is true, SQL::Routine will accept a wider range of input values when setting 
 	# Node ref attribute values, beyond Node object references and integers representing Node ids to 
 	# look up; if other types of values are provided, SQL::Routine will try to look up Nodes based 
@@ -106,7 +106,7 @@ my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when
 	# any Container property would then just have a list of those active objects, 
 	# so they can be killed (return links to Container obj broken) if their Container is destroyed.
 # To do: have attribute to indicate an edit in progress 
-	# or that there was a failure resulting in inconsistant data;
+	# or that there was a failure resulting in inconsistent data;
 	# this may be set by a method which partly implements a data change 
 	# which is not backed out of, before that function throws an exception;
 	# this property may best just be inside the thrown Locale::KeyedText object;
@@ -258,24 +258,25 @@ my %ENUMERATED_TYPES = (
 );
 
 # Names of hash keys in %NODE_TYPES elements:
-my $TPI_AT_SEQUENCE  = 'at_sequence'; # Array of all 'attribute' names in canon order
-my $TPI_AT_LITERALS  = 'at_literals'; # Hash - Keys are attr names a Node can have which have literal values
+my $TPI_AT_SEQUENCE = 'at_sequence'; # Array of all 'attribute' names in canon order
+my $TPI_AT_LITERALS = 'at_literals'; # Hash - Keys are attr names a Node can have which have literal values
 	# Values are enums and say what literal data type the attribute has, like int or bool or str
-my $TPI_AT_ENUMS     = 'at_enums'; # Hash - Keys are attr names a Node can have which are enumerated values
+my $TPI_AT_ENUMS    = 'at_enums'; # Hash - Keys are attr names a Node can have which are enumerated values
 	# Values are enums and match a %ENUMERATED_TYPES key
-my $TPI_AT_NREFS     = 'at_nrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
+my $TPI_AT_NREFS    = 'at_nrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
 	# Values are enums and each matches a single %NODE_TYPES key.
 my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
-my $TPI_SI_ATNM = 'si_atnm'; # The surrogate identifier, distinct under primary parent and always-mandatory
+my $TPI_SI_ATNM     = 'si_atnm'; # The surrogate identifier, distinct under primary parent and always-mandatory
 	# Is an array of 3 cstr elements, one for lit|enum|nref; 1 elem is valued, other 2 are undef
 	# External code can opt specify a Node by the value of this attr-name rather of its Id
 	# If set_attributes() is given a non-Hash value
-my $TPI_MA_ATTRS     = 'ma_attrs'; # Array of always-mandatory ('MA') attributes
+my $TPI_WR_ATNM     = 'wr_atnm'; # A wrapper attribute
+my $TPI_MA_ATTRS    = 'ma_attrs'; # Array of always-mandatory ('MA') attributes
 	# The array contains 3 elements, one each for lit, enum, nref; each inner elem is a MA boolean
-my $TPI_MUTEX_ATGPS  = 'mutex_atgps'; # Array of groups of mutually exclusive attributes
+my $TPI_MUTEX_ATGPS = 'mutex_atgps'; # Array of groups of mutually exclusive attributes
 	# Each array element is an array ref with 5 elements: 1. mutex-name (cstr); 2. lit members (ary); 
 	# 3. enum members (ary); 4. nref members (ary); 5. mandatory-flag (boolean).
-my $TPI_LOCAL_ATDPS  = 'local_atdps'; # Array of attributes depended-on by other attrs in same Nodes
+my $TPI_LOCAL_ATDPS = 'local_atdps'; # Array of attributes depended-on by other attrs in same Nodes
 	# Each array element is an array ref with 4 elements: 
 	# 1. undef or depended on lit attr name (cstr); 2. undef or depended on enum attr name (cstr); 
 	# 3. undef or depended on nref attr name (cstr); 4. an array ref of N elements where 
@@ -286,10 +287,12 @@ my $TPI_LOCAL_ATDPS  = 'local_atdps'; # Array of attributes depended-on by other
 		# 4. an array ref with 0..N elements that are depended-on values, one of which must 
 		# be matched, if depended-on attr is an enum, or which is empty otherwise;
 		# 5. mandatory-flag (boolean).
+my $TPI_ANCES_ATCORS = 'ances_atcors'; # Hash of Arrays of steps to follow when linking Nodes using SI
+	# Each hash key is a Node-ref attr name, each hash value is an array of steps.
 my $TPI_CHILD_QUANTS = 'child_quants'; # Array of quantity limits for child Nodes
 	# Each array element is an array ref with 3 elements: 
 	# 1. child-node-type (cstr); 2. range-min (uint); 3. range-max (uint)
-my $TPI_MUDI_ATGPS   = 'mudi_atgps'; # Array of groups of mutually distinct attributes
+my $TPI_MUDI_ATGPS  = 'mudi_atgps'; # Array of groups of mutually distinct attributes
 	# Each array element is an array ref with 2 elements: 1. mudi-name (cstr); 
 	# 2. an array ref of N elements where each element is an array ref with 4 elements:
 		# 1. child-node-type (cstr);
@@ -346,6 +349,11 @@ my %PSEUDONODE_TYPES = (
 	},
 );
 
+# These are used with $TPI_ANCES_ATCORS:
+my $S = '.';
+my $P = '..';
+my $R = '...';
+my $C = '....';
 # These are the allowed Node types, with their allowed attributes and their 
 # allowed child Node types.  They are used for method input checking and 
 # other related tasks.
@@ -486,11 +494,15 @@ my %NODE_TYPES = (
 	},
 	'owner' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id pp 
+			id pp si_name 
 		)],
+		$TPI_AT_LITERALS => {
+			'si_name' => 'cstr',
+		},
 		$TPI_AT_NREFS => {
 			'pp' => ['catalog'],
 		},
+		$TPI_SI_ATNM => ['si_name',undef,undef],
 	},
 	'catalog_link' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -590,6 +602,7 @@ my %NODE_TYPES = (
 			'data_type' => ['row_data_type'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'data_type',
 		$TPI_MA_ATTRS => [[],[],[qw( data_type )]],
 	},
 	'sequence' => {
@@ -622,6 +635,7 @@ my %NODE_TYPES = (
 			'row_data_type' => ['row_data_type','row_domain'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'row_data_type',
 		$TPI_MA_ATTRS => [[],[],[qw( row_data_type )]],
 	},
 	'table_field' => {
@@ -642,6 +656,9 @@ my %NODE_TYPES = (
 		$TPI_MUTEX_ATGPS => [
 			['default',[qw( default_val )],[],[qw( default_seq )],0],
 		],
+		$TPI_ANCES_ATCORS => {
+			'si_row_field' => [$S,$P],
+		},
 	},
 	'table_index' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -683,6 +700,10 @@ my %NODE_TYPES = (
 			'f_field' => ['row_data_type_field'],
 		},
 		$TPI_SI_ATNM => [undef,undef,'si_field'],
+		$TPI_ANCES_ATCORS => {
+			'si_field' => [$S,$P,$P],
+			'f_field' => [$S,$P,'f_table'],
+		},
 	},
 	'view' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -706,6 +727,7 @@ my %NODE_TYPES = (
 			'ins_p_routine_item' => ['routine_arg','routine_var'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'row_data_type',
 		$TPI_MA_ATTRS => [[],[qw( view_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'view_type',undef,[
@@ -752,6 +774,7 @@ my %NODE_TYPES = (
 			'row_data_type' => ['row_data_type','row_domain'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'row_data_type',
 		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_MUTEX_ATGPS => [
 			['data_type',[],[],[qw( scalar_data_type row_data_type )],1],
@@ -797,6 +820,9 @@ my %NODE_TYPES = (
 			'si_match_field' => ['row_data_type_field'],
 		},
 		$TPI_SI_ATNM => [undef,undef,'si_match_field'],
+		$TPI_ANCES_ATCORS => {
+			'si_match_field' => [$S,$P,'match'],
+		},
 	},
 	'view_field' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -808,6 +834,9 @@ my %NODE_TYPES = (
 			'src_field' => ['view_src_field'],
 		},
 		$TPI_SI_ATNM => [undef,undef,'si_row_field'],
+		$TPI_ANCES_ATCORS => {
+			'si_row_field' => [$S,$P],
+		},
 	},
 	'view_join' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -844,6 +873,10 @@ my %NODE_TYPES = (
 			'rhs_src_field' => ['view_src_field'],
 		},
 		$TPI_MA_ATTRS => [[],[],[qw( lhs_src_field rhs_src_field )]],
+		$TPI_ANCES_ATCORS => {
+			'lhs_src_field' => [$S,$P,'lhs_src'],
+			'rhs_src_field' => [$S,$P,'rhs_src'],
+		},
 	},
 	'view_compound_elem' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -908,6 +941,10 @@ my %NODE_TYPES = (
 				[[],[],['catalog_link'],[],0],
 			]],
 		],
+		$TPI_ANCES_ATCORS => {
+			'set_result_field' => [$S,$R,$P],
+			'valf_src_field' => [$S,$R,$P,$C],
+		},
 		$TPI_MUDI_ATGPS => [
 			['ak_view_arg',[
 				['view_expr',[],[],['call_view_arg']],
@@ -1015,6 +1052,7 @@ my %NODE_TYPES = (
 			'curs_view' => ['view'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'row_data_type',
 		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
@@ -1047,6 +1085,7 @@ my %NODE_TYPES = (
 			'curs_view' => ['view'],
 		},
 		$TPI_SI_ATNM => ['si_name',undef,undef],
+		$TPI_WR_ATNM => 'row_data_type',
 		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
@@ -1343,84 +1382,6 @@ while( my ($_node_type, $_type_info) = each %NODE_TYPES ) {
 	}
 }
 
-# This temporary structure was recently added as a result of merging another 
-# module into this one.  Its contents will be rewritten and inserted into 
-# the %NODE_TYPES at a later date.  It is probably full of errors and omissions.
-my $S = '.'; # when same node type directly inside itself, make sure on parentmost of current
-my $P = '..'; # means go up one parent level
-my $HACK1 = '[]'; # means use [view_src.si_name+table_field.si_name] to find a view_src_field in current view
-my %NODE_TYPES_EXTRA_DETAILS = (
-	'table_field' => {
-		'search_paths' => {
-			'si_row_field' => [$P,'row_data_type'], # match child col in current table
-		},
-	},
-	'table_index' => {
-		'search_paths' => {
-			'f_table' => [$P,$P], # match child table in current schema
-		},
-	},
-	'table_index_field' => {
-		'search_paths' => {
-			'si_field' => [$P,$P,'row_data_type'], # match child col in current table
-			'f_field' => [$P,'f_table','row_data_type'], # match child col in foreign table
-		},
-	},
-	'view_src' => {
-		'search_paths' => {
-			'match' => [$P,$S,$P], # match child table|view in current schema
-		},
-	},
-	'view_src_field' => {
-		'search_paths' => {
-			'si_match_field' => [$P,'match','row_data_type'], # match child col in other table
-		},
-	},
-	'view_field' => {
-		'search_paths' => {
-			'si_row_field' => [$P,'row_data_type'], # match child col in current view
-		},
-	},
-	'view_join' => {
-		'search_paths' => {
-			'lhs_src' => [$P], # match child view_src in current view
-			'rhs_src' => [$P], # match child view_src in current view
-		},
-	},
-	'view_join_field' => {
-		'search_paths' => {
-			'lhs_src_field' => [$P,'lhs_src',['row_data_type_field',[$P,'match','row_data_type']]], # ... recursive code
-			'rhs_src_field' => [$P,'rhs_src',['row_data_type_field',[$P,'match','row_data_type']]], # ... recursive code
-		},
-	},
-	'view_expr' => {
-		'search_paths' => {
-			'set_result_field' => [$S,$P,'row_data_type'], # match child col in current view
-			'valf_src_field' => [$S,$P,$HACK1,['row_data_type_field',[$P,'match','row_data_type']]], # match a src+table_field in current schema
-			'valf_call_view' => [$S,$P,$S,$P], # match child view in current schema
-			'valf_call_uroutine' => [$S,$P,$S,$P], # match child routine in current schema
-		},
-	},
-	'routine_var' => {
-		'search_paths' => {
-			'scalar_data_type' => [$P,$S,$P,$P,$P], # match child datatype of root
-			'curs_view' => [$P,$S,$P], # match child view in current schema
-		},
-	},
-	'routine_stmt' => {
-		'search_paths' => {
-			'block_routine' => [$P], # link to child routine of current routine
-			'assign_dest' => [$P], # match child routine_var in current routine
-		},
-	},
-	'routine_expr' => {
-		'search_paths' => {
-			'valf_p_routine_item' => [$S,$P,$P], # match child routine_var|arg|context in current routine
-			'valf_call_uroutine' => [$S,$P,$S,$P,$P], # match child routine in current schema
-		},
-	},
-);
-
 # This is an extension to let you use one set of functions for all Node 
 # attribute major types, rather than separate literal/enumerated/node.
 my $NAMT_ID      = 'ID'; # node id attribute
@@ -1521,12 +1482,11 @@ sub node_types_with_surrogate_id_attributes {
 	my ($self, $type) = @_;
 	$type and (exists( $NODE_TYPES{$type} ) or return( undef ));
 	if( $type ) {
-		if( my $si_atnm = $NODE_TYPES{$type}->{$TPI_SI_ATNM} ) {
-			return( (grep { $_ } @{$si_atnm})[0] );
-		}
+		return( (grep { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM} || [$ATTR_ID]})[0] );
 	}
-	return( {map { ($_ => (grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}})[0]) } 
-		grep { $NODE_TYPES{$_}->{$TPI_SI_ATNM} } keys %NODE_TYPES} );
+	return( {map { ($_ => 
+			(grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM} || [$ATTR_ID]})[0]
+		) } keys %NODE_TYPES} );
 }
 
 ######################################################################
@@ -1607,6 +1567,9 @@ sub _throw_error_message {
 		ref($args) eq 'HASH' or $args = {};
 		$args->{'NTYPE'} = $self->{$NPROP_NODE_TYPE};
 		$args->{'NID'} = $self->{$NPROP_NODE_ID};
+		if( $self->{$NPROP_CONTAINER} ) {
+			$args->{'SIDCH'} = $self->_get_surrogate_id_chain_as_str();
+		}
 	}
 	die Locale::KeyedText->new_message( $error_code, $args );
 }
@@ -1653,11 +1616,11 @@ sub _build_node_normalize_attrs {
 }
 
 sub build_container {
-	my ($self, $list, $auto_assert, $auto_ids, $use_abstracts) = @_;
+	my ($self, $list, $auto_assert, $auto_ids, $match_surr_ids) = @_;
 	my $container = $self->new_container();
 	$auto_assert and $container->auto_assert_deferrable_constraints( 1 );
 	$auto_ids and $container->auto_set_node_ids( 1 );
-	$use_abstracts and $container->use_abstract_interface( 1 );
+	$match_surr_ids and $container->may_match_surrogate_node_ids( 1 );
 	$container->build_child_node_trees( $list );
 	return( $container );
 }
@@ -1675,7 +1638,7 @@ sub new {
 	my $container = bless( {}, ref($class) || $class );
 	$container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
 	$container->{$CPROP_AUTO_SET_NIDS} = 0;
-	$container->{$CPROP_USE_ABSTRACTS} = 0;
+	$container->{$CPROP_MAY_MATCH_SNIDS} = 0;
 	$container->{$CPROP_ALL_NODES} = {};
 	$container->{$CPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
 	$container->{$CPROP_NEXT_FREE_NID} = 1;
@@ -1716,20 +1679,12 @@ sub auto_set_node_ids {
 
 ######################################################################
 
-sub use_abstract_interface {
+sub may_match_surrogate_node_ids {
 	my ($container, $new_value) = @_;
 	if( defined( $new_value ) ) {
-		$container->{$CPROP_USE_ABSTRACTS} = $new_value;
+		$container->{$CPROP_MAY_MATCH_SNIDS} = $new_value;
 	}
-	return( $container->{$CPROP_USE_ABSTRACTS} );
-}
-
-######################################################################
-
-sub get_node {
-	my ($container, $node_id) = @_;
-	defined( $node_id ) or $container->_throw_error_message( 'SRT_C_GET_NODE_NO_ARG_ID' );
-	return( $container->{$CPROP_ALL_NODES}->{$node_id} );
+	return( $container->{$CPROP_MAY_MATCH_SNIDS} );
 }
 
 ######################################################################
@@ -1746,6 +1701,14 @@ sub get_child_nodes {
 	} else {
 		return( [map { @{$pseudonodes->{$_}} } @L2_PSEUDONODE_LIST] );
 	}
+}
+
+######################################################################
+
+sub find_node_by_id {
+	my ($container, $node_id) = @_;
+	defined( $node_id ) or $container->_throw_error_message( 'SRT_C_FIND_NODE_BY_ID_NO_ARG_ID' );
+	return( $container->{$CPROP_ALL_NODES}->{$node_id} );
 }
 
 ######################################################################
@@ -1798,11 +1761,11 @@ sub _assert_deferrable_constraints {
 ######################################################################
 
 sub get_all_properties {
-	return( $_[0]->_get_all_properties() );
+	return( $_[0]->_get_all_properties( $_[1] ) );
 }
 
 sub _get_all_properties {
-	my ($container) = @_;
+	my ($container, $links_as_si) = @_;
 	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
 	return( {
 		$NAMED_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
@@ -1810,18 +1773,18 @@ sub _get_all_properties {
 		$NAMED_CHILDREN => [map { {
 			$NAMED_NODE_TYPE => $_,
 			$NAMED_ATTRS => {},
-			$NAMED_CHILDREN => [map { $_->_get_all_properties() } @{$pseudonodes->{$_}}],
+			$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si ) } @{$pseudonodes->{$_}}],
 		} } @L2_PSEUDONODE_LIST],
 	} );
 }
 
 sub get_all_properties_as_perl_str {
-	return( $_[0]->_serialize_as_perl( $_[0]->_get_all_properties() ) );
+	return( $_[0]->_serialize_as_perl( $_[0]->_get_all_properties( $_[1] ) ) );
 }
 
 sub get_all_properties_as_xml_str {
 	return( '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties() ) );
+		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties( $_[1] ) ) );
 }
 
 ######################################################################
@@ -2008,7 +1971,7 @@ sub set_node_id {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID', { 'ARG' => $new_id } );
 	}
 
-	# The following seq should leave state consistant or recoverable if the thread dies
+	# The following seq should leave state consistent or recoverable if the thread dies
 	$rh_cal->{$new_id} = $node; # temp reserve new+old
 	$node->{$NPROP_NODE_ID} = $new_id; # change self from old to new
 	delete( $rh_cal->{$old_id} ); # now only new reserved
@@ -2066,7 +2029,7 @@ sub clear_literal_attributes {
 sub set_literal_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	my $exp_lit_type = $node->expected_literal_attribute_type( $attr_name ); # dies if bad arg
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL' );
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 
 	if( ref($attr_value) ) {
 		$node->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_IS_REF', 
@@ -2158,7 +2121,7 @@ sub clear_enumerated_attributes {
 sub set_enumerated_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	my $exp_enum_type = $node->expected_enumerated_attribute_type( $attr_name ); # dies if bad arg
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARG_VAL' );
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 
 	unless( $ENUMERATED_TYPES{$exp_enum_type}->{$attr_value} ) {
 		$node->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_V', { 'ATNM' => $attr_name, 
@@ -2197,13 +2160,26 @@ sub expected_node_ref_attribute_types {
 }
 
 sub get_node_ref_attribute {
-	my ($node, $attr_name) = @_;
+	my ($node, $attr_name, $get_target_si) = @_;
 	$node->expected_node_ref_attribute_types( $attr_name ); # dies if bad arg
-	return( $node->{$NPROP_AT_NREFS}->{$attr_name} );
+	my $attr_val = $node->{$NPROP_AT_NREFS}->{$attr_name};
+	if( $get_target_si and $node->{$NPROP_CONTAINER} and defined($attr_val) ) {
+		return( $attr_val->get_surrogate_id_attribute( $get_target_si ) );
+	} else {
+		return( $attr_val );
+	}
 }
 
 sub get_node_ref_attributes {
-	return( {%{$_[0]->{$NPROP_AT_NREFS}}} );
+	my ($node, $get_target_si) = @_;
+	my $at_nrefs = $node->{$NPROP_AT_NREFS};
+	if( $get_target_si and $node->{$NPROP_CONTAINER} ) {
+		return( { map { ( 
+				$at_nrefs->{$_}->get_surrogate_id_attribute( $get_target_si )
+			) } keys %{$at_nrefs} } );
+	} else {
+		return( {%{$at_nrefs}} );
+	}
 }
 
 sub clear_node_ref_attribute {
@@ -2245,7 +2221,7 @@ sub _clear_node_ref_attribute {
 sub set_node_ref_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	my $exp_node_types = $node->expected_node_ref_attribute_types( $attr_name ); # dies if bad arg
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARG_VAL' );
+	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 
 	if( ref($attr_value) eq ref($node) ) {
 		# We were given a Node object for a new attribute value.
@@ -2257,40 +2233,39 @@ sub set_node_ref_attribute {
 
 		if( $attr_value->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER} ) {
 			unless( $attr_value->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_DIFF_CONT' );
+				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_DIFF_CONT', { 'ATNM' => $attr_name } );
 			}
 			# If we get here, both Nodes are in the same Container and can link
 		} elsif( $attr_value->{$NPROP_CONTAINER} or $node->{$NPROP_CONTAINER} ) {
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_ONE_CONT' );
+			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_ONE_CONT', { 'ATNM' => $attr_name } );
 		} elsif( !$attr_value->{$NPROP_NODE_ID} ) {
 			# both Nodes are not in Containers, and $attr_value has no Node Id
-			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_MISS_NID' );
+			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_MISS_NID', { 'ATNM' => $attr_name } );
 		} else {
 			# both Nodes are not in Containers, and $attr_value has Node Id, so can link
 			$attr_value = $attr_value->{$NPROP_NODE_ID};
 		} 
 
-	} else {
-		# We may have been given a Node id for a new attribute value.
-		if( $attr_value =~ /\D/ or $attr_value < 1 or int($attr_value) ne $attr_value ) {
-			# The regexp above should suppress warnings about non-numerical arguments to '<'
-			if( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_USE_ABSTRACTS} ) {
-				# We were given a non-Node and non-Id $attr_value.
-				# Now look for something we can actually use for a value.
-				$attr_value = $node->_set_node_ref_attribute__do_when_no_id_match( $attr_name, $attr_value );
-				# Since we got here, $attr_value contains a positive search result.
-				# Try set_node_ref_attribute() again with new value.
-				return( $node->set_node_ref_attribute( $attr_name, $attr_value ) );
-			} else {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_BAD_ARG_VAL', { 'ARG' => $attr_value } );
-			}
+	} elsif( $attr_value =~ /\D/ or $attr_value < 1 or int($attr_value) ne $attr_value ) {
+		# The regexp above should suppress warnings about non-numerical arguments to '<'
+		# We were given a Surrogate Node Id for a new attribute value.
+		unless( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_MAY_MATCH_SNIDS} ) {
+			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
+		my $searched_attr_value = $node->find_node_by_surrogate_id( $attr_name, $attr_value );
+		unless( $searched_attr_value ) {
+			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_SID', 
+				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
+		}
+		$attr_value = $searched_attr_value;
 
+	} else {
+		# We were given a Node Id for a new attribute value.
 		if( my $container = $node->{$NPROP_CONTAINER} ) {
 			my $searched_attr_value = $container->{$CPROP_ALL_NODES}->{$attr_value};
 			unless( $searched_attr_value and grep { $searched_attr_value->{$NPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
 				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_NID', 
-					{ 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
+					{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
 			}
 			$attr_value = $searched_attr_value;
 		}
@@ -2305,11 +2280,11 @@ sub set_node_ref_attribute {
 		# Attempt is to link two Nodes in the same Container; it would be okay, except 
 		# that we still have to check for circular primary parent Node references.
 		my $pp_node = $attr_value;
-		while( $pp_node = $pp_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+		do { # Also make sure we aren't trying to link to ourself.
 			if( $pp_node eq $node ) {
-				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_CIRC_REF' );
+				$node->_throw_error_message( 'SRT_N_SET_NREF_AT_CIRC_REF', { 'ATNM' => $attr_name } );
 			}
-		}
+		} while( $pp_node = $pp_node->{$NPROP_AT_NREFS}->{$ATTR_PP} );
 	}
 
 	$node->_clear_node_ref_attribute( $attr_name ); # clears any existing link through this attribute
@@ -2335,146 +2310,6 @@ sub set_node_ref_attributes {
 }
 
 ######################################################################
-# These temporary methods were recently added as a result of merging another 
-# module into this one.  Their contents will be rewritten turned into other 
-# methods at a later date.  They are probably full of errors and omissions.
-
-sub _set_node_ref_attribute__do_when_no_id_match {
-	# Method only gets called when $attr_value is valued and doesn't match an id or Node.
-	my ($self, $attr_name, $attr_value) = @_;
-	my $exp_node_types = $self->expected_node_ref_attribute_types( $attr_name );
-
-	my $node_type = $self->get_node_type();
-
-	my $node_info_extras = $NODE_TYPES_EXTRA_DETAILS{$node_type};
-	my $search_path = $node_info_extras->{'search_paths'}->{$attr_name};
-
-	my $attr_value_out = undef;
-	if( !$search_path ) {
-		# No specific search path given, so search all nodes of the type.
-		$attr_value_out = $self->_set_node_ref_attribute__find_node_by_link_search_attr( $exp_node_types, $attr_value );
-	} elsif( $attr_value ) { # note: attr_value may be a defined empty string
-		my $curr_node = $self;
-		$attr_value_out = $self->_set_node_ref_attribute__search_for_node( 
-			$attr_value, $exp_node_types, $search_path, $curr_node );
-	}
-
-	if( $attr_value_out ) {
-		return( $attr_value_out );
-	} else {
-		$self->_throw_error_message( 'SRT_ABSINTF_N_SET_NREF_AT_NO_ID_MATCH', 
-			{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => "@{$exp_node_types}" } );
-	}
-}
-
-sub _set_node_ref_attribute__find_node_by_link_search_attr {
-	my ($self, $exp_node_types, $attr_value) = @_;
-	my $container = $self->get_container();
-	foreach my $exp_node_type (@{$exp_node_types}) {
-		my $link_search_attr = $NODE_TYPES{$exp_node_type}->{$TPI_SI_ATNM};
-		$link_search_attr and ($link_search_attr) = grep { $_ } @{$link_search_attr};
-		foreach my $scn (values %{$container->{$CPROP_ALL_NODES}}) {
-			if( $scn->{$NPROP_NODE_TYPE} eq $exp_node_type and 
-					$scn->get_attribute( $link_search_attr ) eq $attr_value ) {
-				return( $scn );
-			}
-		}
-	}
-}
-
-sub _set_node_ref_attribute__search_for_node {
-	my ($self, $search_attr_value, $exp_node_types, $search_path, $curr_node) = @_;
-	ref($exp_node_types) eq 'ARRAY' or $exp_node_types = [$exp_node_types];
-
-	my $recurse_next = undef;
-
-	foreach my $path_seg (@{$search_path}) {
-		if( ref($path_seg) eq 'ARRAY' ) {
-			# We have arrived at the parent of a possible desired node, but picking 
-			# the correct child is more complicated, and will be done below.
-			$recurse_next = $path_seg;
-			last;
-		} elsif( $path_seg eq $S ) {
-			# Want to progress search via consec parents of same node type to first.
-			my $start_type = $curr_node->get_node_type();
-			while( $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} and $start_type eq
-					$curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP}->get_node_type() ) {
-				$curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP};
-			}
-		} elsif( $path_seg eq $P ) {
-			# Want to progress search to the parent of the current node.
-			if( $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
-				# There is a parent node, so move to it.
-				$curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP};
-			} else {
-				# There is no parent node; search has failed.
-				$curr_node = undef;
-				last;
-			}
-		} elsif( $path_seg eq $HACK1 ) {
-			# Assume curr_node is now a 'view'; we want to find a view_src_field below it.
-			# search_attr_value should be an array having 2 elements: view_src.si_name+table_field.si_name.
-			# Progress search down one child node, so curr_node becomes a 'view_src'.
-			my $to_be_curr_node = undef;
-			my ($col_name, $src_name) = @{$search_attr_value};
-			foreach my $scn (@{$curr_node->get_child_nodes( 'view_src' )}) {
-				if( $scn->get_attribute( 'si_name' ) eq $src_name ) {
-					# We found a node in the correct path that we can link.
-					$to_be_curr_node = $scn;
-					$search_attr_value = $col_name;
-					last;
-				}
-			}
-			$curr_node = $to_be_curr_node;
-		} else {
-			# Want to progress search via an attribute of the current node.
-			if( my $attval = $curr_node->get_attribute( $path_seg ) ) {
-				# The current node has that attribute, so move to it.
-				$curr_node = $attval;
-			} else {
-				# There is no attribute present; search has failed.
-				$curr_node = undef;
-				last;
-			}
-		}
-	}
-
-	my $node_to_link = undef;
-
-	if( $curr_node ) {
-		# Since curr_node is still defined, the search succeeded, 
-		# or the search path was an empty list (means search self).
-		foreach my $exp_node_type (@{$exp_node_types}) {
-			my $link_search_attr = $NODE_TYPES{$exp_node_type}->{$TPI_SI_ATNM};
-			$link_search_attr and ($link_search_attr) = grep { $_ } @{$link_search_attr};
-			foreach my $scn (@{$curr_node->get_child_nodes( $exp_node_type )}) {
-				if( $recurse_next ) {
-					my ($i_exp_node_type, $i_search_path) = @{$recurse_next};
-					my $i_node_to_link = undef;
-					$i_node_to_link = $self->_set_node_ref_attribute__search_for_node( 
-						$search_attr_value, $i_exp_node_type, $i_search_path, $scn );
-
-					if( $i_node_to_link ) {
-						if( $scn->get_attribute( $link_search_attr ) eq $i_node_to_link ) {
-							$node_to_link = $scn;
-							last;
-						}
-					}
-				} else {
-					if( $scn->get_attribute( $link_search_attr ) eq $search_attr_value ) {
-						# We found a node in the correct path that we can link.
-						$node_to_link = $scn;
-						last;
-					}
-				}
-			}
-		}
-	}
-
-	return( $node_to_link );
-}
-
-######################################################################
 
 sub expected_attribute_major_type {
 	my ($node, $attr_name) = @_;
@@ -2488,22 +2323,22 @@ sub expected_attribute_major_type {
 }
 
 sub get_attribute {
-	my ($node, $attr_name) = @_;
+	my ($node, $attr_name, $get_target_si) = @_;
 	my $namt = $node->expected_attribute_major_type( $attr_name ); # dies if bad arg
 	$namt eq $NAMT_ID and return( $node->get_node_id() );
 	$namt eq $NAMT_LITERAL and return( $node->get_literal_attribute( $attr_name ) );
 	$namt eq $NAMT_ENUM and return( $node->get_enumerated_attribute( $attr_name ) );
-	$namt eq $NAMT_NODE and return( $node->get_node_ref_attribute( $attr_name ) );
+	$namt eq $NAMT_NODE and return( $node->get_node_ref_attribute( $attr_name, $get_target_si ) );
 	# We should never get here.
 }
 
 sub get_attributes {
-	my ($node) = @_;
+	my ($node, $get_target_si) = @_;
 	return( {
 		$ATTR_ID => $node->get_node_id(),
 		%{$node->get_literal_attributes()},
 		%{$node->get_enumerated_attributes()},
-		%{$node->get_node_ref_attributes()},
+		%{$node->get_node_ref_attributes( $get_target_si )},
 	} );
 }
 
@@ -2585,28 +2420,24 @@ sub set_primary_parent_attribute {
 
 sub expected_surrogate_id_attribute_name {
 	my ($node) = @_;
-	my $si_atnm = $node->node_types_with_surrogate_id_attributes( $node->{$NPROP_NODE_TYPE} );
-	unless( $si_atnm ) {
-		$node->_throw_error_message( 'SRT_N_EXP_SI_AT_NO_SI', { 'ATNM' => $si_atnm } );
-	}
-	return( $si_atnm );
+	return( $node->node_types_with_surrogate_id_attributes( $node->{$NPROP_NODE_TYPE} ) );
 }
 
 sub get_surrogate_id_attribute {
-	my ($node) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute();
-	return( $node->get_attribute( $si_atnm ) );
+	my ($node, $get_target_si) = @_;
+	my $si_atnm = $node->expected_surrogate_id_attribute_name();
+	return( $node->get_attribute( $si_atnm, $get_target_si ) );
 }
 
 sub clear_surrogate_id_attribute {
 	my ($node) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute();
+	my $si_atnm = $node->expected_surrogate_id_attribute_name();
 	$node->clear_attribute( $si_atnm );
 }
 
 sub set_surrogate_id_attribute {
 	my ($node, $attr_value) = @_;
-	my $si_atnm = $node->expected_surrogate_id_attribute();
+	my $si_atnm = $node->expected_surrogate_id_attribute_name();
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
 	$node->set_attribute( $si_atnm, $attr_value );
 }
@@ -2822,6 +2653,172 @@ sub add_child_nodes {
 	foreach my $element (@{$list}) {
 		$node->add_child_node( $element );
 	}
+}
+
+######################################################################
+
+sub get_surrogate_id_chain {
+	my ($node) = @_;
+	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_GET_SID_CHAIN_NOT_IN_CONT' );
+	return( $node->_get_surrogate_id_chain() );
+}
+
+sub _get_surrogate_id_chain {
+	my ($node) = @_;
+	my $si_atvl = $node->get_surrogate_id_attribute( 1 ); # target SI lit/enum is being returned as a string
+	if( my $pp_node = $node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+		# Current Node has a primary-parent Node; append to its id chain.
+		my $elements = $pp_node->_get_surrogate_id_chain();
+		push( @{$elements}, $si_atvl );
+		return( $elements );
+	} elsif( my $l2_psnd = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
+		# Current Node has a primary-parent pseudo-Node; append to its id chain.
+		return( [undef, $SQLRT_L1_ROOT_PSND, $l2_psnd, $si_atvl] );
+	} else {
+		# Current Node is not linked to the main Node tree yet; indicate this with non-undef first chain element.
+		return( [$si_atvl] );
+	}
+}
+
+sub _get_surrogate_id_chain_as_str {
+	my ($node) = @_;
+	my @elems_out = ();
+	foreach my $element (@{$node->_get_surrogate_id_chain()}) {
+		defined( $element ) or $element = '';
+		$element =~ s/\\/\\\\/g;
+		$element =~ s/\[/\\[/g;
+		$element =~ s/\]/\\]/g;
+		$element =~ s/,/\\,/g;
+		push( @elems_out, $element );
+	}
+	return( '['.join( ',', @elems_out ).']' );
+}
+
+######################################################################
+
+sub find_node_by_surrogate_id {
+	my ($node, $self_attr_name, $target_attr_value) = @_;
+	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NOT_IN_CONT' );
+	$node->expected_node_ref_attribute_types( $self_attr_name ); # dies if bad arg
+	defined( $target_attr_value ) or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL' );
+	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
+	my %exp_p_node_types = map { ($_ => 1) } @{$type_info->{$TPI_AT_NREFS}->{$self_attr_name}};
+	if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
+		return( $node->_find_node_by_surrogate_id_using_path( \%exp_p_node_types, $target_attr_value, $search_path ) );
+	} else {
+		return( $node->_find_node_by_surrogate_id_within_layers( \%exp_p_node_types, $target_attr_value->[0] ) );
+	}
+}
+
+sub _find_node_by_surrogate_id_within_layers {
+	my ($node, $exp_p_node_types, $target_attr_value) = @_;
+	my $pp_node = $node->{$NPROP_AT_NREFS}->{$ATTR_PP};
+
+	# Now determine who our siblings are.
+
+	my @sibling_list = ();
+	if( $pp_node ) {
+		# We have a normal Node primary-parent, P.
+		# Search among all Nodes that have P as their primary-parent Node; these are our siblings.
+		@sibling_list = @{$pp_node->{$NPROP_CHILD_NODES}};
+	} else {
+		# Either we have a pseudo-Node primary-parent, or no parent normal Node is defined for us.
+		# Search among all Nodes that have pseudo-Node primary-parents.
+		my $pseudonodes = $node->{$NPROP_CONTAINER}->{$CPROP_PSEUDONODES};
+		@sibling_list = map { @{$pseudonodes->{$_}} } @L2_PSEUDONODE_LIST;
+	}
+
+	# Now search among our siblings for a match.
+
+	foreach my $sibling_node (@sibling_list) {
+		$exp_p_node_types->{$sibling_node->{$NPROP_NODE_TYPE}} or next;
+		if( my $si_atvl = $sibling_node->get_surrogate_id_attribute( 1 ) ) {
+			if( $si_atvl eq $target_attr_value ) {
+				return( $sibling_node );
+			}
+		}
+	}
+
+	# Nothing was found among our siblings.
+
+	if( $pp_node ) {
+		# We are not at the tree's root, so move upwards by a generation and try again.
+		return( $pp_node->_find_node_by_surrogate_id_within_layers( $exp_p_node_types, $target_attr_value ) );
+	} else {
+		# There is no further up that we can go, so no match was found.
+		return( undef );
+	}
+}
+
+sub _find_node_by_surrogate_id_using_path {
+	my ($node, $exp_p_node_types, $target_attr_value, $search_path) = @_;
+	my $curr_node = $node;
+	my ($unqualified_value, $qualifier_l1, @rest) = @{$target_attr_value};
+
+	# Now enumerate through the explicit search path elements, updating $curr_node in the process.
+
+	foreach my $path_seg (@{$search_path}) {
+		if( $path_seg eq $S ) { # <self> is a no-op, existing for easier-to-read documentation only
+			# no-op
+		} elsif( $path_seg eq $P ) { # <primary-parent>
+			unless( $curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} ) {
+				return( undef ); # current Node's primary parent isn't set yet (it should be); get out
+			}
+		} elsif( $path_seg eq $R ) { # <root-of-kind>
+			while( $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP} and 
+					$curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP}->{$NPROP_NODE_TYPE} eq $curr_node->{$NPROP_NODE_TYPE} ) {
+				$curr_node = $curr_node->{$NPROP_AT_NREFS}->{$ATTR_PP};
+			}
+		} elsif( $path_seg eq $C ) { # <primary-child>
+			# For simplicity we are assuming the $C is the end of the path; it's grand-child or bust.
+			foreach my $child_l1 (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+				if( defined($qualifier_l1) ) {
+					# Given value is qualified; only look within the specified contexts.
+					my $si_atvl = $child_l1->get_surrogate_id_attribute( 1 ) or next;
+					$si_atvl eq $qualifier_l1 or next;
+				} # else Given value is unqualified; take any one that matches.
+				foreach my $child_l2 (@{$child_l1->{$NPROP_CHILD_NODES}}) {
+					$exp_p_node_types->{$child_l2->{$NPROP_NODE_TYPE}} or next;
+					if( my $si_atvl = $child_l2->get_surrogate_id_attribute( 1 ) ) {
+						if( $si_atvl eq $unqualified_value ) {
+							return( $child_l2 );
+						}
+					}
+				}
+			}
+			return( undef );
+		} else { # <nref-attr>; $path_seg is an attribute name
+			unless( $curr_node = $curr_node->{$NPROP_AT_NREFS}->{$path_seg} ) {
+				return( undef ); # the Node-ref attribute we should follow isn't set yet (it should be); get out
+			}
+		}
+	}
+
+	# We are at the end of the explicit search path, and the start of the implicit path.
+	# Now enumerate through any wrapper attributes, if there are any, updating $curr_node in the process.
+
+	while( my $wr_atnm = $NODE_TYPES{$curr_node->{$NPROP_NODE_TYPE}}->{$TPI_WR_ATNM} ) {
+		unless( $curr_node = $curr_node->{$NPROP_AT_NREFS}->{$wr_atnm} ) {
+			return( undef ); # the Node-ref attribute we should follow isn't set yet (it should be); get out
+		}
+	}
+
+	# We are at the end of the implicit search path.
+	# The required Node must be one of $curr_node's children.
+
+	foreach my $child (@{$curr_node->{$NPROP_CHILD_NODES}}) {
+		$exp_p_node_types->{$child->{$NPROP_NODE_TYPE}} or next;
+		if( my $si_atvl = $child->get_surrogate_id_attribute( 1 ) ) {
+			if( $si_atvl eq $unqualified_value ) {
+				return( $child );
+			}
+		}
+	}
+
+	# Nothing was found, nothing more to search.
+
+	return( undef );
 }
 
 ######################################################################
@@ -3159,11 +3156,11 @@ sub _assert_child_comp_deferrable_constraints {
 ######################################################################
 
 sub get_all_properties {
-	return( $_[0]->_get_all_properties() );
+	return( $_[0]->_get_all_properties( $_[1] ) );
 }
 
 sub _get_all_properties {
-	my ($node) = @_;
+	my ($node, $links_as_si) = @_;
 	my %dump = ();
 
 	$dump{$NAMED_NODE_TYPE} = $node->{$NPROP_NODE_TYPE};
@@ -3173,7 +3170,11 @@ sub _get_all_properties {
 		$ATTR_ID => $node->{$NPROP_NODE_ID},
 		%{$node->{$NPROP_AT_LITERALS}},
 		%{$node->{$NPROP_AT_ENUMS}},
-		(map { ( $_ => $at_nodes_in->{$_}->{$NPROP_NODE_ID} ) } 
+		(map { ( $_ => (
+				$links_as_si ? 
+				$at_nodes_in->{$_}->_get_surrogate_id_chain_as_str() : 
+				$at_nodes_in->{$_}->{$NPROP_NODE_ID}
+			) ) } 
 			grep { $_ ne $ATTR_PP } keys %{$at_nodes_in}),
 	};
 
@@ -3185,7 +3186,7 @@ sub _get_all_properties {
 				# Only output child if we are its primary parent, not simply any parent.
 				unless( $children_were_output{$child} ) {
 					# Only output child once; a child may link to primary parent multiple times.
-					push( @children_out, $child->_get_all_properties() );
+					push( @children_out, $child->_get_all_properties( $links_as_si ) );
 					$children_were_output{$child} = 1;
 				}
 			}
@@ -3197,12 +3198,12 @@ sub _get_all_properties {
 }
 
 sub get_all_properties_as_perl_str {
-	return( $_[0]->_serialize_as_perl( $_[0]->_get_all_properties() ) );
+	return( $_[0]->_serialize_as_perl( $_[0]->_get_all_properties( $_[1] ) ) );
 }
 
 sub get_all_properties_as_xml_str {
 	return( '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties() ) );
+		$_[0]->_serialize_as_xml( $_[0]->_get_all_properties( $_[1] ) ) );
 }
 
 ######################################################################
@@ -3373,7 +3374,8 @@ data types and a row data type used by it, plus the necessary CREATE statement:
 		$model->assert_deferrable_constraints();
 
 		# Now serialize all our Nodes to see if we stored what we expected:
-		print $model->get_all_properties_as_xml_str();
+		print $model->get_all_properties_as_xml_str(); # prints Node Ids in Nref attrs
+		print $model->get_all_properties_as_xml_str(1); # prints Surrogate Id chains instead
 
 		# Now explicitly destroy our Container so we don't leak memory:
 		$model->destroy();
@@ -3720,7 +3722,7 @@ Now, I can only imagine why all of the other SQL generating/parsing modules
 that I know about have excluded privileged support for more advanced database
 features like stored procedures.  Either the authors didn't have a need for it,
 or they figured that any other prospective users wouldn't need it, or they
-found it too difficult to implement so far and maybe planned to do it later. As
+found it too difficult to implement so far and maybe planned to do it later.  As
 for me, I can see tremendous value in various advanced features, and so I have
 included privileged support for them in SQL::Routine.  You simply have to
 work on projects of a significant size to get an idea that these features would
@@ -3750,7 +3752,7 @@ convenience, you should consider all 3 names as being "in use"; do not create
 any modules or packages yourself that have the same names.>
 
 The Container and Node classes do most of the work and are what you mainly use.
- The name-sake class mainly exists to guide CPAN in indexing the whole module,
+The name-sake class mainly exists to guide CPAN in indexing the whole module,
 but it also provides a set of stateless utility methods and constants that the
 other two classes inherit, and it provides a few wrapper functions over the
 other classes for your convenience; you never instantiate an object of
@@ -3779,18 +3781,21 @@ node_type is set when the Node is created and it can not be changed later.
 
 A Node has a specific set of allowed attributes that are determined by the
 node_type, each of which corresponds to a database table column or an XML node
-attribute.  Every Node of a common node_type has a unique 'id' attribute (a
-positive integer) by which it is referenced; that attribute corresponds to the
-database table's single-column primary key.  Each other Node attribute is
-either a scalar value of some data type, or an enumerated value, or a reference
-to another Node of a specific node_type, which has a foreign-key constraint on
-it.  Foreign-key constraints are enforced by this module, so you will have to
-add Nodes in the appropriate order, just as when adding records to a database.
-Any Node which is referenced in an attribute (cited in a foreign-key
-constraint) of another is a parent of the other; as a corollary, the second
-Node is a child of the first.  The order of child Nodes under a parent is the
-same as that in which the parent-child relationship was assigned, unless you 
-have afterwards used the move_before_sibling() method to change this.
+attribute.  Every Node has a unique 'id' attribute (a positive integer) by which
+it is primarily referenced; that attribute corresponds to the database table's
+single-column primary key, with the added distinction that every primary key
+value in each table is distinct from every primary key value in every other
+table.  Each other Node attribute is either a scalar value of some data type, or
+an enumerated value, or a reference to another Node of a specific node_type,
+which has a foreign-key constraint on it; those 3 attribute types are referred
+to respectively as "literal", "enumerated", and "Node-ref".  Foreign-key
+constraints are enforced by this module, so you will have to add Nodes in the
+appropriate order, just as when adding records to a database.  Any Node which is
+referenced in an attribute (cited in a foreign-key constraint) of another is a
+parent of the other; as a corollary, the second Node is a child of the first. 
+The order of child Nodes under a parent is the same as that in which the
+parent-child relationship was assigned, unless you have afterwards used the
+move_before_sibling() method to change this.
 
 The order of child Nodes under a parent is often significant, so it is
 important to preserve this sequence explicitly if you store a Node set in an
@@ -3799,28 +3804,34 @@ remembering; you would add extra columns to store sequence numbers.  You do not
 have to do any extra work when storing Nodes in XML, however, because XML does
 consider node order to be significant and will preserve it.
 
-When SQL::Routines are converted to XML, one referencing attribute is given
-higher precedence than the others and becomes the single parent XML node.  For
-example, the XML parent of a 'routine_var' Node is always a 'routine' Node,
-even though a 'scalar_domain' Node may also be referenced.  While Nodes of most
-types always have Nodes of a single other type as their parents, there are some
-exceptions.  Nodes of certain types, such as [view|routine]_expr, may have either
-another Node of the same type as itself, or of a specific other type as its
-parent, depending on the context; these Nodes form trees of their own type, and
-it is the root Node of each tree which has a different Node type as its parent.
+When the terms "parent" and "child" are used by SQL::Routine in regards to the
+relationships between Nodes, they are used within the context that a given Node
+can have multiple parent Nodes; a given Node X is the parent of another given
+Node Y because a Node-ref attribute of Node Y points to Node X.  Another term,
+"primary parent", refers to the parent Node of a given Node Z that is referenced
+by Z's "pp" Node-ref attribute, which most Node types have.  When SQL::Routines
+are converted to a purely hierarchical or tree representation, such as to XML,
+the primary parent Node becomes the single parent XML node.  For example, the
+XML parent of a 'routine_var' Node is always a 'routine' Node, even though a
+'scalar_domain' Node may also be referenced.  Nodes of a few types, such as
+'view_expr', can have primary parent Nodes that are of the same Node type, and
+can form trees of their own type; however, Nodes of most types can only have
+Nodes of other types as their primary parents.
 
-Finally, any Node of certain types will always have a specific pseudo-Node as
-its single parent, which it does not reference in an attribute, and which can
-not be changed.  All 6 pseudo-Nodes have no attributes, even 'id', and only one
-of each exists; they are created by default with the Container they are part
-of, forming the top 2 levels of the Node tree, and can not be removed.  They
-are: 'root' (the single level-1 Node which is parent to the other pseudo-Nodes
-but no normal Nodes), 'elements' (parent to 'scalar_data_type' and
-'row_data_type' Nodes), 'blueprints' (parent to 'catalog' and 'application'
-Nodes), 'tools' (parent to 'data_storage_product' and 'data_link_product'
-Nodes), 'sites' (parent to 'catalog_instance' and 'application_instance'
-Nodes), and 'circumventions' (parent to 'sql_fragment' nodes).  All other Node
-types have normal Nodes as parents.
+Some Node types do not have a "pp" attribute and Nodes of those types never have
+primary parent Nodes; rather, all Nodes of those types will always have a
+specific pseudo-Node as their primary parents; pseudo-Node primary parents are
+not referenced in any attribute, and they can not be changed.  All 6
+pseudo-Nodes have no attributes, even 'id', and only one of each exists; they
+are created by default with the Container they are part of, forming the top 2
+levels of the Node tree, and can not be removed.  They are: 'root' (the single
+level-1 Node which is parent to the other pseudo-Nodes but no normal Nodes),
+'elements' (parent to 'scalar_data_type' and 'row_data_type' Nodes),
+'blueprints' (parent to 'catalog' and 'application' Nodes), 'tools' (parent to
+'data_storage_product' and 'data_link_product' Nodes), 'sites' (parent to
+'catalog_instance' and 'application_instance' Nodes), and 'circumventions'
+(parent to 'sql_fragment' nodes).  All other Node types have normal Nodes as
+primary parents.
 
 You should look at the POD-only file named SQL::Routine::Language, which
 comes with this distribution.  It serves to document all of the possible Node
@@ -3843,9 +3854,9 @@ free, and that any errors or warnings which appear while the code is running
 are thrown explicitly by this module as part of its normal functioning.>
 
 SQL::Routine is designed to ensure that the objects it produces are always
-internally consistant, and that the data they contain is always well-formed,
+internally consistent, and that the data they contain is always well-formed,
 regardless of the circumstances in which it is used.  You should be able to 
-fetch data from the objects at any time and that data will be self-consistant 
+fetch data from the objects at any time and that data will be self-consistent 
 and well-formed.  
 
 This will not change regardless of what kind of bad input data you provide to
@@ -3866,7 +3877,7 @@ mandatory Node properties may not be set, or pending links from this node to
 others may not be validated.  However, until a Node has its required properties
 set and/or its Node links are validated, no references will be made to this
 Node from other Nodes; from their point of view it doesn't exist, and hence the
-other Nodes are all consistant.
+other Nodes are all consistent.
 
 SQL::Routine is explicitly not thread-aware (thread-safe); it contains no
 code to synchronize access to its objects' properties, such as semaphores or
@@ -3913,9 +3924,6 @@ we can call them "Alone" (1) and "Well Known" (2).  The set of legal operations
 you can perform on a Node are different depending on its state, and a Node can
 only transition between adjacent-numbered states one at a time.
 
-I<Note: Up to 2004.09.13 there was a third state, "At Home", that was part way 
-between "Alone" and "Well Known", but it was removed on that date.>
-
 When a new Node is created, using new_node(), it starts out "Alone"; it does
 *not* live in a Container, and it is illegal to have any actual (Perl)
 references between it and any other Node.  Nodes in this state can be built
@@ -3954,6 +3962,54 @@ Node is "Alone" or when it is "Well Known", as is your choice.  However, the
 Node Id must always have a value when the Node is in a Container; if you want
 to make a Node "Well Known" as early as possible, you simply have to set its
 Node Id first.
+
+=head1 NODE IDENTITY ATTRIBUTES
+
+Every Node in a Container has a positive integer 'id' attribute whose value is
+distinct for every Node in the Container, without regard for the Node type.
+These 'id' attributes are used internally by SQL::Routine when linking child and
+parent Nodes, but they have no use at all in any SQL statement strings that are
+generated for a typical database engine.  Rather, SQL::Routine defines a second,
+"surrogate id" ("SI") attribute for most Node types whose value actually is used
+in SQL statement strings, and corresponds to the SQL:2003 concept of a "SQL
+identifier" (such as a table name or a table column name).  This attribute name
+varies by the Node type, but always looks like "si_*"; at least half of the
+time, the exact name is "si_name".  If the SI attribute of a given Node is a
+literal or enumerated attribute, then its value is used directly for SQL
+strings; if it is a Node-ref attribute, then the SI attribute of the Node that
+it points to is used likewise for SQL strings in place of the given Node (this 
+will recurse until we hold a Node whose SI attribute is not a Node-ref).  In 
+this way, SQL::Routine stores the "SQL identifier" value of each Node exactly 
+once, and if it is edited then all SQL references to it automatically update.
+
+I<To make SQL::Routine easier to use in the common cases, this module will treat
+all Node types as having a surrogate id attribute.  In the few cases where a
+Node type has no distinct attribute for it (such as "view_expr" Nodes), this
+module will automatically use the 'id' (Node Id) attribute instead.>
+
+When the surrogate identifier attribute of a single Node is referenced on its
+own, this corresponds to the SQL:2003 concept of an "unqualified identifier". 
+Under trivial circumstances, a Node can only be referenced by another Node using
+the former's unqualified identifier if either the first Node is a member of the
+second Node's primary-parent chain, or the first Node is a sibling of any member
+of said pp chain, or the first node has a pseudo-Node primary parent.
+
+SQL::Routine implements context sensitive constraints for what values a given
+Node's surrogate identifier can have, and in what contexts other Nodes must be
+located wherein it is valid for them to link to the given Node and be its
+children; these go beyond the earlier-applied, more basic constraints that
+restrict parent-child connections based on the Node types and/or presence in the
+same Container of the Nodes involved.  The rules for SI values are similar to
+the rules in typical programming languages concerning the declaration of
+variables and the scope in which they are visible to be referenced.  One
+constraint is that all Nodes which share the same primary parent Node or
+pseudo-Node must have distinct SI values with respect to each other, regardless
+of Node type (eg, all columns and indexes in a table must have distinct names).
+Another constraint is described for general circumstances that in order for one
+given Node to reference another as its parent Node, that other Node must be
+either belong to the given Node's primary-parent chain, or it must be a direct
+sibling of either the given Node or a Node in its primary-parent chain, or it
+must be a primary-child of one of the primary parent Node's parent Nodes.
 
 =head1 SYNTAX
 
@@ -4076,23 +4132,15 @@ that lacks one as soon as there is an attempt to put that Node in this
 Container.  When this flag is false, a missing Node Id will cause an exception
 to be raised instead.
 
-=head2 use_abstract_interface([ NEW_VALUE ])
+=head2 may_match_surrogate_node_ids([ NEW_VALUE ])
 
-This method returns this Container's "use abstracts" boolean property; if
-NEW_VALUE is defined, it will first set that property to it.  When this flag is
-true, SQL::Routine will accept a wider range of input values when setting Node
-ref attribute values, beyond Node object references and integers representing
-Node ids to look up; if other types of values are provided, SQL::Routine will
-try to look up Nodes based on other attributes than the Id, usually 'si_name',
-before giving up on finding a Node to link.
-
-=head2 get_node( NODE_ID )
-
-	my $node = $model->get_node( 1 );
-
-This "getter" method returns a reference to one of this Container's member
-Nodes, which has a Node Id of NODE_ID.  You may not request a pseudo-Node (it
-doesn't actually exist).
+This method returns this Container's "may match surrogate node ids" boolean
+property; if NEW_VALUE is defined, it will first set that property to it.  When
+this flag is true, SQL::Routine will accept a wider range of input values when
+setting Node ref attribute values, beyond Node object references and integers
+representing Node ids to look up; if other types of values are provided,
+SQL::Routine will try to look up Nodes based on other attributes than the Id,
+usually 'si_name', before giving up on finding a Node to link.
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
@@ -4105,6 +4153,17 @@ Container whose Node Type defines them as always having a pseudo-Node parent.
 If the optional argument NODE_TYPE is defined, then only child Nodes of that
 Node Type are returned; otherwise, all child Nodes are returned.  All Nodes are
 returned in the same order they were added.
+
+=head2 find_node_by_id( NODE_ID )
+
+	my $node = $model->find_node_by_id( 1 );
+
+This "getter" method searches for a member Node of this Container whose Node Id
+matches the NODE_ID argument; if one is found then it is returned by reference;
+if none is found, then undef is returned.  Since SQL::Routine guarantees that
+all Nodes in a Container have a distinct Node Id, there will never be more than
+one Node returned.  The speed of this search is also very fast, and takes the
+same amount of time regardless of how many Nodes are in the Container.
 
 =head2 get_next_free_node_id()
 
@@ -4296,17 +4355,21 @@ ATTR_NAME argument must be.  This method returns an array ref containing the
 enumerated values; often there is a single value only; if the array ref has no
 elements, then any Node Type is acceptable.
 
-=head2 get_node_ref_attribute( ATTR_NAME )
+=head2 get_node_ref_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
-This "getter" method will return the value for this Node's node attribute
-named in the ATTR_NAME argument.  The value will be a Node ref if the current 
-Node is in a Container, and an Id number if it isn't.
+This "getter" method will return the value for this Node's node attribute named
+in the ATTR_NAME argument, if it is set, or undef if it isn't.  If the current
+Node is not in a Container, then the returned value is a Node Id number.  If the
+current Node is in a Container, then the returned value is a Node ref by
+default; if the optional boolean argument GET_TARGET_SI is true, then this
+method will instead lookup (recursively) and return the target Node's literal or
+enumerated surrogate id value (a single value, not a chain).
 
-=head2 get_node_ref_attributes()
+=head2 get_node_ref_attributes([ GET_TARGET_SI ])
 
-This "getter" method will fetch all of this Node's node attributes,
-returning them in a Hash ref.  The values will be Node refs if the current 
-Node is in a Container, and Id numbers if it isn't.
+This "getter" method will fetch all of this Node's node attributes, returning
+them in a Hash ref.  Each attribute value is returned in the format specified by
+get_node_ref_attribute( <attr-name>, GET_TARGET_SI ).
 
 =head2 clear_node_ref_attribute( ATTR_NAME )
 
@@ -4321,12 +4384,15 @@ the clear_node_ref_attribute() documentation for the semantics.
 
 =head2 set_node_ref_attribute( ATTR_NAME, ATTR_VALUE )
 
-This "setter" method will set or replace this Node's node attribute named in
-the ATTR_NAME argument, giving it the new value specified in ATTR_VALUE (if it
-is different).  If the attribute was previously valued, this method will first
+This "setter" method will set or replace this Node's node attribute named in the
+ATTR_NAME argument, giving it the new value specified in ATTR_VALUE (if it is
+different).  If the attribute was previously valued, this method will first
 invoke clear_node_ref_attribute() on it.  When setting a new value, if the
 current Node is in a Container, then it will also add the current Node to the
-other Node's child list.
+other Node's child list.  ATTR_VALUE may either be a perl reference to a Node,
+or a Node Id value, or a Surrogate Node Id value (either a single value or an id
+chain array ref); the last one will only work if this Node is in a Container
+that matches Nodes by surrogate ids.
 
 =head2 set_node_ref_attributes( ATTRS )
 
@@ -4343,19 +4409,21 @@ must be.  There are 4 possible return values: 'ID' (the Node Id), 'LITERAL' (a
 literal attribute), 'ENUM' (an enumerated attribute), and 'NODE' (a node ref 
 attribute).
 
-=head2 get_attribute( ATTR_NAME )
+=head2 get_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
 	my $curr_val = $node->get_attribute( 'si_name' );
 
 This "getter" method will return the value for this Node's attribute named in
-the ATTR_NAME argument.
+the ATTR_NAME argument.  The GET_TARGET_SI argument is relevant only for
+Node-ref attributes; its effects are explained by get_node_ref_attribute().
 
-=head2 get_attributes()
+=head2 get_attributes([ GET_TARGET_SI ])
 
 	my $rh_attrs = $node->get_attributes();
 
 This "getter" method will fetch all of this Node's attributes, returning them
-in a Hash ref.
+in a Hash ref.  The GET_TARGET_SI argument is relevant only for Node-ref
+attributes; its effects are explained by get_node_ref_attribute().
 
 =head2 clear_attribute( ATTR_NAME )
 
@@ -4398,23 +4466,24 @@ value, if it has one, giving it the new value specified in ATTR_VALUE.
 
 =head2 expected_surrogate_id_attribute_name()
 
-This "getter" method will return the name of this Node's surrogate id
-attribute, if it has one; it will throw an exception if there isn't.
+This "getter" method will return the name of this Node's surrogate id attribute,
+which may be undefined.  For most Node types this is a distinct attribute, but
+for a few it is the 'id' attribute.
 
-=head2 get_surrogate_id_attribute()
+=head2 get_surrogate_id_attribute([ GET_TARGET_SI ])
 
 This "getter" method will return the value for this Node's surrogate id
-attribute, if it has one.
+attribute.  The GET_TARGET_SI argument is relevant only for Node-ref attributes;
+its effects are explained by get_node_ref_attribute().
 
 =head2 clear_surrogate_id_attribute()
 
-This "setter" method will clear this Node's surrogate id attribute value, if it
-has one.
+This "setter" method will clear this Node's surrogate id attribute value.
 
 =head2 set_surrogate_id_attribute( ATTR_VALUE )
 
 This "setter" method will set or replace this Node's surrogate id attribute
-value, if it has one, giving it the new value specified in ATTR_VALUE.
+value, giving it the new value specified in ATTR_VALUE.
 
 =head2 get_container()
 
@@ -4476,6 +4545,26 @@ new or first primary parent Node of NEW_CHILD.
 This "setter" method takes an array ref in its single LIST argument, and calls
 add_child_node() for each element found in it.
 
+=head2 get_surrogate_id_chain()
+
+This "getter" method can only be invoked in a Node in a container, and it
+returns the current Node's surrogate id chain as an array ref.
+
+=head2 find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
+
+	my $table_node = $table_index_node->find_node_by_surrogate_id( 'father_id', 'person' );
+
+This "getter" method may only be called on Nodes that are in a Container, and
+the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
+the current Node; it throws an exception if either condition is not met.  This
+method searches for a member Node of this Node's host Container whose type makes
+it legally linkable by the SELF_ATTR_NAME attribute and whose Surrogate Node Id
+matches the TARGET_ATTR_VALUE argument; if one is found then it is returned by
+reference; if none is found, then undef is returned.  The search is context
+sensitive and scoped; it starts by examining the Nodes that are closest to this
+Node's location in its Container's Node tree and then spreads outwards, looking
+within just the locations that are supposed to be visible to this Node.
+
 =head2 assert_deferrable_constraints()
 
 This "getter" method implements several types of deferrable data validation, to
@@ -4497,10 +4586,12 @@ Node, then that Node will be the root of the returned structure. If you invoke
 them on a Container, then a few pseudo-Nodes will be output with all the normal
 Nodes in the Container as their children.
 
-=head2 get_all_properties()
+=head2 get_all_properties([ LINKS_AS_SI ])
 
-	$rh_node_properties = $node->get_all_properties();
 	$rh_node_properties = $container->get_all_properties();
+	$rh_node_properties = $container->get_all_properties( 1 );
+	$rh_node_properties = $node->get_all_properties();
+	$rh_node_properties = $node->get_all_properties( 1 );
 
 This method returns a deep copy of all of the properties of this object as
 non-blessed Perl data structures.  These data structures are also arranged in a
@@ -4513,24 +4604,35 @@ test this class; it makes it easier to see at a glance whether the other class
 methods are doing what you expect.  The output of this method should also be
 easy to serialize or unserialize to strings of Perl code or xml or other things,
 should you want to compare your results easily by string compare; see
-"get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()".
+"get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()".  The
+output can alternately be passed as a parameter to build_container() so that the
+method creates a clone of the original Container, where applicable.  If the
+optional boolean argument LINKS_AS_SI is true, then each Node ref attribute will
+be output as the target Node's surrogate id value, if it has a valued surrogate
+id attribute; if the argument is false, or a Node doesn't have a valued
+surrogate id attribute, then its Node id will be output by default.
 
-=head2 get_all_properties_as_perl_str()
+=head2 get_all_properties_as_perl_str([ LINKS_AS_SI ])
 
 	$perl_code_str = $container->get_all_properties_as_perl_str();
+	$perl_code_str = $container->get_all_properties_as_perl_str( 1 );
 	$perl_code_str = $node->get_all_properties_as_perl_str();
+	$perl_code_str = $node->get_all_properties_as_perl_str( 1 );
 
-This method is a wrapper for get_all_properties() that serializes its output
-into a pretty-printed string of Perl code, suitable for humans to read.  You
-should be able to eval this string and produce the original structure.
+This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
+its output into a pretty-printed string of Perl code, suitable for humans to
+read.  You should be able to eval this string and produce the original
+structure.
 
-=head2 get_all_properties_as_xml_str()
+=head2 get_all_properties_as_xml_str([ LINKS_AS_SI ])
 
 	$xml_doc_str = $container->get_all_properties_as_xml_str();
+	$xml_doc_str = $container->get_all_properties_as_xml_str( 1 );
 	$xml_doc_str = $node->get_all_properties_as_xml_str();
+	$xml_doc_str = $node->get_all_properties_as_xml_str( 1 );
 
-This method is a wrapper for get_all_properties() that serializes its output
-into a pretty-printed string of XML, suitable for humans to read.
+This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
+its output into a pretty-printed string of XML, suitable for humans to read.
 
 =head1 CONTAINER OR NODE FUNCTIONS AND METHODS FOR RAPID DEVELOPMENT
 
@@ -4613,16 +4715,16 @@ build_child_node_tree() for each element found in it; if LIST is not an array
 ref, then one is constructed with LIST as its single element.  This method does
 not return anything.
 
-=head2 build_container( LIST[, AUTO_ASSERT[, AUTO_IDS[, USE_ABSTRACT]]] )
+=head2 build_container( LIST[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] )
 
 This function is like build_child_node_trees( LIST ) except that it will also
 create and return a new Container object that holds the newly built Nodes.  If
-any of the optional boolean arguments [AUTO_ASSERT, AUTO_IDS, USE_ABSTRACT] are
-true, then the corresponding flag properties of the new Container will be set
-to true prior to creating any Nodes.  This function is the exact opposite of
+any of the optional boolean arguments [AUTO_ASSERT, AUTO_IDS, MATCH_SURR_IDS]
+are true, then the corresponding flag properties of the new Container will be
+set to true prior to creating any Nodes.  This function is the exact opposite of
 Container.get_all_properties(); you should be able to take the Hash-ref output
-of Container.get_all_properties(), give it to build_container(), and end up
-with a clone of the original Container.
+of Container.get_all_properties(), give it to build_container(), and end up with
+a clone of the original Container.
 
 =head1 INFORMATION FUNCTIONS AND METHODS
 
@@ -4713,74 +4815,22 @@ then all Node Types are valid.
 This function by default returns a Hash ref where the keys are the names of the
 Node Types that have a surrogate id attribute, and where the values are the
 names of that attribute; if the optional NODE_TYPE argument is given, it just
-returns the surrogate id attribute for that Node Type.
-
-=head1 ABOUT THE OPTIONAL ABSTRACT INTERFACE
-
-If you set certain boolean properties on a Container object to true (they all
-default to false), then subsequently that Container and its Nodes will be less
-strict with regards to what input data formats their methods accept, in some
-specific ways.  The following paragraphs outline that further.
-
-This feature set is strictly an extension, meaning that if you provide it input
-which would be acceptable to the stricter default interface, then you will get
-the same behaviour.  Where you will see the difference is when you provide
-certain kinds of input which would cause the parent class to return an error
-and/or throw an exception.
-
-If you set Container.auto_set_node_ids() to true, then this module will
-automatically generate (by serial number) a new Node's "id" attribute when your
-input doesn't provide one.  If you set Container.use_abstract_interface() to
-true, then, when you want to refer to an earlier created Node by a later one,
-for purposes of linking them, you can refer to the earlier Node by a more
-human-readable attribute than the Node's "id" (or Node ref), such as its 'si_name'
-(which is also what actual SQL uses).  Between these two features, it is
-possible to use SQL::Routine without ever having to explicitly see a Node's
-"id" attribute.
-
-Note that, for the sake of avoiding conflicts, you should not be explicitly
-setting ids for some Nodes of a type, and having others auto-generated, unless
-you take extra precautions.  This is because while auto-generated Node ids will
-not conflict with prior explicit ones, later provided explicit ones may
-conflict with auto-generated ones.  How you can resolve this is to use the
-parent class' get_node() method to see if the id you want is already in use.
-The same caveats apply as if the auto-generator was a second concurrent user
-editing the object.  This said, you can mix references from one Node to another
-between id and non-id ref types without further consequence, because they don't
-change the id of a Node.
-
-This module's added features can make it "easier to use" in some circumstances
-than the bare-bones SQL::Routine, including an appearance more like actual SQL
-strings, because matching descriptive terms can be used in multiple places.
-
-However, the functionality has its added cost in code complexity and
-reliability; for example, since non-id attributes are not unique, the module
-can "guess wrong" about what you wanted to do, and it won't work at all in some
-circumstances.  Additionally, since your code, by using this module, would use
-descriptive attributes to link Nodes together, you will have to update every
-place you use the attribute value in your module-building source code when you
-change the original, so they continue to match; this is unlike the default
-interface, which always uses non-descriptive attributes for links, which you
-are unlikely to ever change.  The added logic also makes the code slower and
-use more memory.
+returns the surrogate id attribute for that Node Type.  Note that a few Node
+types don't have distinct surrogate id attributes; for those, this method will
+return 'id' as the surrogate id attribute name.
 
 =head1 BUGS
 
 This module is currently in pre-alpha development status, meaning that some
 parts of it will be changed in the near future, perhaps in incompatible ways;
 however, I believe that any further incompatible changes will be small.  The
-current state is analagous to 'developer releases' of operating systems; it is
+current state is analogous to 'developer releases' of operating systems; it is
 reasonable to being writing code that uses this module now, but you should be
 prepared to maintain it later in keeping with API changes.  This module also
 does not yet have full code coverage in its tests, though the most commonly
 used areas are covered.  All of this said, I plan to move this module into
 alpha development status within the next few releases, once I start using it in
 a production environment myself.
-
-The abstract interface code and related data-dictionary has not been rewritten
-after its insertion from another merged-in module.  While it should be
-rewritten soon, in the mean time its features will not work for many Node
-types; mainly it just works for data types, tables, and views.
 
 =head1 CAVEATS
 

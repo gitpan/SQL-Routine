@@ -2,7 +2,7 @@
 
 use 5.008001; use utf8; use strict; use warnings;
 
-BEGIN { $| = 1; print "1..10\n"; }
+BEGIN { $| = 1; print "1..11\n"; }
 
 ######################################################################
 # First ensure the modules to test will compile, are correct versions:
@@ -12,8 +12,8 @@ use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine '0.52';
-use SQL::Routine::L::en '0.22';
+use SQL::Routine '0.53';
+use SQL::Routine::L::en '0.23';
 
 ######################################################################
 # Here are some utility methods:
@@ -57,9 +57,10 @@ message( "  Test that circular reference creation can be blocked." );
 ######################################################################
 
 eval {
-	my ($test1_passed) = 
+	my ($test1_passed, $test2_passed) = 
 		t_SRT_Circular->test_circular_ref_prevention( 'SQL::Routine' );
-	result( $test1_passed, "prevent creation of circular refs - set nref attr" );
+	result( $test1_passed, "prevent creation of circular refs - parent is child" );
+	result( $test2_passed, "prevent creation of circular refs - parent is self" );
 };
 $@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
 
