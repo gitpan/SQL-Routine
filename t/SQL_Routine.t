@@ -2,18 +2,17 @@
 
 use 5.008001; use utf8; use strict; use warnings;
 
-BEGIN { $| = 1; print "1..17\n"; }
+BEGIN { $| = 1; print "1..20\n"; }
 
 ######################################################################
 # First ensure the modules to test will compile, are correct versions:
 
 use lib 't/lib';
-use t_SRT_Circular;
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine '0.55';
-use SQL::Routine::L::en '0.25';
+use SQL::Routine '0.56';
+use SQL::Routine::L::en '0.26';
 
 ######################################################################
 # Here are some utility methods:
@@ -42,41 +41,78 @@ sub error_to_string {
 	my $translator = Locale::KeyedText->new_translator( ['SQL::Routine::L::'], ['en'] );
 	my $user_text = $translator->translate_message( $message );
 	unless( $user_text ) {
-		return( ref($message) ? "internal error: can't find user text for a message: ".
-			$message->as_string()." ".$translator->as_string() : $message );
+		return ref($message) ? "internal error: can't find user text for a message: ".
+			$message->as_string()." ".$translator->as_string() : $message;
 	}
-	return( $user_text );
+	return $user_text;
 }
 
 ######################################################################
 # Now perform the actual tests:
 
-message( "START TESTING SQL::Routine - t_SRT_Circular" );
+message( "START TESTING SQL::Routine - Circular Ref Prevention" );
 message( "  Test that circular reference creation can be blocked." );
 
 ######################################################################
 
 eval {
-	my ($test1_passed, $test2_passed) = 
-		t_SRT_Circular->test_circular_ref_prevention( 'SQL::Routine' );
+	my $model = SQL::Routine->new_container();
+	$model->auto_set_node_ids( 1 );
+
+	my $vw1 = $model->build_node( 'view', 'foo' );
+	my $vw2 = $vw1->build_child_node( 'view', 'bar' );
+	my $vw3 = $vw2->build_child_node( 'view', 'bz' );
+
+	my $test1_passed = 0;
+	eval {
+		$vw2->set_primary_parent_attribute( $vw3 );
+	};
+	if( my $exception = $@ ) {
+		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
+			if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
+				$test1_passed = 1;
+			}
+		}
+		$test1_passed or die $exception;
+	}
 	result( $test1_passed, "prevent creation of circular refs - parent is child" );
+
+	my $test2_passed = 0;
+	eval {
+		$vw2->set_primary_parent_attribute( $vw2 );
+	};
+	if( my $exception = $@ ) {
+		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
+			if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
+				$test2_passed = 1;
+			}
+		}
+		$test2_passed or die $exception;
+	}
 	result( $test2_passed, "prevent creation of circular refs - parent is self" );
+
+	$model->destroy();
 };
 $@ and result( 0, "TESTS ABORTED: ".error_to_string( $@ ) );
 
 ######################################################################
 
-message( "DONE TESTING SQL::Routine - t_SRT_Circular" );
+message( "DONE TESTING SQL::Routine - Circular Ref Prevention" );
 message( "START TESTING SQL::Routine - t_SRT_Verbose" );
 message( "  Test model construction using verbose standard interface." );
 
 ######################################################################
 
 eval {
-	message( "First populate some objects ..." );
+	message( "First create the Container object that will be populated ..." );
 
-	my $model = t_SRT_Verbose->create_and_populate_model( 'SQL::Routine' );
-	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
+	my $model = SQL::Routine->new_container();
+	result( ref($model) eq 'SQL::Routine::Container', "creation of Container object" );
+
+	message( "Now create a set of Nodes in the Container ..." );
+
+	t_SRT_Verbose->populate_model( $model );
+	result( 1, "creation of Node objects" );
 
 	message( "Now see if deferrable constraints are valid ..." );
 
@@ -111,10 +147,16 @@ message( "  Test model construction using terse wrapper interface." );
 ######################################################################
 
 eval {
-	message( "First populate some objects (with local def con) ..." );
+	message( "First create the Container object that will be populated ..." );
 
-	my $model = t_SRT_Terse->create_and_populate_model( 'SQL::Routine', 1 );
-	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
+	my $model = SQL::Routine->new_container();
+	result( ref($model) eq 'SQL::Routine::Container', "creation of Container object" );
+
+	message( "Now create a set of Nodes in the Container ..." );
+
+	$model->auto_assert_deferrable_constraints( 1 ); # also done here to help with debugging
+	t_SRT_Terse->populate_model( $model );
+	result( 1, "creation of Node objects" );
 
 	message( "Now see if deferrable constraints are valid ..." );
 
@@ -149,10 +191,18 @@ message( "  Test model construction using abstract wrapper interface." );
 ######################################################################
 
 eval {
-	message( "First populate some objects (with local def con) ..." );
+	message( "First create the Container object that will be populated ..." );
 
-	my $model = t_SRT_Abstract->create_and_populate_model( 'SQL::Routine', 1 );
-	result( ref($model) eq 'SQL::Routine::Container', "creation of all objects" );
+	my $model = SQL::Routine->new_container();
+	result( ref($model) eq 'SQL::Routine::Container', "creation of Container object" );
+
+	message( "Now create a set of Nodes in the Container ..." );
+
+	$model->auto_assert_deferrable_constraints( 1 ); # also done here to help with debugging
+	$model->auto_set_node_ids( 1 );
+	$model->may_match_surrogate_node_ids( 1 );
+	t_SRT_Abstract->populate_model( $model );
+	result( 1, "creation of Node objects" );
 
 	message( "Now see if deferrable constraints are valid ..." );
 

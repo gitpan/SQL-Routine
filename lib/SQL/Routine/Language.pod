@@ -1396,8 +1396,8 @@ parents go, because those details are explained in terms of "child Nodes".
 
 For each Node Type, there are several detail lists: B<Attribute List>,
 B<Exclusive Attribute Groups List>, B<Local Attribute Dependencies List>,
-B<Ancestor Attribute Correlation List>, B<Child Quantity List>, B<Distinct Child
-Groups List>.
+B<Ancestor Attribute Correlation List>, B<Remotely Addressable Types List>,
+B<Child Quantity List>, B<Distinct Child Groups List>.
 
 The B<Attribute List> says what all of the attributes are, in order, along with
 each one's major+minor type, an indicator of whether it is a primary parent
@@ -1534,10 +1534,45 @@ row_domain attribute points to.  Each list element is in this format:
 	<root-of-type> ::= R
 	<primary-child> ::= C
 
-	Note that 'S' is a no-op, displayed for easier documentation reading
-	Note that if a Node at the end of the above process has a WR field, it is implicitly followed.
-	If 'C' is used, search text must be array of degree N+1 where N is the number of 'C'.
-	If 'C' is not used, search text is not an array / has one scalar value.
+For each correlated Node ref attribute (dep-attr-name), there is an ordered list
+of one or more movement steps that must be followed in order, where the result
+of one step sets up the context for the following step, such that the path
+starts at the Node containing the dependent attribute, and the path ends at a
+candidate Node that the dependent attribute should point to.  When there are no
+more steps in the path, then we should have matched the dependent attribute
+value, or there is a failure condition.  Each step is one of several movement
+types.  The nref-attr movement type means to examine the specified Node-ref
+attribute in the Node we are standing on and move to stand on the Node it points
+to.  The 'self' movement type is a no-op and is displayed only for easier
+documentation reading.  The primary-parent movement type means to stand on the
+primary-parent Node of the current one.  The root-of-type means to move to the
+current Node's primary-parent, recursively, if that Node is the same Node type
+as the current Node.  The primary-child movement is iterative and the subsequent
+steps will be followed for each child Node of the current Node, which is stepped
+on to, until one matches.  If a Node at the end of the above process has a WR
+field, it is implicitly followed in the same way as an nref-attr movement.  If
+'C' is used, search text must be array of degree N+1 where N is the number of
+'C', if the search text is to be un-ambiguous/fully-qualified under all
+circumstances; if the search text is a scalar value, then it only works if all
+cousin Nodes are distinct.  If 'C' is not used, search text is not an array /
+has one scalar value.  All "Ancestor Attribute Correlation List" constraints are
+deferrable and can only be tested on "Well Known" Nodes.
+
+The B<Remotely Addressable Types List> isn't actually a list per se, as it will
+only have a single line per Node type, if it is used.  This descriptor says
+whether or when a Node type can be visible to other Nodes for linking when it is
+not a sibling of one of their primary-parent Nodes (scope is implicit), and when
+it is not the child part of a correlation pair (scope defined by "Ancestor
+Attribute Correlation List").  The list element is in this format:
+
+	<primary-ancestor-type>(,<primary-ancestor-type>){0,}
+
+Nodes of any Node type that specifies a primary-ancestor-type may be remotely
+addressed if they are primary-descendents of a Node whose type is specified by
+primary-ancestor-type.  One further constraint is that the Node being addressed
+may not have any primary-ancestor Nodes that are the same Node type as it is. 
+All "Remotely Addressable Types List" constraints are deferrable and can only be
+tested on "Well Known" Nodes.
 
 The B<Child Quantity List> says when a Node must have a specific number of
 primary-child Nodes of a particular Node type (usually >= 1).  Each list
@@ -1879,6 +1914,10 @@ Attribute List:
 	si_name - L.cstr - SI - the name this domain is identified by
 	data_type - N.scalar_data_type - MA - the core defining details of this domain
 
+Remotely Addressable Types List:
+
+	catalog
+
 =head2 row_domain
 
 This type of Node allows you to store a 'row_data_type' definition as a
@@ -1891,6 +1930,10 @@ Attribute List:
 	pp - N.schema,application - the schema|app-space that this domain is in
 	si_name - L.cstr - SI - the name this domain is identified by
 	data_type - N.row_data_type - WR - MA - the core defining details of this domain
+
+Remotely Addressable Types List:
+
+	catalog
 
 =head2 sequence
 
@@ -1912,6 +1955,10 @@ Attribute List:
 	cycle - L.bool - if true, sequence continues after reaching bound, at other end; defaults to false
 	order - L.bool - if true, seq guaranteed to ret numbers in order; def false, will just be unique
 
+Remotely Addressable Types List:
+
+	catalog
+
 =head2 table
 
 This type of Node describes the core of a database table, which is the single
@@ -1932,6 +1979,10 @@ Attribute List:
 	pp - N.schema,application - the schema|app-space that this base table is in
 	si_name - L.cstr - SI - the name this table is identified by
 	row_data_type - N.row_data_type,row_domain - WR - MA - defines the names and types of this table's column set
+
+Remotely Addressable Types List:
+
+	catalog
 
 =head2 table_field
 
@@ -2087,8 +2138,6 @@ Attribute List:
 
 Local Attribute Dependencies List:
 
-	pp_view:
-		recursive
 	view_type:
 		row_data_type - ALIAS,JOINED,GROUPED,COMPOUND,INSERT - MA
 		recursive - JOINED,GROUPED,COMPOUND
@@ -2098,8 +2147,13 @@ Local Attribute Dependencies List:
 		set_p_routine_item - ALIAS,JOINED,GROUPED,COMPOUND
 		ins_p_routine_item - INSERT - MA
  
-	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp_routine set.
- 	Note: Not expressable yet; if pp set to a 'routine' and view_type is [A,J,G,C], then set..item must be set.
+	Note: Not expressable yet; recursive can be set only when pp is a view.
+ 	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine.
+	Note: Not expressable yet; if pp set to a 'routine' and view_type is [A,J,G,C], then set..item must be set.
+
+Remotely Addressable Types List:
+
+	catalog
 
 Distinct Child Groups List:
 
@@ -2337,10 +2391,6 @@ Attribute List:
 	valf_call_uroutine - N.routine - use result of a call to a user-defined stored function (routine)
 	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
 
-Exclusive Attribute Groups List:
-
-	#expr_root_view_part - pp_expr,view_part - MA
-
 Local Attribute Dependencies List:
 
 	view_part:
@@ -2351,6 +2401,8 @@ Local Attribute Dependencies List:
 		scalar_data_type - MA
 	valf_call_uroutine:
 		catalog_link
+
+	Note: Not expressable yet; view_part can be set only when pp is a view.
 
 Ancestor Attribute Correlation List:
 
@@ -2390,7 +2442,7 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.routine,schema,application - parent routine of this one, or the schema|app-space that this view is in
-	si_name - L.cstr - SI - name routine ident by in a [pp_routine, schema, app], or name of trigger
+	si_name - L.cstr - SI - name routine ident by in a [routine, schema, app], or name of trigger
 	routine_type - E.routine_type - MA - what kind of routine this is
 	return_cont_type - E.container_type - container type of function's return value
 	return_scalar_data_type - N.scalar_data_type,scalar_domain - data type of a function's SCALAR/SC_ARY return value
@@ -2409,6 +2461,10 @@ Local Attribute Dependencies List:
 	return_cont_type:
 		return_scalar_data_type - SCALAR,SC_ARY - MA
 		return_row_data_type - ROW,RW_ARY - MA
+
+Remotely Addressable Types List:
+
+	catalog
 
 Child Quantity List:
 
@@ -2690,6 +2746,8 @@ Distinct Child Groups List:
 	ak_cat_link_inst:
 		catalog_link_instance - blueprint
 
+	MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
+
 =head2 catalog_instance_opt
 
 The attributes in catalog_instance_opt Nodes mainly just have meaning to
@@ -2736,6 +2794,8 @@ Distinct Child Groups List:
 	ak_cat_link_inst:
 		catalog_link_instance - blueprint
 
+	MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
+
 =head2 catalog_link_instance
 
 This type of Node describes a distinct instance of an 'catalog_link'.
@@ -2766,17 +2826,19 @@ Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.catalog_link_instance,catalog_instance,application_instance - parent link of this one (that which calls this), or the routines in this catalog|app inst may use the actual catalog link
-	blueprint - N.catalog_link - the unrealized catalog link that we are 'implementing'
+	blueprint - N.catalog_link - MA - the unrealized catalog link that we are 'implementing'
 	product - N.data_link_product - MA - what product implements this; determines driver to use
-	target - N.catalog_instance - this is what the link connects to
+	target - N.catalog_instance - MA - this is what the link connects to
 	local_dsn - L.cstr - locally known driver-specific name for the catalog link (to cat or ch prox)
 	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
 	login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
-Exclusive Attribute Groups List:
+	TODO: blueprint and target actually aren't mandatory when pp is a catalog_link_instance; 
+	they inherit their root-of-type copy of said attributes.
 
-	link_root_blueprint - pp_link,blueprint - MA
-	link_root_target - pp_link,target - MA
+Ancestor Attribute Correlation List:
+
+	blueprint - S.P.blueprint - match child of S.P(cat|app_instance).blueprint(catalog|application)
 
 Child Quantity List:
 
@@ -2839,6 +2901,11 @@ Local Attribute Dependencies List:
 
 	Note: In other words to the above, all user types *except* ANONYMOUS have a user name and password.
 
+Ancestor Attribute Correlation List:
+
+	match_owner - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
+	default_schema - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
+
 =head2 user_role
 
 Each Node of this type indicates that a specific user has been granted a
@@ -2849,6 +2916,10 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.user - the user that a role is granted to
 	si_role - N.role - SI - the role that is being granted
+
+Ancestor Attribute Correlation List:
+
+	si_role - S.P.P.blueprint - match child of S.P(user).P(catalog_instance).blueprint(catalog)
 
 =head2 circumventions
 

@@ -1,3 +1,147 @@
+2005-03-18   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.56.
+
+	* New code file versions are: Routine.pm v0.56 and en.pm v0.26.
+
+	* Updated external dependencies on Locale::KeyedText to v1.02.
+
+	* Updated the sqlrt_dt_node struct definition in API_C.pod to correlate with 
+	the SQL::Routine::Node property list changes in release v0.55.  This should 
+	have been done as part of release v0.55 but wasn't.
+
+	* Minor Routine.pm documentation fix: get_referencing_nodes() was moved to 
+	just beneath add_child_nodes(), to correlate with the code order.
+
+	* Fixed a one-line bug in _assert_child_comp_deferrable_constraints(), that
+	was introduced in release v0.55, where the method failed to catch
+	non-distinct sibling surrogate id errors.
+
+	* Fixed a bug in en.pm where two SRT_N_SET_ATS_* text message keys were
+	mis-spelled as SRT_N_SET_AT_*; one of those were also mis-spelled in
+	Routine.pm's set_attributes() method.
+
+	* Corrected a few spelling mistakes in the documentation.
+
+	* In order to help ease the transition to Perl 6, updated en.pm to make all
+	user text message strings bound in non-interpolating single quotes rather
+	than interpolating double-quotes.  The reason is because these text strings
+	frequently use literal braces ({}) and Perl 6 would have incorrectly
+	interpreted those as containing embedded Perl code to execute and
+	interpolate the result value of.
+
+	* Following a suggestion given to me by Larry Wall on p6l, replaced the Node
+	Id input checking negative assertions in [_build_node_normalize_attrs(),
+	set_node_id(), _normalize_primary_parent_or_node_ref_attribute_value(),
+	_set_literal_attribute()] with positive assertions that do the same thing;
+	rather than testing that the input contained non-digit characters or was
+	less than 1 or did not match numerical and string representation, it simply
+	tests that the input consists entirely of one or more digits and the number
+	is greater than zero; this is much more concise and easier to understand.
+
+	* Following a style suggestion given to me by Larry Wall on p6l, updated
+	every occurance of a "return" statement in the distribution to remove the
+	parenthesis around its value list, since it is a an operator rather than a
+	function; this also makes my code more consistent since I never used parens
+	for the likes of "sort" or "keys" or "next" or "last".  Also updated every
+	"return" to not explicitly return undefs (that's what "return" does by
+	default), and also to not return a generic truth value ("1") when any caller
+	would ignore it.
+
+	* Updated Node.find_node_by_surrogate_id() so that 'pp' is no longer a valid
+	SELF_ATTR_NAME argument value; it doesn't really make sense to search for a
+	primary-parent attribute since for most intents and purposes we must already
+	have one set for this method to even work properly.  Also updated the
+	_normalize_primary_parent_or_node_ref_attribute_value() method so that it
+	doesn't even try to resolve a surrogate id formatted attribute value when
+	the attribute name is 'pp'.  In en.pm, replaced the 2 messages
+	'SRT_N_SET_PP_AT_NO_ALLOW_SID' and 'SRT_N_SET_PP_AT_NONEX_SID' with the
+	single message 'SRT_N_SET_PP_AT_NO_ALLOW_SID_FOR_PP'.
+
+	* Updated _find_node_by_surrogate_id_using_path() so that it will return
+	undef if the target SI value is unqualified and multiple cousin Nodes match
+	the target SI value, rather than returning the first one of those that was
+	encountered; this draws the user's attention to the fact that their input
+	was too ambiguous under the circumstances.  Updated the
+	Node.find_node_by_surrogate_id() documentation.  In en.pm, updated the user
+	text for 'SRT_N_SET_NREF_AT_NONEX_SID' to say duplicates may be a cause.
+
+	* Deleted private method _get_surrogate_id_chain_as_str(); any other methods
+	that used it now call _get_surrogate_id_chain() instead and serialize its
+	output themselves.  In the case of get_all_properties(), the private methods
+	_serialize_as_perl() and _serialize_as_xml() were updated to do the right
+	thing with any 'ATTRS' elements that are Perl array refs.
+
+	* Removed the file t/lib/t_SRT_Circular.pm from this distribution; its
+	contents have been merged into the file t/SQL_Routine.t; this did not change
+	the test count.  Moved the Container object creation code out of each of the
+	other 3 t/lib/t_SRT_*.pm files and into t/SQL_Routine.t; the 3 affected
+	functions in [Verbose, Terse, Abstract] have also been renamed from
+	create_and_populate_model() to populate_model(), and they now just create
+	Nodes in the Container argument; this increased the test count by 3 to 20.
+
+	* Updated populate_model() in t_SRT_Abstract.pm to convert most of the
+	qualified surrogate id values into unqualified ones, because they were not
+	ambiguous; the test code is simpler as a result.
+
+	* Multiple data dictionary updates in Language.pod and Routine.pm.  1. Added
+	"Remotely Addressable Types List" under NODE TYPES; all types that are
+	direct children of catalogs or schemas can be remotely addressed, when they
+	are the children of catalogs or schemasthese Node types make use of it:
+	scalar_domain, row_domain, sequence, table, view, routine; now there is no
+	longer any reason to use the long rooted fully qualified surrogate id
+	format; in Routine.pm, added 'remote_addr' items to %NODE_TYPES.  2. With
+	catalog_link_instance Nodes, made blueprint and target mandatory.  3. Added
+	"Ancestor Attribute Correlation List" constraints to these Node types:
+	catalog_link_instance, 'user', user_role; also rewrote Language.pod
+	description for "Ancestor Attribute Correlation List".  4. Removed bogus
+	constraints or comments that referred to non-existent Node attributes and/or
+	added TODO items to these Node types: view, view_expr, routine,
+	catalog_instance, application_instance, catalog_link_instance.  5. In
+	Routine.pm, fixed bug in MUDI_ATGPS for these Node types, which caused the
+	constraints to not work: catalog_instance, application_instance.
+
+	* Large update to Node.find_node_by_surrogate_id(), including the addition
+	of the _find_node_by_surrogate_id_remotely() and
+	_find_node_by_surrogate_id_remotely_below_here() private methods, which
+	implements the "Remotely Addressable Types List" linking feature.  Also, the
+	private method _find_node_by_surrogate_id_from_root() has been deleted and
+	it is now illegal to use what get_surrogate_id_chain() returns as the
+	SELF_ATTR_NAME; valid input is only scalars or 1-3 element array refs.  Also 
+	updated populate_model() in t_SRT_Abstract.pm to use the simpler inputs.
+
+	* Added new method Node.get_relative_surrogate_id() which returns relative
+	surrogate id chains in an analagous manner to get_surrogate_id_chain()'s
+	absolute chains.  You can use anything output by get_relative_surrogate_id()
+	as input for Node.find_node_by_surrogate_id().  Added 3 new user text
+	messages to en.pm named 'SRT_N_GET_REL_SID_*' for this new method.
+
+	* Updated get_all_properties() to use Node.get_relative_surrogate_id()
+	rather than get_surrogate_id_chain() when LINKS_AS_SI is true, making for
+	much simpler output; also updated all 3 t_SRT_*.t files'
+	expected_model_sid_xml_output() data to match the improved output style.
+
+	* Added new _assert_parent_ref_scope_deferrable_constraints() private
+	method, called by the main deferrable constraints methods, which makes sure
+	that a Node's Node-ref attributes point to Nodes that it should be able to
+	see considering its context; it also checks that multiple Nodes in the same
+	context don't have the same Surrogate Id value.  This new method invokes
+	Node.get_relative_surrogate_id() and Node.find_node_by_surrogate_id() to
+	handle the bulk of its functionality.  Also added 1 new en.pm message
+	'SRT_N_ASDC_NREF_AT_NONEX_SID' to go with it.
+
+	* Deleted the SYNOPSIS content in Routine.pm, leaving a promise of something 
+	better to come.  A few other miscellaneous documentation updates.
+
+	* Updated any DEPENDENCIES documentation to use sub-headings "[|Non-] Core
+	Modules" rather than "[|Non]standard Modules".
+
+	* Added a section in the TODO file about an imminent branch from this
+	distribution of a version written in Perl 6, initially useable with Pugs.
+
+	* Added a similar comment in the portion of API_C.pod that talks about
+	future directions.
+
 2005-02-23   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.55.

@@ -13,13 +13,8 @@ t_SRT_Abstract;
 
 ######################################################################
 
-sub create_and_populate_model {
-	my (undef, $class, $auto_ass_def_con) = @_;
-
-	my $model = $class->new_container();
-	$model->auto_assert_deferrable_constraints( $auto_ass_def_con ); # undefined arg means faster performance
-	$model->auto_set_node_ids( 1 );
-	$model->may_match_surrogate_node_ids( 1 );
+sub populate_model {
+	my (undef, $model) = @_;
 
 	##### NEXT SET CATALOG ELEMENT-TYPE DETAILS #####
 
@@ -257,21 +252,21 @@ sub create_and_populate_model {
 			) ),
 		] },
 		( map { { 'NODE_TYPE' => 'view_field', 'ATTRS' => $_ } } (
-			{ 'si_row_field' => 'user_id'      , 'src_field' => ['user_id'      ,'user_auth'   ], },
-			{ 'si_row_field' => 'login_name'   , 'src_field' => ['login_name'   ,'user_auth'   ], },
-			{ 'si_row_field' => 'login_pass'   , 'src_field' => ['login_pass'   ,'user_auth'   ], },
-			{ 'si_row_field' => 'private_name' , 'src_field' => ['private_name' ,'user_auth'   ], },
-			{ 'si_row_field' => 'private_email', 'src_field' => ['private_email','user_auth'   ], },
-			{ 'si_row_field' => 'may_login'    , 'src_field' => ['may_login'    ,'user_auth'   ], },
-			{ 'si_row_field' => 'max_sessions' , 'src_field' => ['max_sessions' ,'user_auth'   ], },
-			{ 'si_row_field' => 'public_name'  , 'src_field' => ['public_name'  ,'user_profile'], },
-			{ 'si_row_field' => 'public_email' , 'src_field' => ['public_email' ,'user_profile'], },
-			{ 'si_row_field' => 'web_url'      , 'src_field' => ['web_url'      ,'user_profile'], },
-			{ 'si_row_field' => 'contact_net'  , 'src_field' => ['contact_net'  ,'user_profile'], },
-			{ 'si_row_field' => 'contact_phy'  , 'src_field' => ['contact_phy'  ,'user_profile'], },
-			{ 'si_row_field' => 'bio'          , 'src_field' => ['bio'          ,'user_profile'], },
-			{ 'si_row_field' => 'plan'         , 'src_field' => ['plan'         ,'user_profile'], },
-			{ 'si_row_field' => 'comments'     , 'src_field' => ['comments'     ,'user_profile'], },
+			{ 'si_row_field' => 'user_id'      , 'src_field' => ['user_id','user_auth'], },
+			{ 'si_row_field' => 'login_name'   , 'src_field' => 'login_name'   , },
+			{ 'si_row_field' => 'login_pass'   , 'src_field' => 'login_pass'   , },
+			{ 'si_row_field' => 'private_name' , 'src_field' => 'private_name' , },
+			{ 'si_row_field' => 'private_email', 'src_field' => 'private_email', },
+			{ 'si_row_field' => 'may_login'    , 'src_field' => 'may_login'    , },
+			{ 'si_row_field' => 'max_sessions' , 'src_field' => 'max_sessions' , },
+			{ 'si_row_field' => 'public_name'  , 'src_field' => 'public_name'  , },
+			{ 'si_row_field' => 'public_email' , 'src_field' => 'public_email' , },
+			{ 'si_row_field' => 'web_url'      , 'src_field' => 'web_url'      , },
+			{ 'si_row_field' => 'contact_net'  , 'src_field' => 'contact_net'  , },
+			{ 'si_row_field' => 'contact_phy'  , 'src_field' => 'contact_phy'  , },
+			{ 'si_row_field' => 'bio'          , 'src_field' => 'bio'          , },
+			{ 'si_row_field' => 'plan'         , 'src_field' => 'plan'         , },
+			{ 'si_row_field' => 'comments'     , 'src_field' => 'comments'     , },
 		) ),
 		{ 'NODE_TYPE' => 'view_join', 'ATTRS' => { 'lhs_src' => 'user_auth', 
 				'rhs_src' => 'user_profile', 'join_op' => 'LEFT', }, 'CHILDREN' => [ 
@@ -302,25 +297,24 @@ sub create_and_populate_model {
 
 	$application->build_child_node_tree( { 'NODE_TYPE' => 'view', 
 			'ATTRS' => { 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 'user_theme', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'user_pref', 
-				'match' => [undef,'root','blueprints','The Catalog Blueprint','gene','user_pref'], }, 
+		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'user_pref', 'match' => 'user_pref', }, 
 			'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( pref_name pref_value ) ] 
 		},
-		{ 'NODE_TYPE' => 'view_field', 'ATTRS' => { 'si_row_field' => 'theme_name', 'src_field' => ['pref_value','user_pref'], }, },
+		{ 'NODE_TYPE' => 'view_field', 'ATTRS' => { 'si_row_field' => 'theme_name', 'src_field' => 'pref_value', }, },
 		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'RESULT', 
 				'set_result_field' => 'theme_count', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, 'CHILDREN' => [ 
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => ['pref_value','user_pref'], }, },
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, },
 		] },
 		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
 				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, 'CHILDREN' => [ 
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => ['pref_name','user_pref'], }, },
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_name', }, },
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
 				'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', 'valf_literal' => 'theme', }, },
 		] },
 		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'GROUP', 
-			'cont_type' => 'SCALAR', 'valf_src_field' => ['pref_value','user_pref'], }, },
+			'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, },
 		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'HAVING', 
 				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, 'CHILDREN' => [ 
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
@@ -341,8 +335,7 @@ sub create_and_populate_model {
 			'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', }, },
 		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_user', 
 				'view_type' => 'JOINED', 'row_data_type' => 'user', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 
-					'match' => [undef,'root','blueprints','The Catalog Blueprint','gene','user'], }, 
+			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 'match' => 'user', }, 
 				'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( user_id login_name ) ] 
 			},
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
@@ -365,8 +358,7 @@ sub create_and_populate_model {
 		{ 'NODE_TYPE' => 'routine_arg', 'ATTRS' => { 'si_name' => 'srchw_mo', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, },
 		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_pwp', 
 				'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 
-					'match' => [undef,'root','blueprints','The Catalog Blueprint','gene','person_with_parents'], }, 
+			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 'match' => 'person_with_parents', }, 
 				'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( self_name father_name mother_name ) ] 
 			},
 			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
@@ -411,8 +403,7 @@ sub create_and_populate_model {
 			'return_cont_type' => 'CURSOR', }, 'CHILDREN' => [ 
 		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_person', 
 				'view_type' => 'ALIAS', 'row_data_type' => 'person', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'person', 
-				'match' => [undef,'root','blueprints','The Catalog Blueprint','gene','person'], }, },
+			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'person', 'match' => 'person', }, },
 		] },
 		{ 'NODE_TYPE' => 'routine_stmt', 'ATTRS' => { 'call_sroutine' => 'CURSOR_OPEN' }, },
 	] } );
@@ -427,14 +418,12 @@ sub create_and_populate_model {
 		'ATTRS' => { 'si_name' => 'My App Instance', 'blueprint' => 'My App', }, } ); 
 
 	##### END OF DETAILS SETTING #####
-
-	return( $model );
 }
 
 ######################################################################
 
 sub expected_model_nid_xml_output {
-	return(
+	return
 '<?xml version="1.0" encoding="UTF-8"?>
 <root>
 	<elements>
@@ -746,13 +735,13 @@ sub expected_model_nid_xml_output {
 	<circumventions />
 </root>
 '
-	);
+	;
 }
 
 ######################################################################
 
 sub expected_model_sid_xml_output {
-	return(
+	return
 '<?xml version="1.0" encoding="UTF-8"?>
 <root>
 	<elements>
@@ -787,271 +776,271 @@ sub expected_model_sid_xml_output {
 		<scalar_data_type id="26" si_name="entitynm" base_type="STR_CHAR" max_chars="30" char_enc="ASCII" />
 		<scalar_data_type id="27" si_name="generic" base_type="STR_CHAR" max_chars="250" char_enc="ASCII" />
 		<row_data_type id="30" si_name="person">
-			<row_data_type_field id="31" si_name="person_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="32" si_name="alternate_id" scalar_data_type="[,root,elements,str20]" />
-			<row_data_type_field id="33" si_name="name" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="34" si_name="sex" scalar_data_type="[,root,elements,sex]" />
-			<row_data_type_field id="35" si_name="father_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="36" si_name="mother_id" scalar_data_type="[,root,elements,int]" />
+			<row_data_type_field id="31" si_name="person_id" scalar_data_type="int" />
+			<row_data_type_field id="32" si_name="alternate_id" scalar_data_type="str20" />
+			<row_data_type_field id="33" si_name="name" scalar_data_type="str100" />
+			<row_data_type_field id="34" si_name="sex" scalar_data_type="sex" />
+			<row_data_type_field id="35" si_name="father_id" scalar_data_type="int" />
+			<row_data_type_field id="36" si_name="mother_id" scalar_data_type="int" />
 		</row_data_type>
 		<row_data_type id="37" si_name="person_with_parents">
-			<row_data_type_field id="38" si_name="self_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="39" si_name="self_name" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="40" si_name="father_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="41" si_name="father_name" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="42" si_name="mother_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="43" si_name="mother_name" scalar_data_type="[,root,elements,str100]" />
+			<row_data_type_field id="38" si_name="self_id" scalar_data_type="int" />
+			<row_data_type_field id="39" si_name="self_name" scalar_data_type="str100" />
+			<row_data_type_field id="40" si_name="father_id" scalar_data_type="int" />
+			<row_data_type_field id="41" si_name="father_name" scalar_data_type="str100" />
+			<row_data_type_field id="42" si_name="mother_id" scalar_data_type="int" />
+			<row_data_type_field id="43" si_name="mother_name" scalar_data_type="str100" />
 		</row_data_type>
 		<row_data_type id="44" si_name="user_auth">
-			<row_data_type_field id="45" si_name="user_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="46" si_name="login_name" scalar_data_type="[,root,elements,str20]" />
-			<row_data_type_field id="47" si_name="login_pass" scalar_data_type="[,root,elements,str20]" />
-			<row_data_type_field id="48" si_name="private_name" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="49" si_name="private_email" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="50" si_name="may_login" scalar_data_type="[,root,elements,boolean]" />
-			<row_data_type_field id="51" si_name="max_sessions" scalar_data_type="[,root,elements,byte]" />
+			<row_data_type_field id="45" si_name="user_id" scalar_data_type="int" />
+			<row_data_type_field id="46" si_name="login_name" scalar_data_type="str20" />
+			<row_data_type_field id="47" si_name="login_pass" scalar_data_type="str20" />
+			<row_data_type_field id="48" si_name="private_name" scalar_data_type="str100" />
+			<row_data_type_field id="49" si_name="private_email" scalar_data_type="str100" />
+			<row_data_type_field id="50" si_name="may_login" scalar_data_type="boolean" />
+			<row_data_type_field id="51" si_name="max_sessions" scalar_data_type="byte" />
 		</row_data_type>
 		<row_data_type id="52" si_name="user_profile">
-			<row_data_type_field id="53" si_name="user_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="54" si_name="public_name" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="55" si_name="public_email" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="56" si_name="web_url" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="57" si_name="contact_net" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="58" si_name="contact_phy" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="59" si_name="bio" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="60" si_name="plan" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="61" si_name="comments" scalar_data_type="[,root,elements,str250]" />
+			<row_data_type_field id="53" si_name="user_id" scalar_data_type="int" />
+			<row_data_type_field id="54" si_name="public_name" scalar_data_type="str250" />
+			<row_data_type_field id="55" si_name="public_email" scalar_data_type="str250" />
+			<row_data_type_field id="56" si_name="web_url" scalar_data_type="str250" />
+			<row_data_type_field id="57" si_name="contact_net" scalar_data_type="str250" />
+			<row_data_type_field id="58" si_name="contact_phy" scalar_data_type="str250" />
+			<row_data_type_field id="59" si_name="bio" scalar_data_type="str250" />
+			<row_data_type_field id="60" si_name="plan" scalar_data_type="str250" />
+			<row_data_type_field id="61" si_name="comments" scalar_data_type="str250" />
 		</row_data_type>
 		<row_data_type id="62" si_name="user">
-			<row_data_type_field id="63" si_name="user_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="64" si_name="login_name" scalar_data_type="[,root,elements,str20]" />
-			<row_data_type_field id="65" si_name="login_pass" scalar_data_type="[,root,elements,str20]" />
-			<row_data_type_field id="66" si_name="private_name" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="67" si_name="private_email" scalar_data_type="[,root,elements,str100]" />
-			<row_data_type_field id="68" si_name="may_login" scalar_data_type="[,root,elements,boolean]" />
-			<row_data_type_field id="69" si_name="max_sessions" scalar_data_type="[,root,elements,byte]" />
-			<row_data_type_field id="70" si_name="public_name" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="71" si_name="public_email" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="72" si_name="web_url" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="73" si_name="contact_net" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="74" si_name="contact_phy" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="75" si_name="bio" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="76" si_name="plan" scalar_data_type="[,root,elements,str250]" />
-			<row_data_type_field id="77" si_name="comments" scalar_data_type="[,root,elements,str250]" />
+			<row_data_type_field id="63" si_name="user_id" scalar_data_type="int" />
+			<row_data_type_field id="64" si_name="login_name" scalar_data_type="str20" />
+			<row_data_type_field id="65" si_name="login_pass" scalar_data_type="str20" />
+			<row_data_type_field id="66" si_name="private_name" scalar_data_type="str100" />
+			<row_data_type_field id="67" si_name="private_email" scalar_data_type="str100" />
+			<row_data_type_field id="68" si_name="may_login" scalar_data_type="boolean" />
+			<row_data_type_field id="69" si_name="max_sessions" scalar_data_type="byte" />
+			<row_data_type_field id="70" si_name="public_name" scalar_data_type="str250" />
+			<row_data_type_field id="71" si_name="public_email" scalar_data_type="str250" />
+			<row_data_type_field id="72" si_name="web_url" scalar_data_type="str250" />
+			<row_data_type_field id="73" si_name="contact_net" scalar_data_type="str250" />
+			<row_data_type_field id="74" si_name="contact_phy" scalar_data_type="str250" />
+			<row_data_type_field id="75" si_name="bio" scalar_data_type="str250" />
+			<row_data_type_field id="76" si_name="plan" scalar_data_type="str250" />
+			<row_data_type_field id="77" si_name="comments" scalar_data_type="str250" />
 		</row_data_type>
 		<row_data_type id="78" si_name="user_pref">
-			<row_data_type_field id="79" si_name="user_id" scalar_data_type="[,root,elements,int]" />
-			<row_data_type_field id="80" si_name="pref_name" scalar_data_type="[,root,elements,entitynm]" />
-			<row_data_type_field id="81" si_name="pref_value" scalar_data_type="[,root,elements,generic]" />
+			<row_data_type_field id="79" si_name="user_id" scalar_data_type="int" />
+			<row_data_type_field id="80" si_name="pref_name" scalar_data_type="entitynm" />
+			<row_data_type_field id="81" si_name="pref_value" scalar_data_type="generic" />
 		</row_data_type>
 		<row_data_type id="82" si_name="user_theme">
-			<row_data_type_field id="83" si_name="theme_name" scalar_data_type="[,root,elements,generic]" />
-			<row_data_type_field id="84" si_name="theme_count" scalar_data_type="[,root,elements,int]" />
+			<row_data_type_field id="83" si_name="theme_name" scalar_data_type="generic" />
+			<row_data_type_field id="84" si_name="theme_count" scalar_data_type="int" />
 		</row_data_type>
 	</elements>
 	<blueprints>
 		<catalog id="85" si_name="The Catalog Blueprint">
 			<owner id="86" si_name="Gene\'s Owner" />
-			<schema id="87" si_name="gene" owner="[,root,blueprints,The Catalog Blueprint,Gene\'s Owner]">
-				<table id="88" si_name="person" row_data_type="[,root,elements,person]">
-					<table_field id="89" si_row_field="[,root,elements,person,person_id]" mandatory="1" default_val="1" auto_inc="1" />
-					<table_field id="90" si_row_field="[,root,elements,person,name]" mandatory="1" />
+			<schema id="87" si_name="gene" owner="Gene\'s Owner">
+				<table id="88" si_name="person" row_data_type="person">
+					<table_field id="89" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
+					<table_field id="90" si_row_field="name" mandatory="1" />
 					<table_index id="91" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="92" si_field="[,root,elements,person,person_id]" />
+						<table_index_field id="92" si_field="person_id" />
 					</table_index>
 					<table_index id="93" si_name="ak_alternate_id" index_type="UNIQUE">
-						<table_index_field id="94" si_field="[,root,elements,person,alternate_id]" />
+						<table_index_field id="94" si_field="alternate_id" />
 					</table_index>
-					<table_index id="95" si_name="fk_father" index_type="FOREIGN" f_table="[,root,blueprints,The Catalog Blueprint,gene,person]">
-						<table_index_field id="96" si_field="[,root,elements,person,father_id]" f_field="[,root,elements,person,person_id]" />
+					<table_index id="95" si_name="fk_father" index_type="FOREIGN" f_table="person">
+						<table_index_field id="96" si_field="father_id" f_field="person_id" />
 					</table_index>
-					<table_index id="97" si_name="fk_mother" index_type="FOREIGN" f_table="[,root,blueprints,The Catalog Blueprint,gene,person]">
-						<table_index_field id="98" si_field="[,root,elements,person,mother_id]" f_field="[,root,elements,person,person_id]" />
+					<table_index id="97" si_name="fk_mother" index_type="FOREIGN" f_table="person">
+						<table_index_field id="98" si_field="mother_id" f_field="person_id" />
 					</table_index>
 				</table>
-				<view id="99" si_name="person_with_parents" view_type="JOINED" row_data_type="[,root,elements,person_with_parents]">
-					<view_src id="100" si_name="self" match="[,root,blueprints,The Catalog Blueprint,gene,person]">
-						<view_src_field id="101" si_match_field="[,root,elements,person,person_id]" />
-						<view_src_field id="102" si_match_field="[,root,elements,person,name]" />
-						<view_src_field id="103" si_match_field="[,root,elements,person,father_id]" />
-						<view_src_field id="104" si_match_field="[,root,elements,person,mother_id]" />
+				<view id="99" si_name="person_with_parents" view_type="JOINED" row_data_type="person_with_parents">
+					<view_src id="100" si_name="self" match="person">
+						<view_src_field id="101" si_match_field="person_id" />
+						<view_src_field id="102" si_match_field="name" />
+						<view_src_field id="103" si_match_field="father_id" />
+						<view_src_field id="104" si_match_field="mother_id" />
 					</view_src>
-					<view_src id="105" si_name="father" match="[,root,blueprints,The Catalog Blueprint,gene,person]">
-						<view_src_field id="106" si_match_field="[,root,elements,person,person_id]" />
-						<view_src_field id="107" si_match_field="[,root,elements,person,name]" />
+					<view_src id="105" si_name="father" match="person">
+						<view_src_field id="106" si_match_field="person_id" />
+						<view_src_field id="107" si_match_field="name" />
 					</view_src>
-					<view_src id="108" si_name="mother" match="[,root,blueprints,The Catalog Blueprint,gene,person]">
-						<view_src_field id="109" si_match_field="[,root,elements,person,person_id]" />
-						<view_src_field id="110" si_match_field="[,root,elements,person,name]" />
+					<view_src id="108" si_name="mother" match="person">
+						<view_src_field id="109" si_match_field="person_id" />
+						<view_src_field id="110" si_match_field="name" />
 					</view_src>
-					<view_field id="111" si_row_field="[,root,elements,person_with_parents,self_id]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self,person_id]" />
-					<view_field id="112" si_row_field="[,root,elements,person_with_parents,self_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self,name]" />
-					<view_field id="113" si_row_field="[,root,elements,person_with_parents,father_id]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,father,person_id]" />
-					<view_field id="114" si_row_field="[,root,elements,person_with_parents,father_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,father,name]" />
-					<view_field id="115" si_row_field="[,root,elements,person_with_parents,mother_id]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,mother,person_id]" />
-					<view_field id="116" si_row_field="[,root,elements,person_with_parents,mother_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,mother,name]" />
-					<view_join id="117" lhs_src="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self]" rhs_src="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,father]" join_op="LEFT">
-						<view_join_field id="118" lhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self,father_id]" rhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,father,person_id]" />
+					<view_field id="111" si_row_field="self_id" src_field="[person_id,self]" />
+					<view_field id="112" si_row_field="self_name" src_field="[name,self]" />
+					<view_field id="113" si_row_field="father_id" src_field="[person_id,father]" />
+					<view_field id="114" si_row_field="father_name" src_field="[name,father]" />
+					<view_field id="115" si_row_field="mother_id" src_field="[person_id,mother]" />
+					<view_field id="116" si_row_field="mother_name" src_field="[name,mother]" />
+					<view_join id="117" lhs_src="self" rhs_src="father" join_op="LEFT">
+						<view_join_field id="118" lhs_src_field="father_id" rhs_src_field="person_id" />
 					</view_join>
-					<view_join id="119" lhs_src="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self]" rhs_src="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,mother]" join_op="LEFT">
-						<view_join_field id="120" lhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,self,mother_id]" rhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents,mother,person_id]" />
+					<view_join id="119" lhs_src="self" rhs_src="mother" join_op="LEFT">
+						<view_join_field id="120" lhs_src_field="mother_id" rhs_src_field="person_id" />
 					</view_join>
 				</view>
-				<table id="121" si_name="user_auth" row_data_type="[,root,elements,user_auth]">
-					<table_field id="122" si_row_field="[,root,elements,user_auth,user_id]" mandatory="1" default_val="1" auto_inc="1" />
-					<table_field id="123" si_row_field="[,root,elements,user_auth,login_name]" mandatory="1" />
-					<table_field id="124" si_row_field="[,root,elements,user_auth,login_pass]" mandatory="1" />
-					<table_field id="125" si_row_field="[,root,elements,user_auth,private_name]" mandatory="1" />
-					<table_field id="126" si_row_field="[,root,elements,user_auth,private_email]" mandatory="1" />
-					<table_field id="127" si_row_field="[,root,elements,user_auth,may_login]" mandatory="1" />
-					<table_field id="128" si_row_field="[,root,elements,user_auth,max_sessions]" mandatory="1" default_val="3" />
+				<table id="121" si_name="user_auth" row_data_type="user_auth">
+					<table_field id="122" si_row_field="user_id" mandatory="1" default_val="1" auto_inc="1" />
+					<table_field id="123" si_row_field="login_name" mandatory="1" />
+					<table_field id="124" si_row_field="login_pass" mandatory="1" />
+					<table_field id="125" si_row_field="private_name" mandatory="1" />
+					<table_field id="126" si_row_field="private_email" mandatory="1" />
+					<table_field id="127" si_row_field="may_login" mandatory="1" />
+					<table_field id="128" si_row_field="max_sessions" mandatory="1" default_val="3" />
 					<table_index id="129" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="130" si_field="[,root,elements,user_auth,user_id]" />
+						<table_index_field id="130" si_field="user_id" />
 					</table_index>
 					<table_index id="131" si_name="ak_login_name" index_type="UNIQUE">
-						<table_index_field id="132" si_field="[,root,elements,user_auth,login_name]" />
+						<table_index_field id="132" si_field="login_name" />
 					</table_index>
 					<table_index id="133" si_name="ak_private_email" index_type="UNIQUE">
-						<table_index_field id="134" si_field="[,root,elements,user_auth,private_email]" />
+						<table_index_field id="134" si_field="private_email" />
 					</table_index>
 				</table>
-				<table id="135" si_name="user_profile" row_data_type="[,root,elements,user_profile]">
-					<table_field id="136" si_row_field="[,root,elements,user_profile,user_id]" mandatory="1" />
-					<table_field id="137" si_row_field="[,root,elements,user_profile,public_name]" mandatory="1" />
+				<table id="135" si_name="user_profile" row_data_type="user_profile">
+					<table_field id="136" si_row_field="user_id" mandatory="1" />
+					<table_field id="137" si_row_field="public_name" mandatory="1" />
 					<table_index id="138" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="139" si_field="[,root,elements,user_profile,user_id]" />
+						<table_index_field id="139" si_field="user_id" />
 					</table_index>
 					<table_index id="140" si_name="ak_public_name" index_type="UNIQUE">
-						<table_index_field id="141" si_field="[,root,elements,user_profile,public_name]" />
+						<table_index_field id="141" si_field="public_name" />
 					</table_index>
-					<table_index id="142" si_name="fk_user" index_type="FOREIGN" f_table="[,root,blueprints,The Catalog Blueprint,gene,user_auth]">
-						<table_index_field id="143" si_field="[,root,elements,user_profile,user_id]" f_field="[,root,elements,user_auth,user_id]" />
+					<table_index id="142" si_name="fk_user" index_type="FOREIGN" f_table="user_auth">
+						<table_index_field id="143" si_field="user_id" f_field="user_id" />
 					</table_index>
 				</table>
-				<view id="144" si_name="user" view_type="JOINED" row_data_type="[,root,elements,user]">
-					<view_src id="145" si_name="user_auth" match="[,root,blueprints,The Catalog Blueprint,gene,user_auth]">
-						<view_src_field id="146" si_match_field="[,root,elements,user_auth,user_id]" />
-						<view_src_field id="147" si_match_field="[,root,elements,user_auth,login_name]" />
-						<view_src_field id="148" si_match_field="[,root,elements,user_auth,login_pass]" />
-						<view_src_field id="149" si_match_field="[,root,elements,user_auth,private_name]" />
-						<view_src_field id="150" si_match_field="[,root,elements,user_auth,private_email]" />
-						<view_src_field id="151" si_match_field="[,root,elements,user_auth,may_login]" />
-						<view_src_field id="152" si_match_field="[,root,elements,user_auth,max_sessions]" />
+				<view id="144" si_name="user" view_type="JOINED" row_data_type="user">
+					<view_src id="145" si_name="user_auth" match="user_auth">
+						<view_src_field id="146" si_match_field="user_id" />
+						<view_src_field id="147" si_match_field="login_name" />
+						<view_src_field id="148" si_match_field="login_pass" />
+						<view_src_field id="149" si_match_field="private_name" />
+						<view_src_field id="150" si_match_field="private_email" />
+						<view_src_field id="151" si_match_field="may_login" />
+						<view_src_field id="152" si_match_field="max_sessions" />
 					</view_src>
-					<view_src id="153" si_name="user_profile" match="[,root,blueprints,The Catalog Blueprint,gene,user_profile]">
-						<view_src_field id="154" si_match_field="[,root,elements,user_profile,user_id]" />
-						<view_src_field id="155" si_match_field="[,root,elements,user_profile,public_name]" />
-						<view_src_field id="156" si_match_field="[,root,elements,user_profile,public_email]" />
-						<view_src_field id="157" si_match_field="[,root,elements,user_profile,web_url]" />
-						<view_src_field id="158" si_match_field="[,root,elements,user_profile,contact_net]" />
-						<view_src_field id="159" si_match_field="[,root,elements,user_profile,contact_phy]" />
-						<view_src_field id="160" si_match_field="[,root,elements,user_profile,bio]" />
-						<view_src_field id="161" si_match_field="[,root,elements,user_profile,plan]" />
-						<view_src_field id="162" si_match_field="[,root,elements,user_profile,comments]" />
+					<view_src id="153" si_name="user_profile" match="user_profile">
+						<view_src_field id="154" si_match_field="user_id" />
+						<view_src_field id="155" si_match_field="public_name" />
+						<view_src_field id="156" si_match_field="public_email" />
+						<view_src_field id="157" si_match_field="web_url" />
+						<view_src_field id="158" si_match_field="contact_net" />
+						<view_src_field id="159" si_match_field="contact_phy" />
+						<view_src_field id="160" si_match_field="bio" />
+						<view_src_field id="161" si_match_field="plan" />
+						<view_src_field id="162" si_match_field="comments" />
 					</view_src>
-					<view_field id="163" si_row_field="[,root,elements,user,user_id]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,user_id]" />
-					<view_field id="164" si_row_field="[,root,elements,user,login_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,login_name]" />
-					<view_field id="165" si_row_field="[,root,elements,user,login_pass]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,login_pass]" />
-					<view_field id="166" si_row_field="[,root,elements,user,private_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,private_name]" />
-					<view_field id="167" si_row_field="[,root,elements,user,private_email]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,private_email]" />
-					<view_field id="168" si_row_field="[,root,elements,user,may_login]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,may_login]" />
-					<view_field id="169" si_row_field="[,root,elements,user,max_sessions]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,max_sessions]" />
-					<view_field id="170" si_row_field="[,root,elements,user,public_name]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,public_name]" />
-					<view_field id="171" si_row_field="[,root,elements,user,public_email]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,public_email]" />
-					<view_field id="172" si_row_field="[,root,elements,user,web_url]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,web_url]" />
-					<view_field id="173" si_row_field="[,root,elements,user,contact_net]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,contact_net]" />
-					<view_field id="174" si_row_field="[,root,elements,user,contact_phy]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,contact_phy]" />
-					<view_field id="175" si_row_field="[,root,elements,user,bio]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,bio]" />
-					<view_field id="176" si_row_field="[,root,elements,user,plan]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,plan]" />
-					<view_field id="177" si_row_field="[,root,elements,user,comments]" src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,comments]" />
-					<view_join id="178" lhs_src="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth]" rhs_src="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile]" join_op="LEFT">
-						<view_join_field id="179" lhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_auth,user_id]" rhs_src_field="[,root,blueprints,The Catalog Blueprint,gene,user,user_profile,user_id]" />
+					<view_field id="163" si_row_field="user_id" src_field="[user_id,user_auth]" />
+					<view_field id="164" si_row_field="login_name" src_field="[login_name,user_auth]" />
+					<view_field id="165" si_row_field="login_pass" src_field="[login_pass,user_auth]" />
+					<view_field id="166" si_row_field="private_name" src_field="[private_name,user_auth]" />
+					<view_field id="167" si_row_field="private_email" src_field="[private_email,user_auth]" />
+					<view_field id="168" si_row_field="may_login" src_field="[may_login,user_auth]" />
+					<view_field id="169" si_row_field="max_sessions" src_field="[max_sessions,user_auth]" />
+					<view_field id="170" si_row_field="public_name" src_field="[public_name,user_profile]" />
+					<view_field id="171" si_row_field="public_email" src_field="[public_email,user_profile]" />
+					<view_field id="172" si_row_field="web_url" src_field="[web_url,user_profile]" />
+					<view_field id="173" si_row_field="contact_net" src_field="[contact_net,user_profile]" />
+					<view_field id="174" si_row_field="contact_phy" src_field="[contact_phy,user_profile]" />
+					<view_field id="175" si_row_field="bio" src_field="[bio,user_profile]" />
+					<view_field id="176" si_row_field="plan" src_field="[plan,user_profile]" />
+					<view_field id="177" si_row_field="comments" src_field="[comments,user_profile]" />
+					<view_join id="178" lhs_src="user_auth" rhs_src="user_profile" join_op="LEFT">
+						<view_join_field id="179" lhs_src_field="user_id" rhs_src_field="user_id" />
 					</view_join>
 				</view>
-				<table id="180" si_name="user_pref" row_data_type="[,root,elements,user_pref]">
-					<table_field id="181" si_row_field="[,root,elements,user_pref,user_id]" mandatory="1" />
-					<table_field id="182" si_row_field="[,root,elements,user_pref,pref_name]" mandatory="1" />
+				<table id="180" si_name="user_pref" row_data_type="user_pref">
+					<table_field id="181" si_row_field="user_id" mandatory="1" />
+					<table_field id="182" si_row_field="pref_name" mandatory="1" />
 					<table_index id="183" si_name="primary" index_type="UNIQUE">
-						<table_index_field id="184" si_field="[,root,elements,user_pref,user_id]" />
-						<table_index_field id="185" si_field="[,root,elements,user_pref,pref_name]" />
+						<table_index_field id="184" si_field="user_id" />
+						<table_index_field id="185" si_field="pref_name" />
 					</table_index>
-					<table_index id="186" si_name="fk_user" index_type="FOREIGN" f_table="[,root,blueprints,The Catalog Blueprint,gene,user_auth]">
-						<table_index_field id="187" si_field="[,root,elements,user_pref,user_id]" f_field="[,root,elements,user_auth,user_id]" />
+					<table_index id="186" si_name="fk_user" index_type="FOREIGN" f_table="user_auth">
+						<table_index_field id="187" si_field="user_id" f_field="user_id" />
 					</table_index>
 				</table>
 			</schema>
 		</catalog>
 		<application id="188" si_name="My App">
-			<view id="189" si_name="user_theme" view_type="JOINED" row_data_type="[,root,elements,user_theme]">
-				<view_src id="190" si_name="user_pref" match="[,root,blueprints,The Catalog Blueprint,gene,user_pref]">
-					<view_src_field id="191" si_match_field="[,root,elements,user_pref,pref_name]" />
-					<view_src_field id="192" si_match_field="[,root,elements,user_pref,pref_value]" />
+			<view id="189" si_name="user_theme" view_type="JOINED" row_data_type="user_theme">
+				<view_src id="190" si_name="user_pref" match="[user_pref,gene,The Catalog Blueprint]">
+					<view_src_field id="191" si_match_field="pref_name" />
+					<view_src_field id="192" si_match_field="pref_value" />
 				</view_src>
-				<view_field id="193" si_row_field="[,root,elements,user_theme,theme_name]" src_field="[,root,blueprints,My App,user_theme,user_pref,pref_value]" />
-				<view_expr id="194" view_part="RESULT" set_result_field="[,root,elements,user_theme,theme_count]" cont_type="SCALAR" valf_call_sroutine="COUNT">
-					<view_expr id="195" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,user_theme,user_pref,pref_value]" />
+				<view_field id="193" si_row_field="theme_name" src_field="[pref_value,user_pref]" />
+				<view_expr id="194" view_part="RESULT" set_result_field="theme_count" cont_type="SCALAR" valf_call_sroutine="COUNT">
+					<view_expr id="195" cont_type="SCALAR" valf_src_field="[pref_value,user_pref]" />
 				</view_expr>
 				<view_expr id="196" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-					<view_expr id="197" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,user_theme,user_pref,pref_name]" />
-					<view_expr id="198" cont_type="SCALAR" valf_literal="theme" scalar_data_type="[,root,elements,str30]" />
+					<view_expr id="197" cont_type="SCALAR" valf_src_field="[pref_name,user_pref]" />
+					<view_expr id="198" cont_type="SCALAR" valf_literal="theme" scalar_data_type="str30" />
 				</view_expr>
-				<view_expr id="199" view_part="GROUP" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,user_theme,user_pref,pref_value]" />
+				<view_expr id="199" view_part="GROUP" cont_type="SCALAR" valf_src_field="[pref_value,user_pref]" />
 				<view_expr id="200" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
 					<view_expr id="201" cont_type="SCALAR" valf_call_sroutine="COUNT" />
-					<view_expr id="202" cont_type="SCALAR" valf_literal="1" scalar_data_type="[,root,elements,int]" />
+					<view_expr id="202" cont_type="SCALAR" valf_literal="1" scalar_data_type="int" />
 				</view_expr>
-				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="[,root,elements,user_theme,theme_count]" />
-				<view_expr id="204" view_part="ORDER" cont_type="SCALAR" valf_result_field="[,root,elements,user_theme,theme_name]" />
+				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_count" />
+				<view_expr id="204" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_name" />
 			</view>
 			<routine id="205" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="206" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="[,root,elements,int]" />
-				<view id="207" si_name="get_user" view_type="JOINED" row_data_type="[,root,elements,user]">
-					<view_src id="208" si_name="m" match="[,root,blueprints,The Catalog Blueprint,gene,user]">
-						<view_src_field id="209" si_match_field="[,root,elements,user,user_id]" />
-						<view_src_field id="210" si_match_field="[,root,elements,user,login_name]" />
+				<routine_arg id="206" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="int" />
+				<view id="207" si_name="get_user" view_type="JOINED" row_data_type="user">
+					<view_src id="208" si_name="m" match="[user,gene,The Catalog Blueprint]">
+						<view_src_field id="209" si_match_field="user_id" />
+						<view_src_field id="210" si_match_field="login_name" />
 					</view_src>
 					<view_expr id="211" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="212" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_user,get_user,m,user_id]" />
-						<view_expr id="213" cont_type="SCALAR" valf_p_routine_item="[,root,blueprints,My App,get_user,curr_uid]" />
+						<view_expr id="212" cont_type="SCALAR" valf_src_field="[user_id,m]" />
+						<view_expr id="213" cont_type="SCALAR" valf_p_routine_item="curr_uid" />
 					</view_expr>
-					<view_expr id="214" view_part="ORDER" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_user,get_user,m,login_name]" />
+					<view_expr id="214" view_part="ORDER" cont_type="SCALAR" valf_src_field="[login_name,m]" />
 				</view>
 				<routine_stmt id="215" call_sroutine="CURSOR_OPEN" />
 			</routine>
 			<routine id="216" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="217" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="[,root,elements,str30]" />
-				<routine_arg id="218" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="[,root,elements,str30]" />
-				<view id="219" si_name="get_pwp" view_type="JOINED" row_data_type="[,root,elements,person_with_parents]">
-					<view_src id="220" si_name="m" match="[,root,blueprints,The Catalog Blueprint,gene,person_with_parents]">
-						<view_src_field id="221" si_match_field="[,root,elements,person_with_parents,self_name]" />
-						<view_src_field id="222" si_match_field="[,root,elements,person_with_parents,father_name]" />
-						<view_src_field id="223" si_match_field="[,root,elements,person_with_parents,mother_name]" />
+				<routine_arg id="217" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="str30" />
+				<routine_arg id="218" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="str30" />
+				<view id="219" si_name="get_pwp" view_type="JOINED" row_data_type="person_with_parents">
+					<view_src id="220" si_name="m" match="[person_with_parents,gene,The Catalog Blueprint]">
+						<view_src_field id="221" si_match_field="self_name" />
+						<view_src_field id="222" si_match_field="father_name" />
+						<view_src_field id="223" si_match_field="mother_name" />
 					</view_src>
 					<view_expr id="224" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
 						<view_expr id="225" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="226" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_pwp,get_pwp,m,father_name]" />
-							<view_expr id="227" cont_type="SCALAR" valf_p_routine_item="[,root,blueprints,My App,get_pwp,srchw_fa]" />
+							<view_expr id="226" cont_type="SCALAR" valf_src_field="[father_name,m]" />
+							<view_expr id="227" cont_type="SCALAR" valf_p_routine_item="srchw_fa" />
 						</view_expr>
 						<view_expr id="228" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="229" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_pwp,get_pwp,m,mother_name]" />
-							<view_expr id="230" cont_type="SCALAR" valf_p_routine_item="[,root,blueprints,My App,get_pwp,srchw_mo]" />
+							<view_expr id="229" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
+							<view_expr id="230" cont_type="SCALAR" valf_p_routine_item="srchw_mo" />
 						</view_expr>
 					</view_expr>
-					<view_expr id="231" view_part="ORDER" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_pwp,get_pwp,m,self_name]" />
-					<view_expr id="232" view_part="ORDER" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_pwp,get_pwp,m,father_name]" />
-					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="[,root,blueprints,My App,get_pwp,get_pwp,m,mother_name]" />
+					<view_expr id="231" view_part="ORDER" cont_type="SCALAR" valf_src_field="[self_name,m]" />
+					<view_expr id="232" view_part="ORDER" cont_type="SCALAR" valf_src_field="[father_name,m]" />
+					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
 				</view>
 				<routine_stmt id="234" call_sroutine="CURSOR_OPEN" />
 			</routine>
 			<routine id="235" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="236" si_name="get_theme" view_type="ALIAS" row_data_type="[,root,elements,user_theme]">
-					<view_src id="237" si_name="m" match="[,root,blueprints,My App,user_theme]" />
+				<view id="236" si_name="get_theme" view_type="ALIAS" row_data_type="user_theme">
+					<view_src id="237" si_name="m" match="user_theme" />
 				</view>
 				<routine_stmt id="238" call_sroutine="CURSOR_OPEN" />
 			</routine>
 			<routine id="239" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="240" si_name="get_person" view_type="ALIAS" row_data_type="[,root,elements,person]">
-					<view_src id="241" si_name="person" match="[,root,blueprints,The Catalog Blueprint,gene,person]" />
+				<view id="240" si_name="get_person" view_type="ALIAS" row_data_type="person">
+					<view_src id="241" si_name="person" match="[person,gene,The Catalog Blueprint]" />
 				</view>
 				<routine_stmt id="242" call_sroutine="CURSOR_OPEN" />
 			</routine>
@@ -1059,12 +1048,12 @@ sub expected_model_sid_xml_output {
 	</blueprints>
 	<tools />
 	<sites>
-		<application_instance id="243" si_name="My App Instance" blueprint="[,root,blueprints,My App]" />
+		<application_instance id="243" si_name="My App Instance" blueprint="My App" />
 	</sites>
 	<circumventions />
 </root>
 '
-	);
+	;
 }
 
 ######################################################################
