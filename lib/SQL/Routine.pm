@@ -10,7 +10,7 @@ package SQL::Routine;
 use 5.006;
 use strict;
 use warnings;
-our $VERSION = '0.44';
+our $VERSION = '0.45';
 
 use Locale::KeyedText '1.00';
 
@@ -149,7 +149,7 @@ my $NPROP_CHILD_NODES = 'child_nodes'; # array - list of refs to other Nodes hav
 # Currently only the codes are shown, but attributes may be attached later.
 my %ENUMERATED_TYPES = (
 	'container_type' => { map { ($_ => 1) } qw(
-		SCALAR ERROR CONN CURSOR LIST SRT_NODE SRT_NODE_LIST
+		ERROR SCALAR ROW SC_ARY RW_ARY CONN CURSOR LIST SRT_NODE SRT_NODE_LIST
 	) },
 	'exception_type' => { map { ($_ => 1) } qw(
 		SRTX_NO_ENVI_LOAD_FAILED SRTX_ENVI_EXEC_FAILED 
@@ -194,11 +194,14 @@ my %ENUMERATED_TYPES = (
 		COUNT MIN MAX SUM AVG CONCAT EVERY ANY SOME EXISTS
 		GB_SETS GB_RLUP GB_CUBE
 	) },
+	'standard_routine_context' => { map { ($_ => 1) } qw(
+		CONN_CX CURSOR_CX
+	) },
 	'standard_routine_arg' => { map { ($_ => 1) } qw(
 		RECURSIVE LINK_BP SOURCE_LINK_BP DEST_LINK_BP 
-		CONN_CX LOGIN_USER LOGIN_PASS
+		LOGIN_NAME LOGIN_PASS
 		RETURN_VALUE
-		CURSOR_CX INSERT_DEFN UPDATE_DEFN DELETE_DEFN
+		SELECT_DEFN INSERT_DEFN UPDATE_DEFN DELETE_DEFN
 		CAST_TARGET CAST_OPERAND
 		FACTOR FACTORS LHS RHS ARG TERMS
 		LOOK_IN CASES DEFAULT LOOK_FOR FIXED_LEFT FIXED_RIGHT
@@ -335,6 +338,7 @@ my %NODE_TYPES = (
 			'single_schema' => 'bool',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
+		$TPI_MA_ATTRS => [[qw( name )],[],[]],
 		$TPI_MUDI_ATGPS => [
 			['ak_name',[
 				['catalog_link',['name'],[],[]],
@@ -351,6 +355,7 @@ my %NODE_TYPES = (
 			'name' => 'cstr',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
+		$TPI_MA_ATTRS => [[qw( name )],[],[]],
 		$TPI_MUDI_ATGPS => [
 			['ak_name',[
 				['catalog_link',['name'],[],[]],
@@ -585,7 +590,7 @@ my %NODE_TYPES = (
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
 			'mandatory' => 'bool',
-			'default_val' => 'cstr',
+			'default_val' => 'misc',
 			'auto_inc' => 'bool',
 		},
 		$TPI_AT_NREFS => {
@@ -854,9 +859,9 @@ my %NODE_TYPES = (
 	'view_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id p_expr view view_part set_result_col set_src_col call_src_arg 
-			call_view_arg call_sroutine_arg call_uroutine_arg 
+			call_view_arg call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg 
 			cont_type valf_literal domain valf_src_col valf_result_col valf_p_view_arg 
-			valf_p_routine_arg valf_p_routine_var valf_seq_next 
+			valf_p_routine_cxt valf_p_routine_arg valf_p_routine_var valf_seq_next 
 			valf_call_view valf_call_sroutine valf_call_uroutine catalog_link
 		)],
 		$TPI_AT_LITERALS => {
@@ -864,6 +869,7 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_ENUMS => {
 			'view_part' => 'view_part',
+			'call_sroutine_cxt' => 'standard_routine_context',
 			'call_sroutine_arg' => 'standard_routine_arg',
 			'cont_type' => 'container_type',
 			'valf_call_sroutine' => 'standard_routine',
@@ -875,11 +881,13 @@ my %NODE_TYPES = (
 			'set_src_col' => 'view_src_col',
 			'call_src_arg' => 'view_src_arg',
 			'call_view_arg' => 'view_arg',
+			'call_uroutine_cxt' => 'routine_context',
 			'call_uroutine_arg' => 'routine_arg',
 			'domain' => 'domain',
 			'valf_src_col' => 'view_src_col',
 			'valf_result_col' => 'view_col',
 			'valf_p_view_arg' => 'view_arg',
+			'valf_p_routine_cxt' => 'routine_context',
 			'valf_p_routine_arg' => 'routine_arg',
 			'valf_p_routine_var' => 'routine_var',
 			'valf_seq_next' => 'sequence',
@@ -898,12 +906,6 @@ my %NODE_TYPES = (
 				[[],[],['set_src_col'],['SET'],1],
 				[[],[],['call_src_arg'],['FROM'],1],
 			]],
-			[undef,'cont_type',undef,[
-			#	[['valf_literal'],['valf_call_sroutine'],['valf_src_col','valf_result_col',
-			#		'valf_p_view_arg','valf_p_routine_arg','valf_p_routine_var','valf_seq_next',
-			#		'valf_call_view','valf_call_uroutine'],['SCALAR','ERROR','CONN','CURSOR'],1],
-			#	[[],[],['valf_p_routine_arg','valf_p_routine_var'],['ERROR','CONN','CURSOR'],1],
-			]],
 			['valf_literal',undef,undef,[
 				[[],[],['domain'],[],1],
 			]],
@@ -916,9 +918,11 @@ my %NODE_TYPES = (
 				['view_expr',[],[],['call_view_arg']],
 			]],
 			['ak_sroutine_arg',[
+				['view_expr',[],['call_sroutine_cxt'],[]],
 				['view_expr',[],['call_sroutine_arg'],[]],
 			]],
 			['ak_uroutine_arg',[
+				['view_expr',[],[],['call_uroutine_cxt']],
 				['view_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
@@ -959,12 +963,41 @@ my %NODE_TYPES = (
 			]],
 		],
 		$TPI_CHILD_QUANTS => [
+			['routine_context',0,1],
 			['routine_stmt',1,undef],
 		],
 		$TPI_MUDI_ATGPS => [
 			['ak_name',[
+				['routine_context',['name'],[],[]],
 				['routine_arg',['name'],[],[]],
 				['routine_var',['name'],[],[]],
+			]],
+		],
+	},
+	'routine_context' => {
+		$TPI_AT_SEQUENCE => [qw( 
+			id routine name cont_type conn_link curs_view 
+		)],
+		$TPI_AT_LITERALS => {
+			'name' => 'cstr',
+		},
+		$TPI_AT_ENUMS => {
+			'cont_type' => 'container_type',
+		},
+		$TPI_AT_NREFS => {
+			'routine' => 'routine',
+			'conn_link' => 'catalog_link',
+			'curs_view' => 'view',
+		},
+		$TPI_P_NODE_ATNMS => [qw( routine )],
+		$TPI_MA_ATTRS => [[qw( name )],[qw( cont_type )],[]],
+		$TPI_MUTEX_ATGPS => [
+			['context',[],[],[qw( conn_link curs_view )],1],
+		],
+		$TPI_LOCAL_ATDPS => [
+			[undef,'cont_type',undef,[
+				[[],[],['conn_link'],['CONN'],1],
+				[[],[],['curs_view'],['CURSOR'],1],
 			]],
 		],
 	},
@@ -1029,7 +1062,7 @@ my %NODE_TYPES = (
 	},
 	'routine_stmt' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id routine block_routine assign_dest_arg assign_dest_var 
+			id routine block_routine assign_dest_cxt assign_dest_arg assign_dest_var 
 			call_sroutine call_uroutine catalog_link 
 		)],
 		$TPI_AT_ENUMS => {
@@ -1038,6 +1071,7 @@ my %NODE_TYPES = (
 		$TPI_AT_NREFS => {
 			'routine' => 'routine',
 			'block_routine' => 'routine',
+			'assign_dest_cxt' => 'routine_context',
 			'assign_dest_arg' => 'routine_arg',
 			'assign_dest_var' => 'routine_var',
 			'call_uroutine' => 'routine',
@@ -1046,7 +1080,7 @@ my %NODE_TYPES = (
 		$TPI_P_NODE_ATNMS => [qw( routine )],
 		$TPI_MUTEX_ATGPS => [
 			['stmt_type',[],[qw( call_sroutine )],
-				[qw( block_routine assign_dest_arg assign_dest_var call_uroutine )],1],
+				[qw( block_routine assign_dest_cxt assign_dest_arg assign_dest_var call_uroutine )],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,undef,'call_uroutine',[
@@ -1055,25 +1089,28 @@ my %NODE_TYPES = (
 		],
 		$TPI_MUDI_ATGPS => [
 			['ak_sroutine_arg',[
+				['routine_expr',[],['call_sroutine_cxt'],[]],
 				['routine_expr',[],['call_sroutine_arg'],[]],
 			]],
 			['ak_uroutine_arg',[
+				['routine_expr',[],[],['call_uroutine_cxt']],
 				['routine_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
 	},
 	'routine_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id p_expr p_stmt call_sroutine_arg call_uroutine_arg 
-			cont_type valf_literal domain valf_p_routine_arg valf_p_routine_var 
+			id p_expr p_stmt call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg 
+			cont_type valf_literal domain valf_p_routine_cxt valf_p_routine_arg valf_p_routine_var 
 			valf_seq_next valf_call_sroutine valf_call_uroutine catalog_link
 			actn_catalog_link actn_schema actn_domain actn_sequence actn_table 
 			actn_view actn_routine actn_user
 		)],
 		$TPI_AT_LITERALS => {
-			'valf_literal' => 'cstr',
+			'valf_literal' => 'misc',
 		},
 		$TPI_AT_ENUMS => {
+			'call_sroutine_cxt' => 'standard_routine_context',
 			'call_sroutine_arg' => 'standard_routine_arg',
 			'cont_type' => 'container_type',
 			'valf_call_sroutine' => 'standard_routine',
@@ -1081,8 +1118,10 @@ my %NODE_TYPES = (
 		$TPI_AT_NREFS => {
 			'p_expr' => 'routine_expr',
 			'p_stmt' => 'routine_stmt',
+			'call_uroutine_cxt' => 'routine_context',
 			'call_uroutine_arg' => 'routine_arg',
 			'domain' => 'domain',
+			'valf_p_routine_cxt' => 'routine_context',
 			'valf_p_routine_arg' => 'routine_arg',
 			'valf_p_routine_var' => 'routine_var',
 			'valf_seq_next' => 'sequence',
@@ -1101,9 +1140,6 @@ my %NODE_TYPES = (
 		$TPI_MA_ATTRS => [[],[qw( cont_type )],[]],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
-			#	[['valf_literal'],['valf_call_sroutine'],['valf_p_routine_arg','valf_p_routine_var',
-			#		'valf_seq_next','valf_call_uroutine'],['SCALAR','ERROR','CONN','CURSOR'],1],
-			#	[[],[],['valf_p_routine_arg','valf_p_routine_var'],['ERROR','CONN','CURSOR'],1],
 				[[],[],['actn_catalog_link','actn_schema','actn_domain','actn_sequence',
 					'actn_table','actn_view','actn_routine','actn_user'],['SRT_NODE'],1],
 			]],
@@ -1116,9 +1152,11 @@ my %NODE_TYPES = (
 		],
 		$TPI_MUDI_ATGPS => [
 			['ak_sroutine_arg',[
+				['routine_expr',[],['call_sroutine_cxt'],[]],
 				['routine_expr',[],['call_sroutine_arg'],[]],
 			]],
 			['ak_uroutine_arg',[
+				['routine_expr',[],[],['call_uroutine_cxt']],
 				['routine_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
@@ -1136,7 +1174,7 @@ my %NODE_TYPES = (
 			'is_network_svc' => 'bool',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
-		$TPI_MA_ATTRS => [[qw( product_code )],[],[]],
+		$TPI_MA_ATTRS => [[qw( name product_code )],[],[]],
 		$TPI_MUTEX_ATGPS => [
 			['type',[qw( is_memory_based is_file_based is_local_proc is_network_svc )],[],[],1],
 		],
@@ -1151,12 +1189,12 @@ my %NODE_TYPES = (
 			'is_proxy' => 'bool',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
-		$TPI_MA_ATTRS => [[qw( product_code )],[],[]],
+		$TPI_MA_ATTRS => [[qw( name product_code )],[],[]],
 	},
 	'catalog_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id name product blueprint file_path server_ip server_domain server_port
-			local_dsn login_user login_pass
+			local_dsn login_name login_pass
 		)],
 		$TPI_AT_LITERALS => {
 			'name' => 'cstr',
@@ -1165,7 +1203,7 @@ my %NODE_TYPES = (
 			'server_domain' => 'cstr',
 			'server_port' => 'uint',
 			'local_dsn' => 'cstr',
-			'login_user' => 'cstr',
+			'login_name' => 'cstr',
 			'login_pass' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
@@ -1173,7 +1211,7 @@ my %NODE_TYPES = (
 			'blueprint' => 'catalog',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_SITE_PSND,
-		$TPI_MA_ATTRS => [[],[],[qw( product blueprint )]],
+		$TPI_MA_ATTRS => [[qw( name )],[],[qw( product blueprint )]],
 		$TPI_MUDI_ATGPS => [
 			['ak_option',[
 				['catalog_instance_opt',['key'],[],[]],
@@ -1211,7 +1249,7 @@ my %NODE_TYPES = (
 			'blueprint' => 'application',
 		},
 		$TPI_P_PSEUDONODE => $SQLRT_L2_SITE_PSND,
-		$TPI_MA_ATTRS => [[],[],[qw( blueprint )]],
+		$TPI_MA_ATTRS => [[qw( name )],[],[qw( blueprint )]],
 		$TPI_MUDI_ATGPS => [
 			['ak_cat_link_inst',[
 				['catalog_link_instance',['unrealized'],[],[]],
@@ -1220,11 +1258,11 @@ my %NODE_TYPES = (
 	},
 	'catalog_link_instance' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id p_link catalog application product unrealized target local_dsn login_user login_pass
+			id p_link catalog application product unrealized target local_dsn login_name login_pass
 		)],
 		$TPI_AT_LITERALS => {
 			'local_dsn' => 'cstr',
-			'login_user' => 'cstr',
+			'login_name' => 'cstr',
 			'login_pass' => 'cstr',
 		},
 		$TPI_AT_NREFS => {
@@ -2858,6 +2896,7 @@ columns, plus two domains used by it, plus the necessary CREATE instruction:
 
 		# Describe the database catalog blueprint that we will store our data in:
 		my $catalog_bp = make_a_node( 'catalog', $model );
+		$catalog_bp->set_literal_attribute( 'name', 'The Catalog Blueprint' );
 
 		# Define the unrealized database user that owns our primary schema:
 		my $owner = make_a_child_node( 'owner', $catalog_bp, 'catalog' );
@@ -2916,8 +2955,8 @@ columns, plus two domains used by it, plus the necessary CREATE instruction:
 
 		# Describe a routine for setting up a database with our schema:
 		my $rt_install = make_a_child_node( 'routine', $setup_app, 'application' );
-		$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 		$rt_install->set_literal_attribute( 'name', 'install_app_schema' );
+		$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 		my $rts_install = make_a_child_node( 'routine_stmt', $rt_install, 'routine' );
 		$rts_install->set_enumerated_attribute( 'call_sroutine', 'CATALOG_CREATE' );
 		my $rte_install_a1 = make_a_child_node( 'routine_expr', $rts_install, 'p_stmt' );
@@ -2929,6 +2968,14 @@ columns, plus two domains used by it, plus the necessary CREATE instruction:
 		$rte_install_a2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 		$rte_install_a2->set_literal_attribute( 'valf_literal', 1 );
 		$rte_install_a2->set_node_ref_attribute( 'domain', $dom_boolean );
+
+		##### NEXT SET PRODUCT-TYPE DETAILS #####
+
+		# ... TODO ...
+
+		##### NEXT SET INSTANCE-TYPE DETAILS #####
+
+		# ... TODO ...
 
 		##### END OF DETAILS SETTING #####
 
@@ -3061,30 +3108,30 @@ named host parameter if un-named client-side SQL is generated) and performs an
 UPDATE query against one table record; the query takes 4 arguments, using one
 to match a record and 3 as new record column values to set.
 
-	<routine id="6" application="2" name="update_a_person" routine_type="PROCEDURE">
-		<routine_arg id="9" routine="6" name="db_conn" cont_type="CONN" conn_link="2" />
-		<routine_arg id="10" routine="6" name="arg_person_id" cont_type="SCALAR" domain="1" />
-		<routine_arg id="11" routine="6" name="arg_person_name" cont_type="SCALAR" domain="2" />
-		<routine_arg id="12" routine="6" name="arg_father_id" cont_type="SCALAR" domain="1" />
-		<routine_arg id="13" routine="6" name="arg_mother_id" cont_type="SCALAR" domain="1" />
-		<view id="3" routine="6" name="update_a_person" view_type="MATCH">
+	<routine id="8" application="2" name="update_a_person" routine_type="PROCEDURE">
+		<routine_context id="5" routine="8" name="conn_cx" cont_type="CONN" conn_link="2" />
+		<routine_arg id="7" routine="8" name="arg_person_id" cont_type="SCALAR" domain="1" />
+		<routine_arg id="8" routine="8" name="arg_person_name" cont_type="SCALAR" domain="2" />
+		<routine_arg id="9" routine="8" name="arg_father_id" cont_type="SCALAR" domain="1" />
+		<routine_arg id="10" routine="8" name="arg_mother_id" cont_type="SCALAR" domain="1" />
+		<view id="3" routine="8" name="update_a_person" view_type="MATCH">
 			<view_src id="3" view="3" name="person" match_table="1">
 				<view_src_col id="5" src="3" match_table_col="1" />
 				<view_src_col id="6" src="3" match_table_col="2" />
 				<view_src_col id="7" src="3" match_table_col="3" />
 				<view_src_col id="8" src="3" match_table_col="4" />
 			</view_src>
-			<view_expr id="5" view="3" view_part="SET" set_src_col="6" cont_type="SCALAR" valf_p_routine_arg="11" />
-			<view_expr id="6" view="3" view_part="SET" set_src_col="7" cont_type="SCALAR" valf_p_routine_arg="12" />
-			<view_expr id="7" view="3" view_part="SET" set_src_col="8" cont_type="SCALAR" valf_p_routine_arg="13" />
+			<view_expr id="5" view="3" view_part="SET" set_src_col="6" cont_type="SCALAR" valf_p_routine_arg="8" />
+			<view_expr id="6" view="3" view_part="SET" set_src_col="7" cont_type="SCALAR" valf_p_routine_arg="9" />
+			<view_expr id="7" view="3" view_part="SET" set_src_col="8" cont_type="SCALAR" valf_p_routine_arg="10" />
 			<view_expr id="8" view="3" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
 				<view_expr id="9" p_expr="8" cont_type="SCALAR" valf_src_col="5" />
-				<view_expr id="10" p_expr="8" cont_type="SCALAR" valf_p_routine_arg="10" />
+				<view_expr id="10" p_expr="8" cont_type="SCALAR" valf_p_routine_arg="7" />
 			</view_expr>
 		</view>
-		<routine_stmt id="8" routine="6" call_sroutine="UPDATE">
-			<routine_expr id="13" p_stmt="8" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="9" />
-			<routine_expr id="14" p_stmt="8" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" actn_view="3" />
+		<routine_stmt id="9" routine="8" call_sroutine="UPDATE">
+			<routine_expr id="13" p_stmt="9" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="5" />
+			<routine_expr id="14" p_stmt="9" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" actn_view="3" />
 		</routine_stmt>
 	</routine>
 
@@ -3151,21 +3198,50 @@ which is a reference implementation of a SQL generator for SQL::Routine.>
 
 =head1 DESCRIPTION
 
-The SQL::Routine Perl 5 module is intended to be a powerful but easy to use
-replacement for SQL strings (including support for placeholders), which you can
-use to make queries against a database.  Each SQL::Routine object can
-represent a non-ambiguous rigorously structured command for a database to
-execute, or one can be a non-ambiguous rigorously structured description of a
-database schema object. This class supports all types of database operations,
-including both data manipulation and schema manipulation, as well as managing
-database instances and users.  You typically construct a database query by
-setting appropriate attributes of these objects, and you execute a database
-query by evaluating the same attributes.  SQL::Routine objects are designed
-to be equivalent to SQL in both the type of information they carry and in their
-conceptual structure. This is analagous to how XML DOMs are objects that are
-equivalent to XML strings, and they can be converted back and forth at will. 
-If you know SQL, or even just relational database theory in general, then this
-module should be easy to learn.
+The SQL::Routine (SRT) Perl 5 module provides a container object that allows
+you to create specifications for any type of database task or activity (eg:
+queries, DML, DDL, connection management) that look like ordinary routines
+(procedures or functions) to your programs; all routine arguments are named.
+
+Typical usage of this module involves creating or loading a single
+SQL::Routine::Container object when your program starts up; this Container
+would hold a complete representation of each database catalog that your program
+uses (including details of all schema objects), plus complete representations
+of all database invocations by your program; your program then typically just
+reads from the Container while active to help determine its actions.
+
+SQL::Routine can broadly represent, as an abstract syntax tree, code for any
+programming language, but many of its concepts are only applicable to
+relational databases, particularly SQL understanding databases.  It is
+reasonable to expect that a SQL:2003 compliant database should be able to
+implement nearly all SQL::Routine concepts in its SQL stored procedures and
+functions, though SQL:2003 specifies some of these concepts as optional
+features rather than core features.
+
+SQL::Routine is intended to be used by an application in place of using actual
+SQL strings (including support for placeholders).  You define any desired
+actions by stuffing atomic values into SQL::Routine objects, and then pass
+those objects to a compatible bridging engine that will compile and execute
+those objects against one or more actual databases.  Said bridge would be
+responsible for generating any SQL or Perl code necessary to implement the
+given SRT routine specification, and returning the result of its execution. 
+
+The 'Rosetta' database portability library (a Perl 5 module) is a database
+bridge that takes its instructions as SQL::Routine objects.  There may be other
+modules that use SQL::Routine for that or other purposes.
+
+SQL::Routine is also intended to be used as an intermediate representation of
+schema definitions or other SQL that is being translated from one database
+product to another.
+
+This module is loosely similar to SQL::Statement, and is intended to be used in
+all of the same ways.  But SQL::Routine is a lot more powerful and capable than
+that module, and is suitable for many uses that the other module isn't.
+
+SQL::Routine does not parse or generate any code on its own, nor does it talk
+to any databases; it is up to external code that uses it to do this.
+
+=head1 MATTERS OF PORTABILITY AND FEATURES
 
 SQL::Routines are intended to represent all kinds of SQL, both DML and DDL,
 both ANSI standard and RDBMS vendor extensions.  Unlike basically all of the
@@ -4155,8 +4231,8 @@ solved, such as Containers being destroyed too early.
 
 =head1 SEE ALSO
 
-perl(1), SQL::Routine::L::en, SQL::Routine::Language,
-SQL::Routine::API_C, Locale::KeyedText, Rosetta,
+perl(1), SQL::Routine::L::en, SQL::Routine::Language, SQL::Routine::API_C,
+Locale::KeyedText, Rosetta, Rosetta::Engine::Generic,
 Rosetta::Utility::SQLBuilder, Rosetta::Utility::SQLParser,
 SQL::Routine::ByTree, SQL::Routine::SkipID, DBI, SQL::Statement,
 SQL::Translator, SQL::YASP, SQL::Generator, SQL::Schema, SQL::Abstract,

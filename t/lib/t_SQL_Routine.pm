@@ -36,6 +36,7 @@ sub create_and_populate_model {
 
 	# Describe the database catalog blueprint that we will store our data in:
 	my $catalog_bp = make_a_node( 'catalog', $model );
+	$catalog_bp->set_literal_attribute( 'name', 'The Catalog Blueprint' );
 
 	# Define the unrealized database user that owns our primary schema:
 	my $owner = make_a_child_node( 'owner', $catalog_bp, 'catalog' );
@@ -131,8 +132,8 @@ sub create_and_populate_model {
 
 	# Describe a routine for setting up a database with our schema:
 	my $rt_install = make_a_child_node( 'routine', $setup_app, 'application' );
-	$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	$rt_install->set_literal_attribute( 'name', 'install_app_schema' );
+	$rt_install->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	my $rts_install = make_a_child_node( 'routine_stmt', $rt_install, 'routine' );
 	$rts_install->set_enumerated_attribute( 'call_sroutine', 'CATALOG_CREATE' );
 	my $rte_install_a1 = make_a_child_node( 'routine_expr', $rts_install, 'p_stmt' );
@@ -147,8 +148,8 @@ sub create_and_populate_model {
 
 	# Describe a routine for tearing down a database with our schema:
 	my $rt_remove = make_a_child_node( 'routine', $setup_app, 'application' );
-	$rt_remove->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	$rt_remove->set_literal_attribute( 'name', 'remove_app_schema' );
+	$rt_remove->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	my $rts_remove = make_a_child_node( 'routine_stmt', $rt_remove, 'routine' );
 	$rts_remove->set_enumerated_attribute( 'call_sroutine', 'CATALOG_DELETE' );
 	my $rte_remove_a1 = make_a_child_node( 'routine_expr', $rts_remove, 'p_stmt' );
@@ -172,11 +173,30 @@ sub create_and_populate_model {
 	$dom_loginauth->set_literal_attribute( 'max_chars', 20 );
 	$dom_loginauth->set_enumerated_attribute( 'char_enc', 'UTF8' );
 
-	# Describe a routine that opens a database connection, returning it for later use:
+	# Describe a routine that makes a new database connection context, returning it for later use:
+	my $rt_declare = make_a_child_node( 'routine', $editor_app, 'application' );
+	$rt_declare->set_literal_attribute( 'name', 'declare_db_conn' );
+	$rt_declare->set_enumerated_attribute( 'routine_type', 'FUNCTION' );
+	$rt_declare->set_enumerated_attribute( 'return_cont_type', 'CONN' );
+	my $rtv_declare_conn_cx = make_a_child_node( 'routine_var', $rt_declare, 'routine' );
+	$rtv_declare_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtv_declare_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtv_declare_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	my $rts_declare_return = make_a_child_node( 'routine_stmt', $rt_declare, 'routine' );
+	$rts_declare_return->set_enumerated_attribute( 'call_sroutine', 'RETURN' );
+	my $rte_declare_return_a1 = make_a_child_node( 'routine_expr', $rts_declare_return, 'p_stmt' );
+	$rte_declare_return_a1->set_enumerated_attribute( 'call_sroutine_arg', 'RETURN_VALUE' );
+	$rte_declare_return_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_declare_return_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_declare_conn_cx );
+
+	# Describe a routine that opens a database connection context:
 	my $rt_open = make_a_child_node( 'routine', $editor_app, 'application' );
-	$rt_open->set_enumerated_attribute( 'routine_type', 'FUNCTION' );
 	$rt_open->set_literal_attribute( 'name', 'open_db_conn' );
-	$rt_open->set_enumerated_attribute( 'return_cont_type', 'CONN' );
+	$rt_open->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+	my $rtc_open_conn_cx = make_a_child_node( 'routine_context', $rt_open, 'routine' );
+	$rtc_open_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_open_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_open_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $rta_open_user = make_a_child_node( 'routine_arg', $rt_open, 'routine' );
 	$rta_open_user->set_literal_attribute( 'name', 'login_name' );
 	$rta_open_user->set_enumerated_attribute( 'cont_type', 'SCALAR' );
@@ -185,77 +205,78 @@ sub create_and_populate_model {
 	$rta_open_pass->set_literal_attribute( 'name', 'login_pass' );
 	$rta_open_pass->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_open_pass->set_node_ref_attribute( 'domain', $dom_loginauth );
-	my $rtv_open_conn = make_a_child_node( 'routine_var', $rt_open, 'routine' );
-	$rtv_open_conn->set_literal_attribute( 'name', 'db_conn' );
-	$rtv_open_conn->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rtv_open_conn->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $rts_open_c = make_a_child_node( 'routine_stmt', $rt_open, 'routine' );
 	$rts_open_c->set_enumerated_attribute( 'call_sroutine', 'CATALOG_OPEN' );
+	my $rte_open_c_cx = make_a_child_node( 'routine_expr', $rts_open_c, 'p_stmt' );
+	$rte_open_c_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
+	$rte_open_c_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_open_c_cx->set_node_ref_attribute( 'valf_p_routine_cxt', $rtc_open_conn_cx );
 	my $rte_open_c_a1 = make_a_child_node( 'routine_expr', $rts_open_c, 'p_stmt' );
-	$rte_open_c_a1->set_enumerated_attribute( 'call_sroutine_arg', 'CONN_CX' );
-	$rte_open_c_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_open_c_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_open_conn );
+	$rte_open_c_a1->set_enumerated_attribute( 'call_sroutine_arg', 'LOGIN_NAME' );
+	$rte_open_c_a1->set_enumerated_attribute( 'cont_type', 'SCALAR' );
+	$rte_open_c_a1->set_node_ref_attribute( 'valf_p_routine_arg', $rta_open_user );
 	my $rte_open_c_a2 = make_a_child_node( 'routine_expr', $rts_open_c, 'p_stmt' );
-	$rte_open_c_a2->set_enumerated_attribute( 'call_sroutine_arg', 'LOGIN_USER' );
+	$rte_open_c_a2->set_enumerated_attribute( 'call_sroutine_arg', 'LOGIN_PASS' );
 	$rte_open_c_a2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
-	$rte_open_c_a2->set_node_ref_attribute( 'valf_p_routine_arg', $rta_open_user );
-	my $rte_open_c_a3 = make_a_child_node( 'routine_expr', $rts_open_c, 'p_stmt' );
-	$rte_open_c_a3->set_enumerated_attribute( 'call_sroutine_arg', 'LOGIN_PASS' );
-	$rte_open_c_a3->set_enumerated_attribute( 'cont_type', 'SCALAR' );
-	$rte_open_c_a3->set_node_ref_attribute( 'valf_p_routine_arg', $rta_open_pass );
-	my $rts_open_return = make_a_child_node( 'routine_stmt', $rt_open, 'routine' );
-	$rts_open_return->set_enumerated_attribute( 'call_sroutine', 'RETURN' );
-	my $rte_open_return_a1 = make_a_child_node( 'routine_expr', $rts_open_return, 'p_stmt' );
-	$rte_open_return_a1->set_enumerated_attribute( 'call_sroutine_arg', 'RETURN_VALUE' );
-	$rte_open_return_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_open_return_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_open_conn );
+	$rte_open_c_a2->set_node_ref_attribute( 'valf_p_routine_arg', $rta_open_pass );
+
+	# Describe a routine that closes a database connection context:
+	my $rt_close = make_a_child_node( 'routine', $editor_app, 'application' );
+	$rt_close->set_literal_attribute( 'name', 'close_db_conn' );
+	$rt_close->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+	my $rtc_close_conn_cx = make_a_child_node( 'routine_context', $rt_close, 'routine' );
+	$rtc_close_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_close_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_close_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	my $rts_close_c = make_a_child_node( 'routine_stmt', $rt_close, 'routine' );
+	$rts_close_c->set_enumerated_attribute( 'call_sroutine', 'CATALOG_CLOSE' );
+	my $rte_close_c_cx = make_a_child_node( 'routine_expr', $rts_close_c, 'p_stmt' );
+	$rte_close_c_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
+	$rte_close_c_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_close_c_cx->set_node_ref_attribute( 'valf_p_routine_cxt', $rtc_close_conn_cx );
 
 	# Describe a routine that returns a cursor to fetch all records in the 'person' table:
 	my $rt_fetchall = make_a_child_node( 'routine', $editor_app, 'application' );
-	$rt_fetchall->set_enumerated_attribute( 'routine_type', 'FUNCTION' );
 	$rt_fetchall->set_literal_attribute( 'name', 'fetch_all_persons' );
+	$rt_fetchall->set_enumerated_attribute( 'routine_type', 'FUNCTION' );
 	$rt_fetchall->set_enumerated_attribute( 'return_cont_type', 'CURSOR' );
-	my $rta_fet_conn = make_a_child_node( 'routine_arg', $rt_fetchall, 'routine' );
-	$rta_fet_conn->set_literal_attribute( 'name', 'db_conn' );
-	$rta_fet_conn->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rta_fet_conn->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	my $rtc_fet_conn_cx = make_a_child_node( 'routine_context', $rt_fetchall, 'routine' );
+	$rtc_fet_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_fet_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_fet_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $vw_fetchall = make_a_child_node( 'view', $rt_fetchall, 'routine' );
-	$vw_fetchall->set_enumerated_attribute( 'view_type', 'MATCH' );
 	$vw_fetchall->set_literal_attribute( 'name', 'fetch_all_persons' );
+	$vw_fetchall->set_enumerated_attribute( 'view_type', 'MATCH' );
 	$vw_fetchall->set_literal_attribute( 'match_all_cols', 1 );
 	my $vw_fetchall_s1 = make_a_child_node( 'view_src', $vw_fetchall, 'view' );
 	$vw_fetchall_s1->set_literal_attribute( 'name', 'person' );
 	$vw_fetchall_s1->set_node_ref_attribute( 'match_table', $tb_person );
-	my $rtv_fet_cursor = make_a_child_node( 'routine_var', $rt_fetchall, 'routine' );
-	$rtv_fet_cursor->set_literal_attribute( 'name', 'person_cursor' );
-	$rtv_fet_cursor->set_enumerated_attribute( 'cont_type', 'CURSOR' );
-	$rtv_fet_cursor->set_node_ref_attribute( 'curs_view', $vw_fetchall );
+	my $rtv_fet_cursor_cx = make_a_child_node( 'routine_var', $rt_fetchall, 'routine' );
+	$rtv_fet_cursor_cx->set_literal_attribute( 'name', 'cursor_cx' );
+	$rtv_fet_cursor_cx->set_enumerated_attribute( 'cont_type', 'CURSOR' );
+	$rtv_fet_cursor_cx->set_node_ref_attribute( 'curs_view', $vw_fetchall );
 	my $rts_fet_open_c = make_a_child_node( 'routine_stmt', $rt_fetchall, 'routine' );
 	$rts_fet_open_c->set_enumerated_attribute( 'call_sroutine', 'CURSOR_OPEN' );
-	my $rte_fet_open_c_a1 = make_a_child_node( 'routine_expr', $rts_fet_open_c, 'p_stmt' );
-	$rte_fet_open_c_a1->set_enumerated_attribute( 'call_sroutine_arg', 'CONN_CX' );
-	$rte_fet_open_c_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_fet_open_c_a1->set_node_ref_attribute( 'valf_p_routine_arg', $rta_fet_conn );
-	my $rte_fet_open_c_a2 = make_a_child_node( 'routine_expr', $rts_fet_open_c, 'p_stmt' );
-	$rte_fet_open_c_a2->set_enumerated_attribute( 'call_sroutine_arg', 'CURSOR_CX' );
-	$rte_fet_open_c_a2->set_enumerated_attribute( 'cont_type', 'CURSOR' );
-	$rte_fet_open_c_a2->set_node_ref_attribute( 'valf_p_routine_var', $rtv_fet_cursor );
+	my $rte_fet_open_c_cx = make_a_child_node( 'routine_expr', $rts_fet_open_c, 'p_stmt' );
+	$rte_fet_open_c_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CURSOR_CX' );
+	$rte_fet_open_c_cx->set_enumerated_attribute( 'cont_type', 'CURSOR' );
+	$rte_fet_open_c_cx->set_node_ref_attribute( 'valf_p_routine_var', $rtv_fet_cursor_cx );
 	my $rts_fet_return = make_a_child_node( 'routine_stmt', $rt_fetchall, 'routine' );
 	$rts_fet_return->set_enumerated_attribute( 'call_sroutine', 'RETURN' );
 	my $rte_fet_return_a1 = make_a_child_node( 'routine_expr', $rts_fet_return, 'p_stmt' );
 	$rte_fet_return_a1->set_enumerated_attribute( 'call_sroutine_arg', 'RETURN_VALUE' );
 	$rte_fet_return_a1->set_enumerated_attribute( 'cont_type', 'CURSOR' );
-	$rte_fet_return_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_fet_cursor );
+	$rte_fet_return_a1->set_node_ref_attribute( 'valf_p_routine_var', $rtv_fet_cursor_cx );
 	# ... The calling code would then fetch whatever rows they want and then close the cursor
 
 	# Describe a routine that inserts a record into the 'person' table:
 	my $rt_insertone = make_a_child_node( 'routine', $editor_app, 'application' );
-	$rt_insertone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	$rt_insertone->set_literal_attribute( 'name', 'insert_a_person' );
-	my $rta_ins_conn = make_a_child_node( 'routine_arg', $rt_insertone, 'routine' );
-	$rta_ins_conn->set_literal_attribute( 'name', 'db_conn' );
-	$rta_ins_conn->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rta_ins_conn->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	$rt_insertone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+	my $rtc_ins_conn_cx = make_a_child_node( 'routine_context', $rt_insertone, 'routine' );
+	$rtc_ins_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_ins_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_ins_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $rta_ins_pid = make_a_child_node( 'routine_arg', $rt_insertone, 'routine' );
 	$rta_ins_pid->set_literal_attribute( 'name', 'arg_person_id' );
 	$rta_ins_pid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
@@ -273,8 +294,8 @@ sub create_and_populate_model {
 	$rta_ins_mid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_ins_mid->set_node_ref_attribute( 'domain', $dom_entity_id );
 	my $vw_insertone = make_a_child_node( 'view', $rt_insertone, 'routine' );
-	$vw_insertone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	$vw_insertone->set_literal_attribute( 'name', 'insert_a_person' );
+	$vw_insertone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	my $vws_ins_pers = make_a_child_node( 'view_src', $vw_insertone, 'view' );
 	$vws_ins_pers->set_literal_attribute( 'name', 'person' );
 	$vws_ins_pers->set_node_ref_attribute( 'match_table', $tb_person );
@@ -308,24 +329,24 @@ sub create_and_populate_model {
 	$vwe_ins_set3->set_node_ref_attribute( 'valf_p_routine_arg', $rta_ins_mid );
 	my $rts_insert = make_a_child_node( 'routine_stmt', $rt_insertone, 'routine' );
 	$rts_insert->set_enumerated_attribute( 'call_sroutine', 'INSERT' );
+	my $rte_insert_cx = make_a_child_node( 'routine_expr', $rts_insert, 'p_stmt' );
+	$rte_insert_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
+	$rte_insert_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_insert_cx->set_node_ref_attribute( 'valf_p_routine_cxt', $rtc_ins_conn_cx );
 	my $rte_insert_a1 = make_a_child_node( 'routine_expr', $rts_insert, 'p_stmt' );
-	$rte_insert_a1->set_enumerated_attribute( 'call_sroutine_arg', 'CONN_CX' );
-	$rte_insert_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_insert_a1->set_node_ref_attribute( 'valf_p_routine_arg', $rta_ins_conn );
-	my $rte_insert_a2 = make_a_child_node( 'routine_expr', $rts_insert, 'p_stmt' );
-	$rte_insert_a2->set_enumerated_attribute( 'call_sroutine_arg', 'INSERT_DEFN' );
-	$rte_insert_a2->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
-	$rte_insert_a2->set_node_ref_attribute( 'actn_view', $vw_insertone );
+	$rte_insert_a1->set_enumerated_attribute( 'call_sroutine_arg', 'INSERT_DEFN' );
+	$rte_insert_a1->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
+	$rte_insert_a1->set_node_ref_attribute( 'actn_view', $vw_insertone );
 	# ... Currently, nothing is returned, though a count of affected rows could be later
 
 	# Describe a routine that updates a record in the 'person' table:
 	my $rt_updateone = make_a_child_node( 'routine', $editor_app, 'application' );
-	$rt_updateone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	$rt_updateone->set_literal_attribute( 'name', 'update_a_person' );
-	my $rta_upd_conn = make_a_child_node( 'routine_arg', $rt_updateone, 'routine' );
-	$rta_upd_conn->set_literal_attribute( 'name', 'db_conn' );
-	$rta_upd_conn->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rta_upd_conn->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	$rt_updateone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+	my $rtc_upd_conn_cx = make_a_child_node( 'routine_context', $rt_updateone, 'routine' );
+	$rtc_upd_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_upd_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_upd_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $rta_upd_pid = make_a_child_node( 'routine_arg', $rt_updateone, 'routine' );
 	$rta_upd_pid->set_literal_attribute( 'name', 'arg_person_id' );
 	$rta_upd_pid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
@@ -343,8 +364,8 @@ sub create_and_populate_model {
 	$rta_upd_mid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_upd_mid->set_node_ref_attribute( 'domain', $dom_entity_id );
 	my $vw_updateone = make_a_child_node( 'view', $rt_updateone, 'routine' );
-	$vw_updateone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	$vw_updateone->set_literal_attribute( 'name', 'update_a_person' );
+	$vw_updateone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	my $vws_upd_pers = make_a_child_node( 'view_src', $vw_updateone, 'view' );
 	$vws_upd_pers->set_literal_attribute( 'name', 'person' );
 	$vws_upd_pers->set_node_ref_attribute( 'match_table', $tb_person );
@@ -383,31 +404,31 @@ sub create_and_populate_model {
 	$vwe_upd_w3->set_node_ref_attribute( 'valf_p_routine_arg', $rta_upd_pid );
 	my $rts_update = make_a_child_node( 'routine_stmt', $rt_updateone, 'routine' );
 	$rts_update->set_enumerated_attribute( 'call_sroutine', 'UPDATE' );
+	my $rte_update_cx = make_a_child_node( 'routine_expr', $rts_update, 'p_stmt' );
+	$rte_update_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
+	$rte_update_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_update_cx->set_node_ref_attribute( 'valf_p_routine_cxt', $rtc_upd_conn_cx );
 	my $rte_update_a1 = make_a_child_node( 'routine_expr', $rts_update, 'p_stmt' );
-	$rte_update_a1->set_enumerated_attribute( 'call_sroutine_arg', 'CONN_CX' );
-	$rte_update_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_update_a1->set_node_ref_attribute( 'valf_p_routine_arg', $rta_upd_conn );
-	my $rte_update_a2 = make_a_child_node( 'routine_expr', $rts_update, 'p_stmt' );
-	$rte_update_a2->set_enumerated_attribute( 'call_sroutine_arg', 'UPDATE_DEFN' );
-	$rte_update_a2->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
-	$rte_update_a2->set_node_ref_attribute( 'actn_view', $vw_updateone );
+	$rte_update_a1->set_enumerated_attribute( 'call_sroutine_arg', 'UPDATE_DEFN' );
+	$rte_update_a1->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
+	$rte_update_a1->set_node_ref_attribute( 'actn_view', $vw_updateone );
 	# ... Currently, nothing is returned, though a count of affected rows could be later
 
 	# Describe a routine that deletes a record from the 'person' table:
 	my $rt_deleteone = make_a_child_node( 'routine', $editor_app, 'application' );
-	$rt_deleteone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
 	$rt_deleteone->set_literal_attribute( 'name', 'delete_a_person' );
-	my $rta_del_conn = make_a_child_node( 'routine_arg', $rt_deleteone, 'routine' );
-	$rta_del_conn->set_literal_attribute( 'name', 'db_conn' );
-	$rta_del_conn->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rta_del_conn->set_node_ref_attribute( 'conn_link', $editor_app_cl );
+	$rt_deleteone->set_enumerated_attribute( 'routine_type', 'PROCEDURE' );
+	my $rtc_del_conn_cx = make_a_child_node( 'routine_context', $rt_deleteone, 'routine' );
+	$rtc_del_conn_cx->set_literal_attribute( 'name', 'conn_cx' );
+	$rtc_del_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rtc_del_conn_cx->set_node_ref_attribute( 'conn_link', $editor_app_cl );
 	my $rta_del_pid = make_a_child_node( 'routine_arg', $rt_deleteone, 'routine' );
 	$rta_del_pid->set_literal_attribute( 'name', 'arg_person_id' );
 	$rta_del_pid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_del_pid->set_node_ref_attribute( 'domain', $dom_entity_id );
 	my $vw_deleteone = make_a_child_node( 'view', $rt_deleteone, 'routine' );
-	$vw_deleteone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	$vw_deleteone->set_literal_attribute( 'name', 'delete_a_person' );
+	$vw_deleteone->set_enumerated_attribute( 'view_type', 'MATCH' );
 	my $vws_del_pers = make_a_child_node( 'view_src', $vw_deleteone, 'view' );
 	$vws_del_pers->set_literal_attribute( 'name', 'person' );
 	$vws_del_pers->set_node_ref_attribute( 'match_table', $tb_person );
@@ -425,51 +446,54 @@ sub create_and_populate_model {
 	$vwe_del_w3->set_node_ref_attribute( 'valf_p_routine_arg', $rta_del_pid );
 	my $rts_delete = make_a_child_node( 'routine_stmt', $rt_deleteone, 'routine' );
 	$rts_delete->set_enumerated_attribute( 'call_sroutine', 'DELETE' );
+	my $rte_delete_cx = make_a_child_node( 'routine_expr', $rts_delete, 'p_stmt' );
+	$rte_delete_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
+	$rte_delete_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
+	$rte_delete_cx->set_node_ref_attribute( 'valf_p_routine_cxt', $rtc_del_conn_cx );
 	my $rte_delete_a1 = make_a_child_node( 'routine_expr', $rts_delete, 'p_stmt' );
-	$rte_delete_a1->set_enumerated_attribute( 'call_sroutine_arg', 'CONN_CX' );
-	$rte_delete_a1->set_enumerated_attribute( 'cont_type', 'CONN' );
-	$rte_delete_a1->set_node_ref_attribute( 'valf_p_routine_arg', $rta_del_conn );
-	my $rte_delete_a2 = make_a_child_node( 'routine_expr', $rts_delete, 'p_stmt' );
-	$rte_delete_a2->set_enumerated_attribute( 'call_sroutine_arg', 'DELETE_DEFN' );
-	$rte_delete_a2->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
-	$rte_delete_a2->set_node_ref_attribute( 'actn_view', $vw_deleteone );
+	$rte_delete_a1->set_enumerated_attribute( 'call_sroutine_arg', 'DELETE_DEFN' );
+	$rte_delete_a1->set_enumerated_attribute( 'cont_type', 'SRT_NODE' );
+	$rte_delete_a1->set_node_ref_attribute( 'actn_view', $vw_deleteone );
 	# ... Currently, nothing is returned, though a count of affected rows could be later
 
 	##### NEXT SET PRODUCT-TYPE DETAILS #####
 
 	# Indicate one database product we will be using:
 	my $dsp_sqlite = make_a_node( 'data_storage_product', $model );
+	$dsp_sqlite->set_literal_attribute( 'name', 'SQLite v2.8.12' );
 	$dsp_sqlite->set_literal_attribute( 'product_code', 'SQLite_2_8_12' );
 	$dsp_sqlite->set_literal_attribute( 'is_file_based', 1 );
 
 	# Indicate another database product we will be using:
 	my $dsp_oracle = make_a_node( 'data_storage_product', $model );
+	$dsp_oracle->set_literal_attribute( 'name', 'Oracle v9i' );
 	$dsp_oracle->set_literal_attribute( 'product_code', 'Oracle_9_i' );
 	$dsp_oracle->set_literal_attribute( 'is_network_svc', 1 );
 
 	# Indicate the data link product we will be using:
 	my $dlp_odbc = make_a_node( 'data_link_product', $model );
+	$dlp_odbc->set_literal_attribute( 'name', 'Microsoft ODBC' );
 	$dlp_odbc->set_literal_attribute( 'product_code', 'ODBC' );
 
 	##### NEXT SET 'TEST' INSTANCE-TYPE DETAILS #####
 
 	# Define the database catalog instance that our testers will log-in to:
 	my $test_db = make_a_node( 'catalog_instance', $model );
+	$test_db->set_literal_attribute( 'name', 'test' );
 	$test_db->set_node_ref_attribute( 'product', $dsp_sqlite );
 	$test_db->set_node_ref_attribute( 'blueprint', $catalog_bp );
-	$test_db->set_literal_attribute( 'name', 'test' );
 
 	# Define the database user that owns the testing db schema:
 	my $ownerI1 = make_a_child_node( 'user', $test_db, 'catalog' );
+	$ownerI1->set_literal_attribute( 'name', 'ronsealy' );
 	$ownerI1->set_enumerated_attribute( 'user_type', 'SCHEMA_OWNER' );
 	$ownerI1->set_node_ref_attribute( 'match_owner', $owner );
-	$ownerI1->set_literal_attribute( 'name', 'ronsealy' );
 	$ownerI1->set_literal_attribute( 'password', 'K34dsD' );
 
 	# Define a 'normal' database user that will work with the testing database:
 	my $tester = make_a_child_node( 'user', $test_db, 'catalog' );
-	$tester->set_enumerated_attribute( 'user_type', 'DATA_EDITOR' );
 	$tester->set_literal_attribute( 'name', 'joesmith' );
+	$tester->set_enumerated_attribute( 'user_type', 'DATA_EDITOR' );
 	$tester->set_literal_attribute( 'password', 'fdsKJ4' );
 
 	# Define a utility app instance that testers will demonstrate with:
@@ -517,8 +541,8 @@ sub create_and_populate_model {
 
 	# Define a utility app instance that marketers will demonstrate with:
 	my $demo_setup_app = make_a_node( 'application_instance', $model );
-	$demo_setup_app->set_node_ref_attribute( 'blueprint', $setup_app );
 	$demo_setup_app->set_literal_attribute( 'name', 'demo Setup' );
+	$demo_setup_app->set_node_ref_attribute( 'blueprint', $setup_app );
 	# Describe the data link instance that the utility app will use to talk to the demo database:
 	my $demo_setup_app_cl = make_a_child_node( 'catalog_link_instance', $demo_setup_app, 'application' );
 	$demo_setup_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
@@ -528,8 +552,8 @@ sub create_and_populate_model {
 
 	# Define a normal app instance that marketers will demonstrate with:
 	my $demo_editor_app = make_a_node( 'application_instance', $model );
-	$demo_editor_app->set_node_ref_attribute( 'blueprint', $editor_app );
 	$demo_editor_app->set_literal_attribute( 'name', 'demo People Watcher' );
+	$demo_editor_app->set_node_ref_attribute( 'blueprint', $editor_app );
 	# Describe the data link instance that the normal app will use to talk to the demo database:
 	my $demo_editor_app_cl = make_a_child_node( 'catalog_link_instance', $demo_editor_app, 'application' );
 	$demo_editor_app_cl->set_node_ref_attribute( 'product', $dlp_odbc );
@@ -553,7 +577,7 @@ sub expected_model_xml_output {
 	return(
 '<root>
 	<blueprints>
-		<catalog id="1">
+		<catalog id="1" name="The Catalog Blueprint">
 			<owner id="1" catalog="1" />
 			<schema id="1" catalog="1" name="gene" owner="1">
 				<domain id="1" schema="1" name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -593,105 +617,113 @@ sub expected_model_xml_output {
 		<application id="2" name="People Watcher">
 			<catalog_link id="2" application="2" name="editor_link" target="1" />
 			<domain id="4" application="2" name="loginauth" base_type="STR_CHAR" max_chars="20" char_enc="UTF8" />
-			<routine id="3" application="2" name="open_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
-				<routine_arg id="1" routine="3" name="login_name" cont_type="SCALAR" domain="4" />
-				<routine_arg id="2" routine="3" name="login_pass" cont_type="SCALAR" domain="4" />
-				<routine_var id="1" routine="3" name="db_conn" cont_type="CONN" conn_link="2" />
-				<routine_stmt id="3" routine="3" call_sroutine="CATALOG_OPEN">
-					<routine_expr id="4" p_stmt="3" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_var="1" />
-					<routine_expr id="5" p_stmt="3" call_sroutine_arg="LOGIN_USER" cont_type="SCALAR" valf_p_routine_arg="1" />
-					<routine_expr id="6" p_stmt="3" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_arg="2" />
-				</routine_stmt>
-				<routine_stmt id="4" routine="3" call_sroutine="RETURN">
-					<routine_expr id="7" p_stmt="4" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_var="1" />
+			<routine id="3" application="2" name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
+				<routine_var id="1" routine="3" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_stmt id="3" routine="3" call_sroutine="RETURN">
+					<routine_expr id="4" p_stmt="3" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_var="1" />
 				</routine_stmt>
 			</routine>
-			<routine id="4" application="2" name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="3" routine="4" name="db_conn" cont_type="CONN" conn_link="2" />
-				<view id="1" routine="4" name="fetch_all_persons" view_type="MATCH" match_all_cols="1">
+			<routine id="4" application="2" name="open_db_conn" routine_type="PROCEDURE">
+				<routine_context id="1" routine="4" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_arg id="1" routine="4" name="login_name" cont_type="SCALAR" domain="4" />
+				<routine_arg id="2" routine="4" name="login_pass" cont_type="SCALAR" domain="4" />
+				<routine_stmt id="4" routine="4" call_sroutine="CATALOG_OPEN">
+					<routine_expr id="5" p_stmt="4" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="1" />
+					<routine_expr id="6" p_stmt="4" call_sroutine_arg="LOGIN_NAME" cont_type="SCALAR" valf_p_routine_arg="1" />
+					<routine_expr id="7" p_stmt="4" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_arg="2" />
+				</routine_stmt>
+			</routine>
+			<routine id="5" application="2" name="close_db_conn" routine_type="PROCEDURE">
+				<routine_context id="2" routine="5" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_stmt id="5" routine="5" call_sroutine="CATALOG_CLOSE">
+					<routine_expr id="8" p_stmt="5" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="2" />
+				</routine_stmt>
+			</routine>
+			<routine id="6" application="2" name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_context id="3" routine="6" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<view id="1" routine="6" name="fetch_all_persons" view_type="MATCH" match_all_cols="1">
 					<view_src id="1" view="1" name="person" match_table="1" />
 				</view>
-				<routine_var id="2" routine="4" name="person_cursor" cont_type="CURSOR" curs_view="1" />
-				<routine_stmt id="5" routine="4" call_sroutine="CURSOR_OPEN">
-					<routine_expr id="8" p_stmt="5" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="3" />
-					<routine_expr id="9" p_stmt="5" call_sroutine_arg="CURSOR_CX" cont_type="CURSOR" valf_p_routine_var="2" />
+				<routine_var id="2" routine="6" name="cursor_cx" cont_type="CURSOR" curs_view="1" />
+				<routine_stmt id="6" routine="6" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="9" p_stmt="6" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_var="2" />
 				</routine_stmt>
-				<routine_stmt id="6" routine="4" call_sroutine="RETURN">
-					<routine_expr id="10" p_stmt="6" call_sroutine_arg="RETURN_VALUE" cont_type="CURSOR" valf_p_routine_var="2" />
+				<routine_stmt id="7" routine="6" call_sroutine="RETURN">
+					<routine_expr id="10" p_stmt="7" call_sroutine_arg="RETURN_VALUE" cont_type="CURSOR" valf_p_routine_var="2" />
 				</routine_stmt>
 			</routine>
-			<routine id="5" application="2" name="insert_a_person" routine_type="PROCEDURE">
-				<routine_arg id="4" routine="5" name="db_conn" cont_type="CONN" conn_link="2" />
-				<routine_arg id="5" routine="5" name="arg_person_id" cont_type="SCALAR" domain="1" />
-				<routine_arg id="6" routine="5" name="arg_person_name" cont_type="SCALAR" domain="2" />
-				<routine_arg id="7" routine="5" name="arg_father_id" cont_type="SCALAR" domain="1" />
-				<routine_arg id="8" routine="5" name="arg_mother_id" cont_type="SCALAR" domain="1" />
-				<view id="2" routine="5" name="insert_a_person" view_type="MATCH">
+			<routine id="7" application="2" name="insert_a_person" routine_type="PROCEDURE">
+				<routine_context id="4" routine="7" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_arg id="3" routine="7" name="arg_person_id" cont_type="SCALAR" domain="1" />
+				<routine_arg id="4" routine="7" name="arg_person_name" cont_type="SCALAR" domain="2" />
+				<routine_arg id="5" routine="7" name="arg_father_id" cont_type="SCALAR" domain="1" />
+				<routine_arg id="6" routine="7" name="arg_mother_id" cont_type="SCALAR" domain="1" />
+				<view id="2" routine="7" name="insert_a_person" view_type="MATCH">
 					<view_src id="2" view="2" name="person" match_table="1">
 						<view_src_col id="1" src="2" match_table_col="1" />
 						<view_src_col id="2" src="2" match_table_col="2" />
 						<view_src_col id="3" src="2" match_table_col="3" />
 						<view_src_col id="4" src="2" match_table_col="4" />
 					</view_src>
-					<view_expr id="1" view="2" view_part="SET" set_src_col="1" cont_type="SCALAR" valf_p_routine_arg="5" />
-					<view_expr id="2" view="2" view_part="SET" set_src_col="2" cont_type="SCALAR" valf_p_routine_arg="6" />
-					<view_expr id="3" view="2" view_part="SET" set_src_col="3" cont_type="SCALAR" valf_p_routine_arg="7" />
-					<view_expr id="4" view="2" view_part="SET" set_src_col="4" cont_type="SCALAR" valf_p_routine_arg="8" />
+					<view_expr id="1" view="2" view_part="SET" set_src_col="1" cont_type="SCALAR" valf_p_routine_arg="3" />
+					<view_expr id="2" view="2" view_part="SET" set_src_col="2" cont_type="SCALAR" valf_p_routine_arg="4" />
+					<view_expr id="3" view="2" view_part="SET" set_src_col="3" cont_type="SCALAR" valf_p_routine_arg="5" />
+					<view_expr id="4" view="2" view_part="SET" set_src_col="4" cont_type="SCALAR" valf_p_routine_arg="6" />
 				</view>
-				<routine_stmt id="7" routine="5" call_sroutine="INSERT">
-					<routine_expr id="11" p_stmt="7" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="4" />
-					<routine_expr id="12" p_stmt="7" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" actn_view="2" />
+				<routine_stmt id="8" routine="7" call_sroutine="INSERT">
+					<routine_expr id="11" p_stmt="8" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="4" />
+					<routine_expr id="12" p_stmt="8" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" actn_view="2" />
 				</routine_stmt>
 			</routine>
-			<routine id="6" application="2" name="update_a_person" routine_type="PROCEDURE">
-				<routine_arg id="9" routine="6" name="db_conn" cont_type="CONN" conn_link="2" />
-				<routine_arg id="10" routine="6" name="arg_person_id" cont_type="SCALAR" domain="1" />
-				<routine_arg id="11" routine="6" name="arg_person_name" cont_type="SCALAR" domain="2" />
-				<routine_arg id="12" routine="6" name="arg_father_id" cont_type="SCALAR" domain="1" />
-				<routine_arg id="13" routine="6" name="arg_mother_id" cont_type="SCALAR" domain="1" />
-				<view id="3" routine="6" name="update_a_person" view_type="MATCH">
+			<routine id="8" application="2" name="update_a_person" routine_type="PROCEDURE">
+				<routine_context id="5" routine="8" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_arg id="7" routine="8" name="arg_person_id" cont_type="SCALAR" domain="1" />
+				<routine_arg id="8" routine="8" name="arg_person_name" cont_type="SCALAR" domain="2" />
+				<routine_arg id="9" routine="8" name="arg_father_id" cont_type="SCALAR" domain="1" />
+				<routine_arg id="10" routine="8" name="arg_mother_id" cont_type="SCALAR" domain="1" />
+				<view id="3" routine="8" name="update_a_person" view_type="MATCH">
 					<view_src id="3" view="3" name="person" match_table="1">
 						<view_src_col id="5" src="3" match_table_col="1" />
 						<view_src_col id="6" src="3" match_table_col="2" />
 						<view_src_col id="7" src="3" match_table_col="3" />
 						<view_src_col id="8" src="3" match_table_col="4" />
 					</view_src>
-					<view_expr id="5" view="3" view_part="SET" set_src_col="6" cont_type="SCALAR" valf_p_routine_arg="11" />
-					<view_expr id="6" view="3" view_part="SET" set_src_col="7" cont_type="SCALAR" valf_p_routine_arg="12" />
-					<view_expr id="7" view="3" view_part="SET" set_src_col="8" cont_type="SCALAR" valf_p_routine_arg="13" />
+					<view_expr id="5" view="3" view_part="SET" set_src_col="6" cont_type="SCALAR" valf_p_routine_arg="8" />
+					<view_expr id="6" view="3" view_part="SET" set_src_col="7" cont_type="SCALAR" valf_p_routine_arg="9" />
+					<view_expr id="7" view="3" view_part="SET" set_src_col="8" cont_type="SCALAR" valf_p_routine_arg="10" />
 					<view_expr id="8" view="3" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
 						<view_expr id="9" p_expr="8" cont_type="SCALAR" valf_src_col="5" />
-						<view_expr id="10" p_expr="8" cont_type="SCALAR" valf_p_routine_arg="10" />
+						<view_expr id="10" p_expr="8" cont_type="SCALAR" valf_p_routine_arg="7" />
 					</view_expr>
 				</view>
-				<routine_stmt id="8" routine="6" call_sroutine="UPDATE">
-					<routine_expr id="13" p_stmt="8" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="9" />
-					<routine_expr id="14" p_stmt="8" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" actn_view="3" />
+				<routine_stmt id="9" routine="8" call_sroutine="UPDATE">
+					<routine_expr id="13" p_stmt="9" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="5" />
+					<routine_expr id="14" p_stmt="9" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" actn_view="3" />
 				</routine_stmt>
 			</routine>
-			<routine id="7" application="2" name="delete_a_person" routine_type="PROCEDURE">
-				<routine_arg id="14" routine="7" name="db_conn" cont_type="CONN" conn_link="2" />
-				<routine_arg id="15" routine="7" name="arg_person_id" cont_type="SCALAR" domain="1" />
-				<view id="4" routine="7" name="delete_a_person" view_type="MATCH">
+			<routine id="9" application="2" name="delete_a_person" routine_type="PROCEDURE">
+				<routine_context id="6" routine="9" name="conn_cx" cont_type="CONN" conn_link="2" />
+				<routine_arg id="11" routine="9" name="arg_person_id" cont_type="SCALAR" domain="1" />
+				<view id="4" routine="9" name="delete_a_person" view_type="MATCH">
 					<view_src id="4" view="4" name="person" match_table="1">
 						<view_src_col id="9" src="4" match_table_col="1" />
 					</view_src>
 					<view_expr id="11" view="4" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
 						<view_expr id="12" p_expr="11" cont_type="SCALAR" valf_src_col="9" />
-						<view_expr id="13" p_expr="11" cont_type="SCALAR" valf_p_routine_arg="15" />
+						<view_expr id="13" p_expr="11" cont_type="SCALAR" valf_p_routine_arg="11" />
 					</view_expr>
 				</view>
-				<routine_stmt id="9" routine="7" call_sroutine="DELETE">
-					<routine_expr id="15" p_stmt="9" call_sroutine_arg="CONN_CX" cont_type="CONN" valf_p_routine_arg="14" />
-					<routine_expr id="16" p_stmt="9" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" actn_view="4" />
+				<routine_stmt id="10" routine="9" call_sroutine="DELETE">
+					<routine_expr id="15" p_stmt="10" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_cxt="6" />
+					<routine_expr id="16" p_stmt="10" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" actn_view="4" />
 				</routine_stmt>
 			</routine>
 		</application>
 	</blueprints>
 	<tools>
-		<data_storage_product id="1" product_code="SQLite_2_8_12" is_file_based="1" />
-		<data_storage_product id="2" product_code="Oracle_9_i" is_network_svc="1" />
-		<data_link_product id="1" product_code="ODBC" />
+		<data_storage_product id="1" name="SQLite v2.8.12" product_code="SQLite_2_8_12" is_file_based="1" />
+		<data_storage_product id="2" name="Oracle v9i" product_code="Oracle_9_i" is_network_svc="1" />
+		<data_link_product id="1" name="Microsoft ODBC" product_code="ODBC" />
 	</tools>
 	<sites>
 		<catalog_instance id="1" name="test" product="1" blueprint="1">
@@ -728,23 +760,24 @@ sub test_circular_ref_prevention {
 	my $model = $class->new_container();
 
 	my $catalog_bp = make_a_node( 'catalog', $model );
+	$catalog_bp->set_literal_attribute( 'name', 'The Catalog Blueprint' );
 	my $owner = make_a_child_node( 'owner', $catalog_bp, 'catalog' );
 	my $schema = make_a_child_node( 'schema', $catalog_bp, 'catalog' );
 	$schema->set_literal_attribute( 'name', 'gene' );
 	$schema->set_node_ref_attribute( 'owner', $owner );
 
 	my $vw1 = make_a_child_node( 'view', $schema, 'schema' );
-	$vw1->set_enumerated_attribute( 'view_type', 'COMPOUND' );
 	$vw1->set_literal_attribute( 'name', 'foo' );
+	$vw1->set_enumerated_attribute( 'view_type', 'COMPOUND' );
 	$vw1->set_enumerated_attribute( 'compound_op', 'UNION' );
 
 	my $vw2 = make_a_child_node( 'view', $vw1, 'p_view' );
-	$vw2->set_enumerated_attribute( 'view_type', 'SINGLE' );
 	$vw2->set_literal_attribute( 'name', 'bar' );
+	$vw2->set_enumerated_attribute( 'view_type', 'SINGLE' );
 
 	my $vw3 = make_a_child_node( 'view', $vw2, 'p_view' );
-	$vw3->set_enumerated_attribute( 'view_type', 'SINGLE' );
 	$vw3->set_literal_attribute( 'name', 'bz' );
+	$vw3->set_enumerated_attribute( 'view_type', 'SINGLE' );
 
 	my $test1_passed = 0;
 	my $test2_passed = 0;

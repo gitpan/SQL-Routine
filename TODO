@@ -1,11 +1,16 @@
 TODO
 
-- Rewrite significant portions of the main documentation in Routine.pm and
-Language.pod to better explain the current functional domain of SQL::Routine
-and emphasize its routine-centric conceptualization of things, vs the more
-generic tree conceptualization of the old SQL::SyntaxModel.
+- Implement the ROW, SC_ARY, RW_ARY container types for use as
+routine variables, arguments, return values.  Update views to handle them. 
+Possible generalization between those and the 'table' Node.  These are
+necessary for many TRIGGER implementations.  Also useful for user-defined
+routines that want to return all rows from a select or cursor as an array.
+
+- Continue fleshing out the standard_routine enumerated type documentation.
 
 - Add more deferred constraints to reduce erroneous models.
 
 - Keep watch on the separately released "Rosetta" framework modules and ensure
 we continue to meet their needs.
+
+- Strive for complete code coverage in the tests.

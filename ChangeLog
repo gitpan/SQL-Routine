@@ -1,10 +1,85 @@
+2004-10-26   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Release 0.45.
+
+	* New code file versions are: Routine.pm v0.45.
+
+	* This release saw multiple data-dictionary, documentation, and test suite
+	changes, but zero changes to the code proper.  All changes were in
+	Routine.pm, Language.pod, and t_SQL_Routine.pm.  No changes were made to
+	en.pm or API_C.pod.
+
+	* In Routine.pm, rewrote the DESCRIPTION documentation.  Specifically, all
+	but the first paragraph of the old DESCRIPTION was moved into a new section
+	titled MATTERS OF PORTABILITY AND FEATURES.  The new DESCRIPTION is
+	completely new, and better describes the purpose, features, strengths, and
+	distinctiveness of this module, than the old documentation did.
+
+	* Multiple corresponding data-dictionary changes in Language.pod and
+	Routine.pm.  Added new 'routine_context' Node type that is conceptually a
+	special-purpose 'routine_arg'; they are optional, and each 'routine' can
+	have only one.  Added new 'standard_routine_context' enumerated type which
+	is to standard routines what the new Node type is for user-defined
+	routines.  Updated the existing standard routine specs to separate the
+	'context' and 'args'.  Added new Node attributes to [view_arg,
+	routine_stmt, routine_expr] so that the new 'context' for standard or
+	user-defined routines can be referenced.  Added related constraints.
+
+	* Changed the nature of how CONN/CONN_CX (db connection context) is
+	declared, used, and changed, so that it is like CURSOR/CURSOR_CX.  Now,
+	most details of a db connection context are defined when the variable that
+	holds it is declared.  A CONN now has two distinct states, being 'open' or
+	'closed', which it must be explicitly set to using CATALOG_OPEN() and
+	CATALOG_CLOSE(); a CONN is no longer implicitly open simply by its
+	existence; a brand new CONN variable starts out closed.  As a result of
+	this change, you can now declare a connection context in a different
+	user-defined routine than you open it in; also, you can now close and
+	reopen a database connection multiple times with the same CONN, rather than
+	having to make a new CONN for each time (it is also now easier to represent
+	cached database connections).
+
+	* Updated the 'container_type' enumerated type to add new list elements:
+	ROW, SC_ARY, RW_ARY.  These correspond to commonly used composite data
+	types.  A 'ROW' corresponds to the SQL:2003 'ROW' and is a collection of
+	named and typed scalar values; it is like a single table row, or a Perl
+	hash.  Both 'SC_ARY' and 'RW_ARY' correspond to the SQL:2003 'ARRAY'; the
+	first is an ordered list of 'SCALAR'; the second, an ordered list of 'ROW'.
+	The rest of SQL::Routine is not yet updated to take advantage of the new
+	types; that should happen in release 0.46.
+
+	* Renamed all occurances of [LOGIN_USER|login_user] to
+	[LOGIN_NAME|login_name]; this affects the CATALOG_OPEN() srt and these 
+	Node types: catalog_instance, catalog_link_instance.
+
+	* For all Node types that have a 'name' attribute, except 'user', that
+	attribute is now always-mandatory.  In this release, that affects only
+	these Node types (the rest were MA previously): catalog, application,
+	data_storage_product, data_link_product, catalog_instance,
+	application_instance.
+
+	* Fixed bugs in Routine.pm where Node attribute types did not match their
+	Language.pod documentation: table_col.default_val is 'misc' (not 'cstr');
+	routine_expr.valf_literal is 'misc' (not 'cstr').
+
+	* In Language.pod, added paragraph for the view_arg Node that explains
+	correlated vs uncorrelated subqueries.  Also updated the features list. 
+	Also updated the documented meaning of the table_col's "mandatory" attr.
+
+	* Multiple updates to t_SQL_Routine.pm.  Split the user-defined routine
+	"open_db_conn" into itself and "declare_db_conn", added "close_db_conn". 
+	Most other changes correspond to the the above-mentioned feature changes,
+	such as context Nodes and CONN changes.  More Nodes now have their 'name'
+	set.  Also rearranged the order in which a few Node attributes are set, to
+	match the order they appear within the Node.  The SYNOPSIS in Routine.pm 
+	also had a few similar changes, but most of those were small.
+
 2004-10-16   Darren Duncan <perl@DarrenDuncan.net>
 
 	* Release 0.44.
 
 	* New code file versions are: Routine.pm v0.44.
 
-	* This is a major release, with multiple significant data-design,
+	* This is a major release, with multiple significant data-dictionary,
 	documentation, and test suite changes, but almost no changes to the code
 	proper.  All changes were in Routine.pm, Language.pod, and
 	t_SQL_Routine.pm.  No changes were made to en.pm or API_C.pod.

@@ -141,14 +141,14 @@ this document goes into more detail on them):
 	- datetime/date, interval/time data types
 	- multiple schemas in the same catalogue
 	- objects in any schema can reference those in other schemas or other catalogues
-	- identifiers are case-sensitive by default; case-insensitive ones match as fully uppercase
+	- identifiers are internally case-sensitive; case-insensitive ones match as fully uppercase
 	- no effective limits; eg: number of tables or columns or rows, size of data per field or row
 	- simple domains and user-defined data types (UDTs)
 	- enumerated data types
 	- arbitrary 'check' constraints (?)
-	- routines (stored procedures, user defined functions, triggers, anonymous routines)
+	- routines (stored procedures, user defined functions, triggers)
 	- named sub-routines inside routines
-	- row data types as variables inside routines
+	- row, array/rowset data types as variables inside routines, and arguments and return values
 	- multiple column unique and foreign key constraints on tables
 	- viewed tables / views
 	- expressions in any part of a query
@@ -161,9 +161,10 @@ this document goes into more detail on them):
 	- 'where', 'group by', 'having', 'order by', 'limit'
 	- anonymous subqueries in any part of main query
 	- named subqueries ("with") likewise
-	- arguments for named subqueries
+	- both correlated (takes arguments) and uncorrelated (no arguments) subqueries
 	- recursive queries
-	- named (rather than positional) routine and subquery arguments
+	- all routine and subquery args are declared and used with named syntax (rather than positional)
+	- all built-in standard routine args are used with named syntax (rather than positional)
 	- select/insert/update/delete rows in tables and viewed tables
 	- named (rather than positional) mapping of 'into' clause to 'select list'
 	- named (rather than positional) mapping of all input data for both inserts and updates
@@ -171,8 +172,7 @@ this document goes into more detail on them):
 	- updateable views; inserts, updates, deletes through any view (if key data not lost)
 	- "insert as select"
 	- multiple users, roles, privileges
-	- create/alter/delete schema objects
-	- create/alter/delete user defined functions
+	- create/alter/delete schema objects, including user defined functions
 	- create/alter/delete catalogs, schemas, users
 	- cursors
 	- multiple row insert / "write cursors"
@@ -192,7 +192,7 @@ This is a brief list of major non-supported features (at present), or current li
 	- multiple distinct values per row field (this violates level-1 normalization)
 	- complex domains and compound user-defined data types
 	- 'set' data types
-	- collection types such as arrays, stored in tables
+	- collection types, such as arrays, stored in tables
 	- reference data types, stored in tables
 	- table hierarchies or subtables; anything not a "base table" or "viewed table"
 	- object data types
@@ -374,6 +374,7 @@ another of the same type (eg: a sub-query or sub-routine).
 	</view>
 
 	<routine c="M" r="Y">
+		<routine_context c="1" />
 		<routine_arg c="M" />
 		<view c="M" r="Y" />
 		<routine_var c="M" />
@@ -388,7 +389,7 @@ detail below.
 
 Besides the Node it is a child of, a Node can reference other Nodes almost
 anywhere else in the tree, with the following exceptions: 1. Considering the
-order of the 5 main categories above, Nodes in any category can not reference
+order of the 4 main categories above, Nodes in any category can not reference
 Nodes in a later category; they can only reference self or earlier; 2. Nodes in
 'tools' can't reference anything else; 3. Catalog Nodes can't reference
 Application Nodes.
@@ -551,10 +552,13 @@ routine arguments, variables, or return types, or intermediate values of
 expressions can be.  Note that all table and view column values have an
 implicit container_type of SCALAR.
 
-	SCALAR - a scalar variable, such as a boolean or number or cstring or bstring
 	ERROR  - an error message object (a message key, named list of values)
-	CONN   - a database connection context
-	CURSOR - a database cursor variable (and context when open)
+	SCALAR - a typed scalar variable, such as a boolean or number or cstring or bstring
+	ROW    - a row variable; a named list of SCALAR (SQL:2003 type is 'ROW'); each elem is a "field"
+	SC_ARY - an ordered list of SCALAR (SQL:2003 type is 'ARRAY')
+	RW_ARY - an ordered list of ROW (SQL:2003 type is 'ARRAY')
+	CONN   - a database connection context (may be closed or open)
+	CURSOR - a database cursor context (may be closed or open)
 	LIST   - for exprs that are a generic list or explicit grouping of sub-exprs (comma-delim, paren-bound)
 
 	SRT_NODE      - for client code only; stores a SQL::Routine::Node object
@@ -567,10 +571,8 @@ implicit container_type of SCALAR.
 
 	The following won't be implemented in the short term:
 
-	ENVI   - a db/app environment context; usually just one (conceptually), which is global
+	ENVI   - a db/app/dlp environment context; usually just one (conceptually), which is global
 	TRAN   - a database transaction context
-	RECORD - a row variable; a named list of scalars, like a Perl hash
-	ARRAY  - an ordered list of scalars; or of rows; like SQL:2003 'table' var type
 
 Note that matters such as variable-vs-constant and bind vars or
 in-vs-out-vs-inout or literal vs var/col/arg are not distinguished by this
@@ -598,7 +600,7 @@ an alias for the former; see SQL:2003 Foundation p1171.>
 	SRTX_NO_CONN_ACTIVE_LOST
 		- If an active server connection halts prematurely, from server or network failure.
 
-=head2 standard_routine, standard_routine_arg
+=head2 standard_routine, standard_routine_context, standard_routine_arg
 
 These represent the basic types of actions that a database engine or database
 client can perform, and are the "built-in" functions of the SQL::Routine
@@ -617,11 +619,12 @@ set.  Each standard routine will throw an exception (container_type is ERROR)
 if it fails, instead of returning a value; any standard routine may throw more
 than one type of exception depending on the circumstance.
 
-Beneath each routine name is up to 4 kinds of information, having the following
+Beneath each routine name is up to 6 kinds of information, having the following
 labels; for brevity, a label won't be shown if its value would be 'none':
 
 	purpose: what the routine does that validates its existence
-	args: what arguments the routine takes, if any
+	context: what context type the routine must be called within; it is a special argument
+	args: what non-context arguments the routine takes, if any
 	effects: what side-effects there are of executing it, besides its return value
 	returns: what type of value/container the routine returns
 	throws: what types of exceptions are thrown if routine fails
@@ -744,12 +747,13 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 			- Note that it is the routine_var or routine_arg declaration SRT
 			Node that references the catalog_link which defines our basic
 			connection details; this var/arg is provided in CONN_CX.
-		args:
+		context:
 			- CONN_CX - CONN - A routine var or arg that will hold the new connection handle.
-			- LOGIN_USER - SCALAR.cstr - Opt: A runtime-provided username to connect with.
+		args:
+			- LOGIN_NAME - SCALAR.cstr - Opt: A runtime-provided username to connect with.
 			- LOGIN_PASS - SCALAR.cstr - Opt: A runtime-provided password to connect with.
 		effects:
-			- The CONN_CX changes from an empty variable to active db connection handle.
+			- The CONN_CX changes from an inactive state to active, ready to pipe data.
 		throws:
 			- SRTX_NO_ENVI_LOAD_FAILED, SRTX_ENVI_EXEC_FAILED,
 			SRTX_NO_CONN_SERVER_ABSENT, SRTX_NO_CONN_BAD_AUTH,
@@ -762,17 +766,17 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 	CATALOG_CLOSE() 
 		purpose:
 			- Closes a link or connection to a database instance from an application.
-		args:
+		context:
 			- CONN_CX - CONN - The open database connection context to be closed.
 		effects:
-			- The context provided by CONN_CX is destroyed.
+			- The CONN_CX changes from an active to an inactive state.
 		throws:
 			- SRTX_NO_CONN_ACTIVE_LOST
 
 	CATALOG_PING() 
 		purpose:
 			- Verifies that a db connection is still open, that the db is accessible.
-		args:
+		context:
 			- CONN_CX - CONN - The open database connection context to be pinged.
 		returns:
 			- SCALAR.bool - A true value if the db connection is still active,
@@ -783,8 +787,9 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 	CATALOG_ATTACH() 
 		purpose:
 			- Attaches a link or connection to a database instance from another db instance.
-		args:
+		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
 			- LINK_BP - SRT_NODE:catalog_link - The catalog to connect to.
 		throws:
 			- SRTX_NO_CONN_ACTIVE_LOST
@@ -792,8 +797,9 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 	CATALOG_DETACH() 
 		purpose:
 			- Detaches a link or connection to a database instance from another db instance.
-		args:
+		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
 			- LINK_BP - SRT_NODE:catalog_link - The catalog to connect to.
 		throws:
 			- SRTX_NO_CONN_ACTIVE_LOST
@@ -879,40 +885,69 @@ with 'routine_stmt' Nodes.
 
 	CURSOR_OPEN() 
 		purpose:
-			- Opens a select cursor for reading from (or performs a select if in right context).
-		args:
-			- CONN_CX - CONN - An open database connection to provide our action context.
+			- Opens a select cursor context for reading from (or performs a select if in right context).
+		context:
 			- CURSOR_CX - CURSOR - A routine var or arg that holds a cursor definition.
 		effects:
 			- The CURSOR_CX changes from an inactive state to active, ready to be fetched from.
 
-	CURSOR_CLOSE - closes a select cursor when you're done with it
-	CURSOR_FETCH - reads a row from an opened cursor and puts it in a row/list variable
-	SELECT_INTO - fetches one row from a table/view and puts it in a row/list variable
+	CURSOR_CLOSE() 
+		purpose:
+			- Closes a select cursor context when you're done with it.
+		context:
+			- CURSOR_CX - CURSOR - The open cursor context to be closed.
+		effects:
+			- The CURSOR_CX changes from an active to an inactive state.
+
+	CURSOR_FETCH() 
+		purpose:
+			- Reads a row from an opened cursor and puts it in a row/list variable.
+		context:
+			- CURSOR_CX - CURSOR - An open cursor to provide our action context.
+
+	SELECT_INTO() 
+		purpose:
+			- Fetches one row from a table/view and puts it in a row/list variable.
+		context:
+			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
+			- SELECT_DEFN - SRT_NODE:view - The view that defines this select action.
 
 	INSERT() 
 		purpose:
 			- Inserts a row into a table/view.
-		args:
+		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
 			- INSERT_DEFN - SRT_NODE:view - The view that defines this insert action.
 
 	UPDATE() 
 		purpose:
 			- Updates a row in a table/view.
-		args:
+		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
 			- UPDATE_DEFN - SRT_NODE:view - The view that defines this update action.
 
 	DELETE() 
 		purpose:
 			- Deletes a row in a table/view.
-		args:
+		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
+		args:
 			- DELETE_DEFN - SRT_NODE:view - The view that defines this delete action.
 
-	COMMIT - commits the current transaction, then starts a new one
-	ROLLBACK - rolls back the current transaction, then starts a new one
+	COMMIT() 
+		purpose:
+			- Commits the current transaction, then starts a new one.
+		context:
+			- CONN_CX - CONN - An open database connection to provide our action context.
+
+	ROLLBACK() 
+		purpose:
+			- Rolls back the current transaction, then starts a new one.
+		context:
+			- CONN_CX - CONN - An open database connection to provide our action context.
 
 	According to SQL-1999, a transaction affects all types of SQL statements;
 	if one is rolled back then it has no affect on SQL-schemas or SQL-data.  Or
@@ -1091,9 +1126,6 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 	The SQL:2003 standard says DECLARE appears inside a BEGIN ... END block, not before 
 	it such as Oracle does.  It looks like "DECLARE <var name> <type name> [DEFAULT <expr>]".
 	The standard also says "SET foo = expr;" rather than the "foo := expr;" as in Oracle.
-
-	Note: For the moment we will consider DML activity like [select, insert,
-	update, delete, commit, rollback] to be an SRTN.
 
 =head2 privilege_type
 
@@ -1519,7 +1551,7 @@ users should be here.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the blueprint if you want; this isn't used when making SQL
+	name - L.cstr - MA - lets you label the blueprint if you want; this isn't used when making SQL
 	single_schema - L.bool - true, catalog lim to 1 schema, rendered in 1-sch prod w no nm prefix
 
 Distinct Child Groups List:
@@ -1556,7 +1588,7 @@ more SQL statements pushed over the command line, and even the 'attach' /
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the blueprint if you want
+	name - L.cstr - MA - lets you label the blueprint if you want
 
 Distinct Child Groups List:
 
@@ -1921,10 +1953,12 @@ Attribute List:
 	table - N.table - PP - unique identifier for this table
 	name - L.cstr - MA - unique identifier for column within table
 	domain - N.domain - MA - the user-customized data type for this column
-	mandatory - L.bool - MA - true means col value is mandatory (not null constr), false if not (null)
+	mandatory - L.bool - MA - the col's "nullability characteristic; true, "known not nullable"; false, "possibly nullable"
 	default_val - L.misc - an optional default value for the column, or starting val for auto_inc
 	auto_inc - L.bool - when true, col val defaults from a special auto-incrementing sequence
 	default_seq - N.sequence - when set, the column defaults to a value from this named sequence
+
+	Note: See SQL:2003 Foundation 4.13 "Columns, fields, and attributes" (p49).
 
 Exclusive Attribute Groups List:
 
@@ -2165,6 +2199,21 @@ query/view, then it can take arguments to define its caller context; each
 is not used for anything else; it is not like a routine arg that doubles for an
 app host param.
 
+The presence or absense of arguments in a view (assuming they are not
+'constant') determines whether the view is correlated or uncorrelated when used
+as a subquery (named or embedded) in another query.  Uncorrelated subqueries,
+having no arguments, are simpler and can fire exactly once, fully prior to the
+outer query; this kind can be implemented easily, or emulated simply with
+temporary tables and multiple queries.  Correlated subqueries, having 1 or more
+arguments, are more complicated and can fire multiple (or zero) times for each
+execution of the outer query; it executes during the outer query (after it
+starts and before it ends) because it uses one or more values generated by the
+outer query (for example, it may fire once per each row either examined or
+returned by the outer query); this kind is more complicated to implement or
+emulate.  The term "correlated" is the standard term for this differentiation. 
+The difference between correlated vs un- is analagous to a routine that takes
+or does not take any arguments.
+
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
@@ -2297,7 +2346,7 @@ Attribute List:
 	src_col - N.view_src_col - simply match this src col rather than defining with a view_expr
 
 	is_writeable - L.bool - true when enough info is known to write changes to this column
-	is_required - L.bool - true when corresponding value must always be populated
+	mandatory - L.bool - true when corresponding value must always be populated
 	is_key - L.bool - true when this column is a part of unique id for source table or for view row
 
 Exclusive Attribute Groups List:
@@ -2467,7 +2516,9 @@ Attribute List:
 	set_src_col - N.view_src_col - this is the column we are setting the value of in insert or update op
 	call_src_arg - N.view_src_arg - arg of named subquery used in "from" we are passing value to
 	call_view_arg - N.view_arg - if parent expr set valf_call_view, name view arg that curr expr passes value to
+	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
 	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
+	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
 	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
 	cont_type - E.container_type - MA - what basic container type the expression value is
 	valf_literal - L.misc - use a literal value, such as number or string
@@ -2475,6 +2526,7 @@ Attribute List:
 	valf_src_col - N.view_src_col - use the value of a local view source column
 	valf_result_col - N.view_col - match a result column; used mainly with MATCH view, or in 'having','order' sql elsewhere
 	valf_p_view_arg - N.view_arg - when view is a "with" sub-query, use value of an argument to the view
+	valf_p_routine_cxt - N.routine_context - use value of a context arg to the current routine
 	valf_p_routine_arg - N.routine_arg - use value of an arg to the current routine
 	valf_p_routine_var - N.routine_var - use value of a variable declared in the current routine
 	valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
@@ -2493,11 +2545,6 @@ Local Attribute Dependencies List:
 		set_result_col - RESULT - MA
 		set_src_col - SET - MA
 		call_src_arg - FROM - MA
-	cont_type:
-	#	valf_literal,valf_src_col,valf_result_col,valf_p_view_arg,
-	#		valf_p_routine_arg,valf_p_routine_var,valf_seq_next,valf_call_view,
-	#		valf_call_sroutine,valf_call_uroutine - SCALAR,ERROR,CONN,CURSOR - MA
-	#	valf_p_routine_arg,valf_p_routine_var - ERROR,CONN,CURSOR - MA
 	valf_literal:
 		domain - MA
 	valf_call_uroutine:
@@ -2508,8 +2555,10 @@ Distinct Child Groups List:
 	ak_view_arg:
 		view_expr - call_view_arg
 	ak_sroutine_arg:
+		view_expr - call_sroutine_cxt
 		view_expr - call_sroutine_arg
 	ak_uroutine_arg:
+		view_expr - call_uroutine_cxt
 		view_expr - call_uroutine_arg
 
 Example List:
@@ -2639,13 +2688,40 @@ Local Attribute Dependencies List:
 
 Child Quantity List:
 
+	routine_context - 0 - 1
 	routine_stmt - 1
 
 Distinct Child Groups List:
 
 	ak_name:
+		routine_context - name
 		routine_arg - name
 		routine_var - name
+
+=head2 routine_context
+
+This type of Node describes a special context argument variable to a routine.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	routine - N.routine - PP - what routine this context argument is for
+	name - L.cstr - MA - unique identifier for variable within view
+	cont_type - E.container_type - MA - what basic container type the context is
+	conn_link - N.catalog_link - for CONN context type, ref to cat link def the conn handle
+	curs_view - N.view - for CURSOR context type, ref to view def the cursor
+
+Exclusive Attribute Groups List:
+
+	context - conn_link,curs_view - MA
+
+	Notes: This helps force cont_type to be one of [CONN, CURSOR].
+
+Local Attribute Dependencies List:
+
+	cont_type:
+		conn_link - CONN - MA
+		curs_view - CURSOR - MA
 
 =head2 routine_arg
 
@@ -2709,6 +2785,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	routine - N.routine - PP - what routine this statement is in
 	block_routine - N.routine - this child routine defs contents of BEGIN ... END
+	assign_dest_cxt - N.routine_context - this context arg may be where the expression result goes
 	assign_dest_arg - N.routine_arg - this 'out' arg may be where the expression result goes
 	assign_dest_var - N.routine_var - this var may be where the expression result goes
 	call_sroutine - E.standard_routine - this is the standard built-in procedure to call
@@ -2722,11 +2799,12 @@ Attribute List:
 	'call_[s|u]routine' is set, the action is to call that built-in or routine.
 
 	TODO: Relevant structures to specify certain exceptions to catch or throw. 
-	Meanwhile, all exceptions are thrown out to the application using SRT.
+	Meanwhile, all exceptions are thrown out to the application that is using SRT.
 
 Exclusive Attribute Groups List:
 
-	stmt_type - block_routine,assign_dest_arg,assign_dest_var,call_sroutine,call_uroutine - MA
+	stmt_type - block_routine,assign_dest_cxt,assign_dest_arg,assign_dest_var,
+		call_sroutine,call_uroutine - MA
 
 Local Attribute Dependencies List:
 
@@ -2736,8 +2814,10 @@ Local Attribute Dependencies List:
 Distinct Child Groups List:
 
 	ak_sroutine_arg:
+		routine_expr - call_sroutine_cxt
 		routine_expr - call_sroutine_arg
 	ak_uroutine_arg:
+		routine_expr - call_uroutine_cxt
 		routine_expr - call_uroutine_arg
 
 =head2 routine_expr
@@ -2754,11 +2834,14 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	p_expr - N.routine_expr - PP - parent expression of this one, if any; empty if this is the root expression
 	p_stmt - N.routine_stmt - PP - unique identifier for routine routine_stmt this expression is part of
+	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
 	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
+	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
 	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
 	cont_type - E.container_type - MA - what basic container type the expression value is
 	valf_literal - L.misc - use a literal value, such as number or string
 	domain - N.domain - cast or declare curr literal expr into this data type / domain
+	valf_p_routine_cxt - N.routine_context - use value of a context arg to the current routine
 	valf_p_routine_arg - N.routine_arg - use value of an arg to the current routine
 	valf_p_routine_var - N.routine_var - use value of a variable declared in the current routine
 	valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
@@ -2777,9 +2860,6 @@ Attribute List:
 Local Attribute Dependencies List:
 
 	cont_type:
-	#	valf_literal,valf_p_routine_arg,valf_p_routine_var,valf_seq_next,
-	#		valf_call_sroutine,valf_call_uroutine - SCALAR,ERROR,CONN,CURSOR - MA
-	#	valf_p_routine_arg,valf_p_routine_var - ERROR,CONN,CURSOR - MA
 		actn_catalog_link,actn_schema,actn_domain,actn_sequence,actn_table,
 			actn_view,actn_routine,actn_user - SRT_NODE - MA
 	valf_literal:
@@ -2790,8 +2870,10 @@ Local Attribute Dependencies List:
 Distinct Child Groups List:
 
 	ak_sroutine_arg:
+		routine_expr - call_sroutine_cxt
 		routine_expr - call_sroutine_arg
 	ak_uroutine_arg:
+		routine_expr - call_uroutine_cxt
 		routine_expr - call_uroutine_arg
 
 =head2 tools
@@ -2824,7 +2906,7 @@ different versions may not support the same features or interface.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the product in the model if you want
+	name - L.cstr - MA - lets you label the product in the model if you want
 	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
 	is_memory_based - L.bool - if true, db data is held entirely in RAM memory of our own process
 	is_file_based - L.bool - if true, db data held in named file(s) that we ref to open in our own process
@@ -2855,7 +2937,7 @@ different versions may not support the same features or interface.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the product in the model if you want
+	name - L.cstr - MA - lets you label the product in the model if you want
 	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
 	is_proxy - L.bool - if true, link product is a transparent proxy which calls another link prod (we may spec)
 
@@ -2891,7 +2973,7 @@ users shouldn't log in as those.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the instance if you want; this isn't used when making SQL
+	name - L.cstr - MA - lets you label the instance if you want; this isn't used when making SQL
 	product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
 	blueprint - N.catalog - MA - what catalog blueprint describes this instance
 	file_path - L.cstr - Path on a file system for a file-based database, if applicable
@@ -2899,7 +2981,7 @@ Attribute List:
 	server_domain - L.cstr - Internet domain name of the database server, if applicable
 	server_port - L.uint - TCP/IP port the database listens to, if applicable
 	local_dsn - L.cstr - locally known driver-generic name for the catalog link (to cat or ch prox)
-	login_user - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
+	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
 	login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
 Distinct Child Groups List:
@@ -2957,7 +3039,7 @@ knows about the blueprint for said instances.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	name - L.cstr - lets you label the instance if you want
+	name - L.cstr - MA - lets you label the instance if you want
 	blueprint - N.application - MA - what application blueprint describes this instance
 
 Distinct Child Groups List:
@@ -3002,7 +3084,7 @@ Attribute List:
 	unrealized - N.catalog_link - the unrealized catalog link that we are 'implementing'
 	target - N.catalog_instance - this is what the link connects to
 	local_dsn - L.cstr - locally known driver-specific name for the catalog link (to cat or ch prox)
-	login_user - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
+	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
 	login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
 Exclusive Attribute Groups List:
