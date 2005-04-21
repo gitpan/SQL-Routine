@@ -1,0 +1,317 @@
+2005-04-20   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.59.
+
+	* New code file versions are: Routine.pm v0.59 and en.pm v0.28.
+
+	* Added new external dependency on Scalar::Util v1.11 (bundled with Perl
+	5.8.x); SQL::Routine now uses its 'weak refs' feature internally at
+	strategic places so that you no longer need to explicitly destroy Containers
+	when you are done with them.  The circular references between SRT Nodes and
+	their Container no longer prevent Perl's standard garbage collection from
+	working when expected, which is when all external references to a Container
+	go away.  This change makes SQL::Routine much more DWIM and easier to use.
+
+	* Updated Routine.pm and Details.pod:  Removed the Container.destroy()
+	method.  Removed the CAVEATS documentation concerning it.  Updated
+	SQL_Routine.t to remove all destroy() invocations, which also reduced the
+	test count by 6 to 35.  Removed the corresponding TODO file item.
+
+	* Updated Routine.pm:  Updated the definitions of 3 Node properties to
+	indicate that they now store weak Perl refs rather than strong ones:
+	'pp_nref', 'at_nrefs', 'container'.  Those 3 properties are all 'upwards' or
+	'parent pointing' references; each has one or more corresponding 'child
+	pointing' properties which remain strong refs.  As such, every conceptual
+	circular reference now has one strong and one weak member.  A total of 5
+	Scalar::Util::weaken() invocations are now used (up from zero): 1 is in
+	Node._set_primary_parent_attribute(); 1 is in Node._set_literal_attribute();
+	3 are in Node.put_in_container(), one per property.
+
+	* Updated Routine.pm and Details.pod and en.pm:  Removed the
+	Node.delete_node() method, which was a no-op routine and never invoked; a
+	SRT Node has always been garbage collected by Perl as is normal.  This
+	method had existed as a place-holder for an eventual C implementation that
+	actually did something, but since a C version is very far away, if it ever
+	comes, this has been removed meanwhile.  Also removed the corresponding
+	en.pm user text message 'SRT_N_DEL_NODE_IN_CONT'.
+
+	* Updated both CREDITS copies regarding Stevan Little's contribution, to add 
+	that he introduced me to Scalar::Util::weaken() last month.
+
+	* Added new CAVEATS item and TODO file item concerning external refs to
+	Nodes whose host Container was garbage collected.
+
+	* Renamed this file to 'Changes' from 'ChangeLog'; the new name is more
+	descriptive to its free-form structure, and more consistent with CPAN (which
+	uses both names but 'Changes' seems to be more common these days).  Also
+	truncated this Changes file to remove all detail entries for releases v0.28
+	thru v0.58; in their place was added a change summary for releases v0.01
+	thru v0.58 that mainly just said what the names and versions of all the
+	predecessor distributions and modules are.
+
+2005-04-03   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.58, containing SQL::Routine 0.58, was released on
+	CPAN.
+
+2005-03-06   Darren Duncan <perl@DarrenDuncan.net>
+
+	Record update in the PAUSE modules database:
+
+	statd: [a] was [c]
+
+	The resulting entry will be:
+
+	SQL::
+	::Routine         adpOg Specify all database tasks with SQL routines DUNCAND
+
+2004-11-05   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.48, containing SQL::Routine 0.48, was released on
+	CPAN.  This is the first release of SQL::Routine following its merger with
+	SQL::Routine::SkipID.
+
+2004-11-02   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine-Castaways Release 0.33, containing SQL::Routine::SkipID 0.33,
+	was released on CPAN; this is the last release of the SQL-Routine-Castaways
+	distribution.  This is the last release of SQL::Routine::SkipID prior to its
+	merger with SQL::Routine.
+
+2004-11-01   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.47, containing SQL::Routine 0.47, was released on
+	CPAN.  This is the last release of SQL::Routine prior to its merger with
+	SQL::Routine::SkipID.  This is the first release of SQL::Routine following
+	its merger with SQL::Routine::ByTree.
+
+2004-10-29   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.46, containing SQL::Routine 0.46, was released on
+	CPAN.  This is the last release of SQL::Routine prior to its merger with
+	SQL::Routine::ByTree.
+
+2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.43, containing SQL::Routine 0.43, was released on
+	CPAN; this is the first release of the SQL-Routine distribution.  This is
+	the first release of any distribution to contain SQL::Routine, which was
+	renamed from SQL::SyntaxModel.  This is the first release of this module
+	following its official registration on the Perl 5 Module List.
+
+	* SQL-Routine-Castaways Release 0.31, containing SQL::Routine::ByTree 0.31
+	and SQL::Routine::SkipID 0.31, was released on CPAN; this is the first
+	release of the SQL-Routine-Castaways distribution.  This is the last release
+	of SQL::Routine::ByTree prior to its merger with SQL::Routine.  This is the
+	first release of any distribution to contain SQL::Routine::ByTree or
+	SQL::Routine::SkipID; they were renamed from SQL::SyntaxModel::ByTree and
+	SQL::SyntaxModel::SkipID respectively.
+
+2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
+
+	The next version of the Module List will list the following module:
+
+	  modid:       SQL::Routine
+	  DSLIP:       cdpOg
+	  description: Specify all database tasks with SQL routines
+	  userid:      DUNCAND (Darren Duncan)
+	  chapterid:   11 (String_Lang_Text_Proc)
+	  enteredby:   BDFOY (brian d foy)
+	  enteredon:   Mon Oct  4 20:04:46 2004 GMT
+
+	The resulting entry will be:
+
+	SQL::
+	::Routine         cdpOg Specify all database tasks with SQL routines DUNCAND
+
+2004-09-13   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel Release 0.42, containing SQL::SyntaxModel 0.42, was
+	released on CPAN; this is the last release of the SQL-SyntaxModel
+	distribution.  This is the last release of any distribution to contain
+	SQL::SyntaxModel.  This is the last release of this module prior to its
+	official registration on the Perl 5 Module List.
+
+2004-09-01   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel-ByTree Release 0.30, containing SQL::SyntaxModel::ByTree
+	0.30, was released on CPAN; this is the last release of the
+	SQL-SyntaxModel-ByTree distribution.  This is the last release of any
+	distribution to contain SQL::SyntaxModel::ByTree.  This is the first release
+	for this distribution and module where they both explicitly have matching
+	version numbers.
+
+	* SQL-SyntaxModel-SkipID Release 0.30, containing SQL::SyntaxModel::SkipID
+	0.30, was released on CPAN; this is the last release of the
+	SQL-SyntaxModel-SkipID distribution.  This is the last release of any
+	distribution to contain SQL::SyntaxModel::SkipID.  This is the first release
+	for this distribution and module where they both explicitly have matching
+	version numbers.
+
+2004-08-16   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel Release 0.38, containing SQL::SyntaxModel 0.38, was
+	released on CPAN.  This is the first release for this distribution and
+	module where they both explicitly have matching version numbers.
+
+2004-08-06   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel Release 0.37, containing SQL::SyntaxModel 0.24, was
+	released on CPAN.  This is the last release for this distribution and
+	module where they both do not explicitly have matching version numbers.
+
+2004-06-29   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel-ByTree Release 0.29, containing SQL::SyntaxModel::ByTree
+	0.14, was released on CPAN.  This is the last release for this distribution
+	and module where they both do not explicitly have matching version numbers.
+
+	* SQL-SyntaxModel-SkipID Release 0.29, containing SQL::SyntaxModel::SkipID
+	0.14, was released on CPAN.  This is the last release for this distribution
+	and module where they both do not explicitly have matching version numbers.
+
+2004-03-22   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-SyntaxModel Release 0.28, containing SQL::SyntaxModel 0.15, was
+	released on CPAN; this is the first release of the SQL-SyntaxModel
+	distribution.
+
+	* SQL-SyntaxModel-ByTree Release 0.28, containing SQL::SyntaxModel::ByTree
+	0.13, was released on CPAN; this is the first release of the
+	SQL-SyntaxModel-ByTree distribution.
+
+	* SQL-SyntaxModel-SkipID Release 0.28, containing SQL::SyntaxModel::SkipID
+	0.13, was released on CPAN; this is the first release of the
+	SQL-SyntaxModel-SkipID distribution.
+
+2004-03-21   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.27, containing SQL::SyntaxModel 0.14 and
+	SQL::SyntaxModel::ByTree 0.12 and SQL::SyntaxModel::SkipID 0.12, was
+	released on CPAN.  This is the last release of the Rosetta distribution to
+	contain any version of those 3 modules.
+
+2003-12-21   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.20, containing SQL::SyntaxModel 0.08 and
+	SQL::SyntaxModel::ByTree 0.08 and SQL::SyntaxModel::SkipID 0.08, was
+	released on CPAN.  This is the first release of any distribution to contain
+	SQL::SyntaxModel::ByTree, which was split off from SQL::SyntaxModel; this is
+	the first release of SQL::SyntaxModel following that split.
+
+2003-12-18   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.19, containing SQL::SyntaxModel 0.07 and
+	SQL::SyntaxModel::SkipID 0.07, was released on CPAN.  This is the last
+	release of SQL::SyntaxModel prior to its split into itself and
+	SQL::SyntaxModel::ByTree.
+
+2003-09-26   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.18, containing SQL::SyntaxModel 0.06 and
+	SQL::SyntaxModel::SkipID 0.06, was released on CPAN.  This is the first
+	release of any distribution to contain either SQL::SyntaxModel or
+	SQL::SyntaxModel::SkipID, which are the results of splitting up the renamed
+	SQL::ObjectModel.
+
+2003-09-16   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.17, containing SQL::ObjectModel 0.05, was released on
+	CPAN.  This is the last release of any distribution to contain
+	SQL::ObjectModel; its subsequent release has it renamed and split in two.
+
+2003-06-11   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.13, containing SQL::ObjectModel 0.01, was released on
+	CPAN.  This is the first release of any distribution to contain
+	SQL::ObjectModel; it is the result of merging 3 pre-existing and renamed
+	modules, Rosetta::Schema::DataType and Rosetta::Schema::Table and
+	Rosetta::Schema::View.
+
+2003-06-10   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.12, containing Rosetta::Schema::DataType 0.021 and
+	Rosetta::Schema::Table 0.011 and Rosetta::Schema::View 0.012, was released
+	on CPAN.  This is the last release of those 3 modules prior to their
+	three-way merger into SQL::ObjectModel.
+
+2003-03-08   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.06, containing Rosetta::Schema::DataType 0.02 and
+	Rosetta::Schema::Table 0.01 and Rosetta::Schema::View 0.01, was released on
+	CPAN.  This is the first release of any distribution to contain either
+	Rosetta::Schema::Table or Rosetta::Schema::View.
+
+2003-03-04   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.05, containing Rosetta::Schema::DataType 0.01, was
+	released on CPAN.  This is the first release of any distribution to contain
+	Rosetta::Schema::DataType.  This is the first release of any distribution
+	for which some of the existing work that became the SQL-Routine distribution
+	was in the form of executable code, and not just design documentation.
+
+2003-02-10   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.04 was released on CPAN.  This is the last release of
+	any distribution for which all of the existing work that became the
+	SQL-Routine distribution was purely in the form of design documentation,
+	without executable code of any kind.
+
+2003-01-27   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Rosetta Release 0.02 was released on CPAN; this is the first release of
+	the Rosetta distribution.  Early versions of the design documentation that
+	became the SQL-Routine distribution were included.
+
+2003-01-05   Darren Duncan <perl@DarrenDuncan.net>
+
+	* DBIx-Portable Release 0.01 was released on CPAN; this is the only release
+	of the DBIx-Portable distribution.  This is the first release of any
+	distribution to contain design documentation that became the SQL-Routine
+	distribution.
+
+2002-11-12   Darren Duncan <perl@DarrenDuncan.net>
+
+	* Began development on the modules which became the SQL-Routine
+	distribution as their own entity that is separate from my application, for
+	open-source distribution on CPAN.  The modules were to comprise an
+	RDBMS-generic DB framework for any application to use.
+
+	* Modules based on a template created by h2xs 1.18.
+
+2002-07-28
+
+	* Posted the first significant update to the second prototype, which added
+	an index or cache for data that was expensive to calculate for each page
+	request, and involved rewriting about a fourth of the perl code.
+
+2002-06-07
+
+	* Posted to my website the second public prototype demo of the new
+	self-proprietary database driven application, whose database schema, user
+	interface, feature set, and Perl application code was almost completely
+	rewritten. The new version explicitly had separate modules for database
+	communication and the web interface logic, with MySQL-specific code and
+	database generic or data dictionary code in separate files, and separate
+	files for parts of the web interface.  The program used the same generic
+	CPAN modules as in the first prototype, DBI/MySQL and CGI::Portable.
+
+2001-11-24
+
+	* Posted the last update to the first prototype.
+
+2001-07-12
+
+	* Posted to my website the first public prototype demo of a new
+	self-proprietary database driven application, which is like a cross between
+	a multimedia metadata catalogue and a repository for historical or
+	genealogical data.  This application contained the first prototypes of code
+	that ended up in these modules.  All of this application's code, for
+	database communication and web interface logic, was situated in a single
+	module, with the rest of the program being more generic CPAN modules like
+	DBI (and DBD for MySQL) and CGI::Portable.
+
+2000-05-17
+
+	* Requested MySQL database privileges on my web host so I have something to
+	start developing, testing and deploying database driven applications on.

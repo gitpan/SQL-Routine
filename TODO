@@ -1,7 +1,9 @@
 TODO
 
-* Consider using Scalar::Util::weaken in SQL::Routine to alleviate the need for 
-an explicit destroy() by users of the module.
+* Maybe add code to SQL::Routine that detects an attempt to use an externally
+held "Well Known" Node after its host Container was garbage collected, and does
+something appropriate rather than simply misbehaving from an unexpected
+circumstance.
 
 * Continue fleshing out the standard_routine enumerated type documentation.
 

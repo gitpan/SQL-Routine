@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.27';
+our $VERSION = '0.28';
 
 ######################################################################
 
@@ -89,11 +89,6 @@ my %text_strings = (
 		$CN.'.new_node(): missing NODE_TYPE argument',
 	'SRT_N_NEW_NODE_BAD_TYPE' => 
 		$CN.'.new_node(): invalid NODE_TYPE argument; there is no Node Type named "{ARGNTYPE}"',
-
-	'SRT_N_DEL_NODE_IN_CONT' => 
-		$CN.'.delete_node(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'this Node can not be deleted because it is '.
-		'still in a Container; you must take it from there first',
 
 	'SRT_N_CLEAR_NODE_ID_IN_CONT' => 
 		$CN.'.clear_node_id(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.

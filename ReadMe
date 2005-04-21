@@ -41,6 +41,7 @@ Perl Version: 5.008001
 
 Core Modules:
 
+	Scalar::Util 1.11 (for weak refs)
 	Test::More 0.47 (but only for the test suite)
 
 Non-Core Modules: 
@@ -68,7 +69,10 @@ of a model, when he wrote me asking for examples of how to use this module.
 * 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
 towards improving this module's documentation, particularly towards using a much
 shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
-a glance, and not be intimidated by large amounts of detailed information.
+a glance, and not be intimidated by large amounts of detailed information.  Also
+thanks to Stevan for introducing me to Scalar::Util::weaken(); by using it,
+SQL::Routine objects can be garbage collected normally despite containing
+circular references, and users no longer need to invoke destructor methods.
 
 COPYRIGHT AND LICENSE
 

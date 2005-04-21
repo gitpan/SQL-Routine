@@ -3,7 +3,7 @@ use 5.008001; use utf8; use strict; use warnings;
 
 use Test::More 0.47;
 
-plan( 'tests' => 41 );
+plan( 'tests' => 35 );
 
 ######################################################################
 # First ensure the modules to test will compile, are correct versions:
@@ -12,8 +12,8 @@ use lib 't/lib';
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine 0.58;
-use SQL::Routine::L::en 0.27;
+use SQL::Routine 0.59;
+use SQL::Routine::L::en 0.28;
 
 ######################################################################
 # Here are some utility methods:
@@ -80,8 +80,6 @@ eval {
 		$test2_passed or die $exception;
 	}
 	ok( $test2_passed, "prevent creation of circular refs - parent is self" );
-
-	$model->destroy();
 };
 $@ and fail( "TESTS ABORTED: ".error_to_string( $@ ) );
 
@@ -126,11 +124,6 @@ eval {
 	my $expected_output3 = t_SRT_Verbose->expected_model_sid_short_xml_output();
 	my $actual_output3 = $model->get_all_properties_as_xml_str( 1, 1 );
 	is( $actual_output3, $expected_output3, "verify serialization of objects (SID short)" );
-
-	message( 'Now destroy the objects ...' );
-
-	$model->destroy();
-	is( (keys %{$model}), '0', "destruction of all objects" );
 };
 $@ and fail( "TESTS ABORTED: ".error_to_string( $@ ) );
 
@@ -176,11 +169,6 @@ eval {
 	my $expected_output3 = t_SRT_Terse->expected_model_sid_short_xml_output();
 	my $actual_output3 = $model->get_all_properties_as_xml_str( 1, 1 );
 	is( $actual_output3, $expected_output3, "verify serialization of objects (SID short)" );
-
-	message( 'Now destroy the objects ...' );
-
-	$model->destroy();
-	is( (keys %{$model}), '0', "destruction of all objects" );
 };
 $@ and fail( "TESTS ABORTED: ".error_to_string( $@ ) );
 
@@ -228,11 +216,6 @@ eval {
 	my $expected_output3 = t_SRT_Abstract->expected_model_sid_short_xml_output();
 	my $actual_output3 = $model->get_all_properties_as_xml_str( 1, 1 );
 	is( $actual_output3, $expected_output3, "verify serialization of objects (SID short)" );
-
-	message( 'Now destroy the objects ...' );
-
-	$model->destroy();
-	is( (keys %{$model}), '0', "destruction of all objects" );
 };
 $@ and fail( "TESTS ABORTED: ".error_to_string( $@ ) );
 
@@ -250,7 +233,6 @@ eval {
 	my $props_nid = $model->get_all_properties();
 	my $props_sidL = $model->get_all_properties( 1 );
 	my $props_sidS = $model->get_all_properties( 1, 1 );
-	$model->destroy();
 
 	message( 'NID: First build populated Container object from an original model\'s NID dump...' );
 
@@ -280,11 +262,6 @@ eval {
 	my $nid_actual_output3 = $nid_model->get_all_properties_as_xml_str( 1, 1 );
 	is( $nid_actual_output3, $nid_expected_output3, "verify serialization of objects (SID short)" );
 
-	message( 'NID: Now destroy the Container and its Nodes ...' );
-
-	$nid_model->destroy();
-	is( (keys %{$nid_model}), '0', "destruction of all objects" );
-
 	message( 'SID-L: First build populated Container object from an original model\'s SID-long dump...' );
 
 	my $sidL_model = SQL::Routine->build_container( $props_sidL, 1, undef, 1 );
@@ -313,11 +290,6 @@ eval {
 	my $sidL_actual_output3 = $sidL_model->get_all_properties_as_xml_str( 1, 1 );
 	is( $sidL_actual_output3, $sidL_expected_output3, "verify serialization of objects (SID short)" );
 
-	message( 'SID-L: Now destroy the Container and its Nodes ...' );
-
-	$sidL_model->destroy();
-	is( (keys %{$sidL_model}), '0', "destruction of all objects" );
-
 	message( 'SID-S: First build populated Container object from an original model\'s SID-long dump...' );
 
 	my $sidS_model = SQL::Routine->build_container( $props_sidS, 1, undef, 1 );
@@ -345,11 +317,6 @@ eval {
 	my $sidS_expected_output3 = t_SRT_Terse->expected_model_sid_short_xml_output();
 	my $sidS_actual_output3 = $sidS_model->get_all_properties_as_xml_str( 1, 1 );
 	is( $sidS_actual_output3, $sidS_expected_output3, "verify serialization of objects (SID short)" );
-
-	message( 'SID-S: Now destroy the Container and its Nodes ...' );
-
-	$sidS_model->destroy();
-	is( (keys %{$sidS_model}), '0', "destruction of all objects" );
 };
 $@ and fail( "TESTS ABORTED: ".error_to_string( $@ ) );
 

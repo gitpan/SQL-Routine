@@ -486,20 +486,6 @@ SQL::Routine::Container (or subclass) object.
 
 These methods are stateful and may only be invoked off of Container objects.
 
-=head2 destroy()
-
-	$model->destroy();
-
-This "setter" method will destroy the Container object that it is invoked from,
-and it will also destroy all of the Nodes inside that Container.  This method
-exists because all Container objects (having 1 or more Node) contain circular
-references between the Container and all of its Nodes.  You need to invoke this
-method when you are done with a Container, or you will leak the memory it uses
-when your external references to it go out of scope.  This method can be
-invoked at any time and will not throw any exceptions.  When it has completed,
-all external references to the Container or any of its Nodes will each point to
-an empty (but still blessed) Perl hash.  I<See the CAVEATS documentation.>
-
 =head2 auto_assert_deferrable_constraints([ NEW_VALUE ])
 
 This method returns this Container's "auto assert deferrable constraints"
@@ -642,16 +628,6 @@ These methods are stateful and may only be invoked off of Node objects.  For
 some of these, it doesn't matter whether the Node is in a Container or not. 
 For others, this condition must be true or false for the method to be invoked,
 or it will throw an exception (like for bad input).
-
-=head2 delete_node()
-
-This "setter" method will destroy the Node object that it is invoked from, if
-it can.  You are only allowed to delete Nodes that are not inside Containers,
-and which don't have child Nodes; failing this, you must remove the children
-and then take this Node from its Container first.  Technically, this method
-doesn't actually do anything (pure-Perl version) other than validate that you
-are allowed to delete; when said conditions are met, the Node will be garbage
-collected as soon as you lose your reference to it.
 
 =head2 get_node_type()
 

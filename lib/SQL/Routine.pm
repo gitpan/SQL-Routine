@@ -2,8 +2,9 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.58';
+our $VERSION = '0.59';
 
+use Scalar::Util 1.11;
 use Locale::KeyedText 1.03;
 
 ######################################################################
@@ -18,7 +19,9 @@ SQL::Routine - Specify all database tasks with SQL routines
 
 Perl Version: 5.008001
 
-Core Modules: I<none>
+Core Modules: 
+
+	Scalar::Util 1.11 (for weak refs)
 
 Non-Core Modules: 
 
@@ -124,6 +127,7 @@ my $NPROP_NODE_ID     = 'node_id'; # uint - unique identifier attribute for this
 	# C version of this will be an unsigned integer.
 	# This property corresponds to a Node attribute named 'id'.
 my $NPROP_PP_NREF = 'pp_nref'; # Node - special Node attr which points to primary-parent Node (or id reps other Node)
+	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
 	# C version of this will be either an array or a single struct, to handle pointer vs uint
 	# Value can only be actual reference when Node is in a Container, and pointed to must be in same
 	# This property is analagous to a non-existing AT_NREFS element whose name is "pp".
@@ -137,9 +141,11 @@ my $NPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of Node which a
 my $NPROP_AT_ENUMS    = 'at_enums'; # hash (enum,enum) - attrs of Node which are enumerated values
 	# C version of this will be an array (pointer) of enumerated values.
 my $NPROP_AT_NREFS    = 'at_nrefs'; # hash (enum,Node) - attrs of Node which point to other Nodes (or ids rep other Nodes)
+	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
 	# C version of this will be either multiple arrays or a single array of structs, to handle pointer vs uint
 	# Hash elements can only be actual references when Node is in a Container, and pointed to must be in same
 my $NPROP_CONTAINER   = 'container'; # ref to Container this Node lives in
+	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
 	# C version of this would be a pointer to a Container struct
 my $NPROP_PRIM_CHILD_NREFS = 'prim_child_nrefs'; # array - list of refs to other Nodes having actual refs to this one
 	# We use this to reciprocate actual refs from the PP_NREF property of other Nodes to us.
@@ -1616,17 +1622,6 @@ sub new {
 
 ######################################################################
 
-sub destroy {
-	# Since we probably have circular refs, we must explicitly be destroyed.
-	my ($container) = @_;
-	foreach my $node (values %{$container->{$CPROP_ALL_NODES}}) {
-		%{$node} = ();
-	}
-	%{$container} = ();
-}
-
-######################################################################
-
 sub auto_assert_deferrable_constraints {
 	my ($container, $new_value) = @_;
 	if( defined( $new_value ) ) {
@@ -1906,22 +1901,6 @@ sub new {
 
 ######################################################################
 
-sub delete_node {
-	my ($node) = @_;
-
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->_throw_error_message( 'SRT_N_DEL_NODE_IN_CONT' );
-	}
-
-	# Ultimately the pure-Perl version of this method is a no-op because once 
-	# a Node is not in a Container, there are no references to it by any 
-	# SQL::Routine/::* object; it will vanish when external refs go away.
-	# This function is a placeholder for the C version, which will require 
-	# explicit memory deallocation.
-}
-
-######################################################################
-
 sub get_node_type {
 	my ($node) = @_;
 	return $node->{$NPROP_NODE_TYPE};
@@ -2045,6 +2024,7 @@ sub _set_primary_parent_attribute {
 
 	$node->_clear_primary_parent_attribute(); # clears any existing link through this attribute
 	$node->{$NPROP_PP_NREF} = $attr_value;
+	Scalar::Util::weaken( $node->{$NPROP_PP_NREF} ); # avoid strong circular references
 	if( ref($attr_value) eq ref($node) ) {
 		# The attribute value is a Node object, so that Node should link back now.
 		push( @{$attr_value->{$NPROP_PRIM_CHILD_NREFS}}, $node );
@@ -2331,6 +2311,7 @@ sub _set_node_ref_attribute {
 
 	$node->_clear_node_ref_attribute( $attr_name ); # clears any existing link through this attribute
 	$node->{$NPROP_AT_NREFS}->{$attr_name} = $attr_value;
+	Scalar::Util::weaken( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # avoid strong circular references
 	if( ref($attr_value) eq ref($node) ) {
 		# The attribute value is a Node object, so that Node should link back now.
 		push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
@@ -2620,9 +2601,12 @@ sub put_in_container {
 				{ 'ATNM' => $at_nodes_atnm, 'EXPNTYPE' => $exp_at_nref_types, 'EXPNID' => $at_nodes_nid } );
 		}
 		$at_nodes_refs{$at_nodes_atnm} = $at_nodes_ref;
+		Scalar::Util::weaken( $at_nodes_refs{$at_nodes_atnm} ); # avoid strong circular references
 	}
 	$node->{$NPROP_CONTAINER} = $new_container;
+	Scalar::Util::weaken( $node->{$NPROP_CONTAINER} ); # avoid strong circular references
 	$node->{$NPROP_PP_NREF} = $pp_node;
+	Scalar::Util::weaken( $node->{$NPROP_PP_NREF} ); # avoid strong circular references
 	$node->{$NPROP_AT_NREFS} = \%at_nodes_refs;
 	$rh_can->{$node_id} = $node;
 
@@ -4190,7 +4174,7 @@ queries, DML, DDL, connection management) that look like ordinary routines
 (procedures or functions) to your programs; all routine arguments are named.
 
 SQL::Routine is trivially easy to install, since it is written in pure Perl and
-its whole dependency chain consists of just 1 other pure Perl module.
+its whole non-core dependency chain consists of just 1 other pure Perl module.
 
 Typical usage of this module involves creating or loading a single
 SQL::Routine::Container object when your program starts up; this Container
@@ -4273,7 +4257,6 @@ CONTAINER CONSTRUCTOR FUNCTIONS AND METHODS:
 
 CONTAINER OBJECT METHODS:
 
-	destroy()
 	auto_assert_deferrable_constraints([ NEW_VALUE ])
 	auto_set_node_ids([ NEW_VALUE ])
 	may_match_surrogate_node_ids([ NEW_VALUE ])
@@ -4290,7 +4273,6 @@ NODE CONSTRUCTOR FUNCTIONS AND METHODS:
 
 NODE OBJECT METHODS:
 
-	delete_node()
 	get_node_type()
 	get_node_id()
 	clear_node_id()
@@ -4380,17 +4362,6 @@ areas are covered.
 
 =head1 CAVEATS
 
-All SQL::Routine::Container objects contain circular references by design (or
-more specifically, when 1 or more Node is in one).  When you are done with a
-Container object, you should explicitly call its "destroy()" method prior to
-letting your references to it go out of scope, or you will leak the memory it
-used.  Note that some early versions of SQL::Routine had wrapped the actual
-Container object in a second object that was auto-destroyed when it went out of
-scope, but this cludge was later removed due to adding worse problems than it
-solved, such as Containers being destroyed too early.  In the future, we may try
-to use a "weak reference" adjunct feature to Perl to remove the need for
-explicit destruction in a more elegant fashion, but not necessarily.
-
 You can not use surrogate id values that look like valid Node ids (that are
 positive integers) since some methods won't do what you expect when given such
 values.  Nodes having such surrogate id values won't be matched by values
@@ -4402,6 +4373,17 @@ id based on its looking like a valid Node id or not.  You should rarely
 encounter this caveat, though, since you would never use a number as a "SQL
 identifier" in normal cases, and that is only technically possible with a
 "delimited SQL identifier".
+
+Any "Well Known" Nodes should be explicitly taken from their home Container
+prior to that Container's auto-destruction if you intend to keep using them
+afterwards, such as to put in a different Container.  The internal structure of
+a Node, specifically its pp_nref and at_nrefs properties, are different
+depending on the Node's status ("Alone" vs "Well Known"), and they will end up
+being wrong for Nodes that aren't in a Container due to its being garbage
+collected but that weren't explicitly removed from it first.  This means that
+some attempts to use that Node or put it in a new Container will likely fail, as
+the SQL::Routine code currently doesn't do the extra work to gracefully handle 
+this erroneous circumstance.
 
 =head1 CREDITS
 
@@ -4415,7 +4397,10 @@ of a model, when he wrote me asking for examples of how to use this module.
 * 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
 towards improving this module's documentation, particularly towards using a much
 shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
-a glance, and not be intimidated by large amounts of detailed information.
+a glance, and not be intimidated by large amounts of detailed information.  Also
+thanks to Stevan for introducing me to Scalar::Util::weaken(); by using it,
+SQL::Routine objects can be garbage collected normally despite containing
+circular references, and users no longer need to invoke destructor methods.
 
 =head1 SEE ALSO
 
