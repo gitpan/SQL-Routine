@@ -301,59 +301,12 @@ unlock() methods on it, Perl's thread-E<gt>lock() mechanism is purely context
 based; the moment lock_to_...() returns, the object has unlocked again.  Of
 course, if you know a clean way around this, I would be happy to hear it.>
 
-=head1 NODE EVOLUTION STATES
-
-A SQL::Routine Node object always exists in one of 2 official ordered
-states (which can conceptually be divided further into more states).  For now
-we can call them "Alone" (1) and "Well Known" (2).  The set of legal operations
-you can perform on a Node are different depending on its state, and a Node can
-only transition between adjacent-numbered states one at a time.
-
-When a new Node is created, using new_node(), it starts out "Alone"; it does
-*not* live in a Container, and it is illegal to have any actual (Perl)
-references between it and any other Node.  Nodes in this state can be built
-(have their Node Id and other attributes set or changed) piecemeal with the
-least processing overhead, and can be moved or exist independently of anything
-else that SQL::Routine manages.  An "Alone" Node does not need to have its
-Node Id set.  Any Node attributes which are conceptually references to other
-Nodes are stored and read as Id numbers when the Node is "Alone"; also, no
-confirmation has yet taken place that the referenced Nodes actually exist yet.
-A Node may only be individually deleted when it is "Alone"; in this state it
-will be garbage collected like any Perl variable when your own reference to it
-goes away.
-
-When you invoke the put_in_container() method on an "Alone" Node, giving it a
-Container object as an argument, the Node will transition to the "Well Known"
-state; you can move from "Well Known" to "Alone" using the complementary
-take_from_container() method.  An "Well Known" Node lives in a Container, and
-any attributes which refer to other Nodes now must be actual references, where
-the existence of the other Node in the same Container is confirmed.  If any
-conceptual references are set in a Node while it is "Alone", these will be
-converted into actual references by put_in_container(), which will fail if any
-can't be found; any other Nodes that this one references will now link back to
-it in their own child lists.  The method take_from_container() will replace
-references with Node Ids, and remove the parent-to-child references.  A Node
-can only link to a Node in the same Container as itself.
-
-Testing for the existence of mandatory Node attribute values is separate from 
-the official Node state and can be invoked on a Node at any time.  None of the 
-official Node states themselves will assert that any mandatory attributes are 
-populated.  This testing is separate partly to make it easy for you to build 
-Nodes piecemeal, though there are other practical reasons for it.
-
-Note that all typical Node attributes can be read, set, replaced, or cleared at
-any time regardless of the Node state; you can set them all either when the
-Node is "Alone" or when it is "Well Known", as is your choice.  However, the
-Node Id must always have a value when the Node is in a Container; if you want
-to make a Node "Well Known" as early as possible, you simply have to set its
-Node Id first.
-
 =head1 NODE IDENTITY ATTRIBUTES
 
-Every Node in a Container has a positive integer 'id' attribute whose value is
-distinct for every Node in the Container, without regard for the Node type.
-These 'id' attributes are used internally by SQL::Routine when linking child and
-parent Nodes, but they have no use at all in any SQL statement strings that are
+Every Node has a positive integer 'id' attribute whose value is distinct among
+every Node in the same Container, without regard for the Node type.  These 'id'
+attributes are used internally by SQL::Routine when linking child and parent
+Nodes, but they have no use at all in any SQL statement strings that are
 generated for a typical database engine.  Rather, SQL::Routine defines a second,
 "surrogate id" ("SI") attribute for most Node types whose value actually is used
 in SQL statement strings, and corresponds to the SQL:2003 concept of a "SQL
@@ -362,9 +315,9 @@ varies by the Node type, but always looks like "si_*"; at least half of the
 time, the exact name is "si_name".  If the SI attribute of a given Node is a
 literal or enumerated attribute, then its value is used directly for SQL
 strings; if it is a Node-ref attribute, then the SI attribute of the Node that
-it points to is used likewise for SQL strings in place of the given Node (this 
-will recurse until we hold a Node whose SI attribute is not a Node-ref).  In 
-this way, SQL::Routine stores the "SQL identifier" value of each Node exactly 
+it points to is used likewise for SQL strings in place of the given Node (this
+will recurse until we hold a Node whose SI attribute is not a Node-ref).  In
+this way, SQL::Routine stores the "SQL identifier" value of each Node exactly
 once, and if it is edited then all SQL references to it automatically update.
 
 I<To make SQL::Routine easier to use in the common cases, this module will treat
@@ -459,15 +412,15 @@ are thin wrappers over other methods and exist strictly for convenience.
 
 This function wraps SQL::Routine::Container->new().
 
-=head2 new_node( NODE_TYPE )
+=head2 new_node( CONTAINER, NODE_TYPE[, NODE_ID] )
 
-	my $node = SQL::Routine->new_node( 'table' );
-	my $node2 = SQL::Routine::Container->new_node( 'table' );
-	my $node3 = SQL::Routine::Node->new_node( 'table' );
-	my $node4 = $model->new_node( 'table' );
-	my $node5 = $node->new_node( 'table' );
+	my $node = SQL::Routine->new_node( $model, 'table' );
+	my $node2 = SQL::Routine::Container->new_node( $model, 'table' );
+	my $node3 = SQL::Routine::Node->new_node( $model, 'table', 32 );
+	my $node4 = $model->new_node( $model, 'table', 45 );
+	my $node5 = $node->new_node( $model, 'table' );
 
-This function wraps SQL::Routine::Node->new( NODE_TYPE ).
+This function wraps SQL::Routine::Node->new( CONTAINER, NODE_TYPE, NODE_ID ).
 
 =head1 CONTAINER CONSTRUCTOR FUNCTIONS AND METHODS
 
@@ -578,80 +531,86 @@ individually and collectively.  This property is initially set to true when a
 Container is new and empty; it is also set to true by
 Container.assert_deferrable_constraints() when all of its tests complete without
 finding any problems.  This property is set to false when any changes are made
-to a "Well Known" Node in this Container, which includes moving the Node in to
-or out of "Well Known" status.
+to a Node in this Container, which includes creating or deleting a Node.
 
 =head2 assert_deferrable_constraints()
 
 	$model->assert_deferrable_constraints();
 
 This "getter" method implements several types of deferrable data validation, to
-make sure that every "Well Known" Node in this Container is ready to be used,
-both individually and collectively; it throws an exception if it can find
-anything wrong.  Note that a failure with any one Node will cause the testing
-of the whole set to abort, as the offending Node throws an exception which this
-method doesn't catch; any untested Nodes could also have failed, so you will
-have to re-run this method after fixing the problem.  This method will
-short-circuit and not perform any tests if this Container's "deferrable
-constraints are tested" property is true, so to avoid unnecessary repeated
-tests due to redundant external invocations; this allows you to put validation
-checks for safety everywhere in your program while avoiding a corresponding
-performance hit.
+make sure that every Node in this Container is ready to be used, both
+individually and collectively; it throws an exception if it can find anything
+wrong.  Note that a failure with any one Node will cause the testing of the
+whole set to abort, as the offending Node throws an exception which this method
+doesn't catch; any untested Nodes could also have failed, so you will have to
+re-run this method after fixing the problem.  This method will short-circuit and
+not perform any tests if this Container's "deferrable constraints are tested"
+property is true, so to avoid unnecessary repeated tests due to redundant
+external invocations; this allows you to put validation checks for safety
+everywhere in your program while avoiding a corresponding performance hit.
 
 =head1 NODE CONSTRUCTOR FUNCTIONS AND METHODS
 
 This function/method is stateless and can be invoked off of either the Node
 class name or an existing Node object, with the same result.
 
-=head2 new( NODE_TYPE )
+=head2 new( CONTAINER, NODE_TYPE[, NODE_ID] )
 
-	my $node = SQL::Routine::Node->new( 'table' );
-	my $node2 = $node->new( 'table' );
+	my $node = SQL::Routine::Node->new( $model, 'table' );
+	my $node2 = SQL::Routine::Node->new( $model, 'table', 27 );
+	my $node3 = $node->new( $model, 'table' );
+	my $node4 = $node->new( $model, 'table', 42 );
 
-This "getter" function/method will create and return a single
-SQL::Routine::Node (or subclass) object whose Node Type is given in the
-NODE_TYPE (enum) argument, and all of whose other properties are defaulted to
-an "empty" state.  A Node's type can only be set on instantiation and can not
-be changed afterwards; only specific values are allowed, which you can see in
-the SQL::Routine::Language documentation file.  This new Node does not yet
-live in a Container, and will have to be put in one later before you can make
-full use of it.  However, you can read or set or clear any or all of this new
-Node's attributes (including the Node Id) prior to putting it in a Container,
-making it easy to build one piecemeal before it is actually "used".  A Node can
-not have any actual Perl references between it and other Nodes until it is in a
-Container, and as such you can delete it simply by letting your own reference
-to it be garbage collected.
+This "getter" function/method will create and return a single SQL::Routine::Node
+(or subclass) object that lives in the Container object given in the CONTAINER
+argument; the new Node will live in that Container for its whole life; if you
+want to conceptually move it to a different Container, you must clone the Node
+and then delete the old one.  The Node Type of the new Node is given in the
+NODE_TYPE (enum) argument, and it can not be changed for this Node later; only
+specific values are allowed, which you can see in the SQL::Routine::Language
+documentation file.  The Node Id can be explicitly given in the NODE_ID (uint)
+argument, which is a mandatory argument unless the host Container has a true
+"auto set node ids" property, in which case a Node Id will be generated from a
+sequence if the argument is not given.  All of the Node's other properties are
+defaulted to an "empty" state.
 
 =head1 NODE OBJECT METHODS
 
-These methods are stateful and may only be invoked off of Node objects.  For
-some of these, it doesn't matter whether the Node is in a Container or not. 
-For others, this condition must be true or false for the method to be invoked,
-or it will throw an exception (like for bad input).
+These methods are stateful and may only be invoked off of Node objects.
+
+=head2 delete_node()
+
+This "setter" method will destroy the Node object that it is invoked from, if it
+can; it does this by clearing all references between this Node and its parent
+Nodes and its Container, whereby it can then be garbage collected.  You are only
+allowed to delete Nodes that don't have child Nodes; failing this, you must
+unlink the children from it or delete them first.  After invoking this method
+you should let your external reference to the Node expire so the reminants are
+garbage collected.
+
+=head2 get_container()
+
+	my $model = $node->get_container();
+
+This "getter" method returns the Container object which this Node lives in.
 
 =head2 get_node_type()
 
 	my $type = $node->get_node_type();
 
 This "getter" method returns the Node Type scalar (enum) property of this Node.
- You can not change this property on an existing Node, but you can set it on a
+You can not change this property on an existing Node, but you can set it on a
 new one.
 
 =head2 get_node_id()
 
-This "getter" method will return the integral Node Id property of this Node, 
-if it has one.
-
-=head2 clear_node_id()
-
-This "setter" method will erase this Node's Id property if it can.  A Node's Id
-may only be cleared if the Node is not in a Container.
+This "getter" method will return the integral Node Id property of this Node.
 
 =head2 set_node_id( NEW_ID )
 
-This "setter" method will set or replace this Node's Id property if it can.  If 
-this Node is in a Container, then the replacement will fail if some other Node 
-with the same Node Type and Node Id already exists in the same Container.
+This "setter" method will replace this Node's Id property with the new value
+given in NEW_ID if it can; the replacement will fail if some other Node with the
+same Node Id already exists in the same Container.
 
 =head2 get_primary_parent_attribute()
 
@@ -735,12 +694,11 @@ pair.
 =head2 get_node_ref_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
 This "getter" method will return the value for this Node's node attribute named
-in the ATTR_NAME argument, if it is set, or undef if it isn't.  If the current
-Node is not in a Container, then the returned value is a Node Id number.  If the
-current Node is in a Container, then the returned value is a Node ref by
-default; if the optional boolean argument GET_TARGET_SI is true, then this
-method will instead lookup (recursively) and return the target Node's literal or
-enumerated surrogate id value (a single value, not a chain).
+in the ATTR_NAME argument, if it is set, or undef if it isn't.  The returned
+value is a Node ref by default; if the optional boolean argument GET_TARGET_SI
+is true, then this method will instead lookup (recursively) and return the
+target Node's literal or enumerated surrogate id value (a single value, not a
+chain).
 
 =head2 get_node_ref_attributes([ GET_TARGET_SI ])
 
@@ -764,12 +722,11 @@ the clear_node_ref_attribute() documentation for the semantics.
 This "setter" method will set or replace this Node's node attribute named in the
 ATTR_NAME argument, giving it the new value specified in ATTR_VALUE (if it is
 different).  If the attribute was previously valued, this method will first
-invoke clear_node_ref_attribute() on it.  When setting a new value, if the
-current Node is in a Container, then it will also add the current Node to the
-other Node's child list.  ATTR_VALUE may either be a perl reference to a Node,
-or a Node Id value, or a relative Surrogate Node Id value (scalar or array ref);
-the last one will only work if this Node is in a Container that matches Nodes by
-surrogate ids.
+invoke clear_node_ref_attribute() on it.  When setting a new value it will also
+add the current Node to the other Node's child list.  ATTR_VALUE may either be a
+perl reference to a Node, or a Node Id value, or a relative Surrogate Node Id
+value (scalar or array ref); the last one will only work if this Node is in a
+Container that matches Nodes by surrogate ids.
 
 =head2 set_node_ref_attributes( ATTRS )
 
@@ -786,7 +743,8 @@ its effects are explained by get_node_ref_attribute().
 
 =head2 clear_surrogate_id_attribute()
 
-This "setter" method will clear this Node's surrogate id attribute value.
+This "setter" method will clear this Node's surrogate id attribute value, unless 
+it is 'id', in which case it throws an exception instead.
 
 =head2 set_surrogate_id_attribute( ATTR_VALUE )
 
@@ -812,11 +770,12 @@ attributes; its effects are explained by get_node_ref_attribute().
 =head2 clear_attribute( ATTR_NAME )
 
 This "setter" method will clear this Node's attribute named in the ATTR_NAME
-argument.
+argument, unless ATTR_NAME is 'id'; since the Node Id attribute has a constantly
+applied mandatory constraint, this method will throw an exception if you try.
 
 =head2 clear_attributes()
 
-This "setter" method will clear all of this Node's attributes.
+This "setter" method will clear all of this Node's attributes, except 'id'.
 
 =head2 set_attribute( ATTR_NAME, ATTR_VALUE )
 
@@ -831,38 +790,19 @@ This "setter" method will set or replace multiple Node attributes, whose names
 and values are specified by keys and values of the ATTRS hash ref argument;
 this method will invoke set_attribute() for each key/value pair.
 
-=head2 get_container()
-
-	my $model = $node->get_container();
-
-This "getter" method returns the Container object which this Node lives in, if
-any.
-
-=head2 put_in_container( NEW_CONTAINER )
-
-This "setter" method will put the current Node into the Container given as the
-NEW_CONTAINER argument if it can, which moves the Node from "Alone" to "Well
-Known" status.
-
-=head2 take_from_container()
-
-This "setter" method will take the current Node from its Container if it can,
-which moves the Node from "Well Known" to "Alone" status.
-
 =head2 move_before_sibling( SIBLING[, PARENT] )
 
 This "setter" method allows you to change the order of child Nodes under a
 common parent Node; specifically, it moves the current Node to a position just
 above/before the sibling Node specified in the SIBLING Node ref argument, if it
-can.  You can only invoke it on a Node that is in a Container, since that is the
-only time it exists in its parent's child list at all.  Since a Node can have
-multiple parent Nodes (and the sibling likewise), the optional PARENT argument
-lets you specify which parent's child list you want to move in; if you do not
-provide an PARENT value, then the current Node's primary parent Node (or
-pseudo-Node) is used, if possible.  This method will throw an exception if the
-current Node and the specified sibling or parent Nodes are not appropriately
-related to each other (parent <-> child).  If you want to move the current Node
-to follow the sibling instead, then invoke this method on the sibling.
+can.  Since a Node can have multiple parent Nodes (and the sibling likewise),
+the optional PARENT argument lets you specify which parent's child list you want
+to move within; if you do not provide an PARENT value, then the current Node's
+primary parent Node (or pseudo-Node) is used, if possible.  This method will
+throw an exception if the current Node and the specified sibling or parent Nodes
+are not appropriately related to each other (parent <-> child).  If you want to
+move the current Node to follow the sibling instead, then invoke this method on
+the sibling.
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
@@ -904,21 +844,19 @@ are returned in the same order they were added.
 
 =head2 get_surrogate_id_chain()
 
-This "getter" method can only be invoked in a Node in a container, and it
-returns the current Node's surrogate id chain as an array ref.  This method's
-return value is conceptually like what get_relative_surrogate_id() returns
-except that it is defined in an absolute context rather than a relative context,
-making it less suitable for serializing models that are subsequently
-reorganized; it is also much longer.
+This "getter" method returns the current Node's surrogate id chain as an array
+ref.  This method's return value is conceptually like what
+get_relative_surrogate_id() returns except that it is defined in an absolute
+context rather than a relative context, making it less suitable for serializing
+models that are subsequently reorganized; it is also much longer.
 
 =head2 find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
 
 	my $table_node = $table_index_node->find_node_by_surrogate_id( 'f_table', 'person' );
 
-This "getter" method may only be called on Nodes that are in a Container, and
-the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
-the current Node (but not the 'pp' attribute); it throws an exception if either
-condition is not met.  This method searches for member Nodes of this Node's host
+This "getter" method's first argument SELF_ATTR_NAME must match a valid Node-ref
+attribute name of the current Node (but not the 'pp' attribute); it throws an
+exception otherwise.  This method searches for member Nodes of this Node's host
 Container whose type makes them legally linkable by the SELF_ATTR_NAME attribute
 and whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument (which may be
 either a scalar or a Perl array ref); if one or more are found in the same scope
@@ -940,8 +878,7 @@ or not; it will only succeed if this method returns exactly 1 matching Node.
 
 	my $table_index_node = $table_node->find_child_node_by_surrogate_id( 'fk_father' );
 
-This "getter" method may only be called on Nodes that are in a Container, or it
-throws an exception.  This method searches for a primary-child Node of the
+This "getter" method searches for a primary-child Node of the
 current Node whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if
 one is found then it is returned by reference; if none is found, then undef is
 returned.  The TARGET_ATTR_VALUE argument is treated as an array-ref; if it is
@@ -959,10 +896,9 @@ Container.find_child_node_by_surrogate_id( TARGET_ATTR_VALUE ).
 	my $longer_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name' );
 	my $shorter_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name', 1 );
 
-This "getter" method may only be called on Nodes that are in a Container, and
-the first argument SELF_ATTR_NAME must match a valid Node-ref attribute name of
-the current Node (but not the 'pp' attribute); it throws an exception if either
-condition is not met.  This method returns a Surrogate Node Id value (which may
+This "getter" method's first argument SELF_ATTR_NAME must match a valid Node-ref
+attribute name of the current Node (but not the 'pp' attribute); it throws an
+exception otherwise.  This method returns a Surrogate Node Id value (which may
 be either a scalar or a Perl array ref) which is appropriate for passing to
 find_node_by_surrogate_id() as its TARGET_ATTR_VALUE such that the current
 attribute value would be "found" by it, assuming the current attribute value is
@@ -989,9 +925,7 @@ large fraction of Node refs whose fully qualified name is a single element.
 
 This "getter" method implements several types of deferrable data validation, to
 make sure that this Node is ready to be used; it throws an exception if it can
-find anything wrong.  This method can be used on any Node regardless of its
-current node evolution state, but that state does affect which tests are
-performed; "Well Known" Nodes get all the tests, while "Alone" Nodes skip some.
+find anything wrong.
 
 =head1 CONTAINER OR NODE METHODS FOR DEBUGGING
 
@@ -1065,7 +999,7 @@ its output into a pretty-printed string of XML, suitable for humans to read.
 
 =head1 CONTAINER OR NODE FUNCTIONS AND METHODS FOR RAPID DEVELOPMENT
 
-The following 7 "setter" functions and methods should assist more rapid
+The following 6 "setter" functions and methods should assist more rapid
 development of code that uses SQL::Routine, at the cost that the code would run
 a bit slower (SQL::Routine has to search for info behind the scenes that it
 would otherwise get from you).  These methods are implemented as wrappers over
@@ -1085,27 +1019,24 @@ Note that when a subroutine is referred to as a "function", it is stateless and
 can be invoked off of either a class name or class object; when a subroutine is
 called a "method", it can only be invoked off of Container or Node objects.
 
-=head2 build_lonely_node( NODE_TYPE[, ATTRS] )
+=head2 build_node( NODE_TYPE[, ATTRS] )
 
-	my $nodeP = SQL::Routine->build_lonely_node( 'catalog', { 'id' => 1, } ); 
-	my $nodeN = SQL::Routine->build_lonely_node( 
+	my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } ); 
+	my $nodeP2 = $model->build_node( 
+		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
+	my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } ); 
+	my $nodeN2 = $node->build_node( 
 		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
 
-This function will create and return a new Node that is "Alone" (not in a
-Container), whose type is specified in NODE_TYPE, and also set its attributes.
-The ATTRS argument is processed by Node.set_attributes() if it is provided; a
-Node id can also be provided this way, or the Node id won't be set.  If ATTRS
-is defined but not a Hash ref, then this method will build a new one having a
+This method will create and return a new Node, that lives in the invocant
+Container or in the same Container as the invocant Node, whose type is specified
+in NODE_TYPE, and also set its attributes.  The ATTRS argument is mainly
+processed by Node.set_attributes() if it is provided; a Node id can also be
+provided this way, or it will be generated if that is allowed.  If ATTRS is
+defined but not a Hash ref, then this method will build a new one having a
 single element, where the value is ATTRS and the key is either 'id' or the new
 Node's surrogate id attribute name, depending on whether the value looks like a
 valid Node id.
-
-=head2 build_node( NODE_TYPE[, ATTRS] )
-
-This method is like build_lonely_node() except that it must be invoked off of a
-Container, or a Node that is in a Container, and the newly created Node will be
-put in that Container.  This method will throw an exception if it is invoked on
-a Node that is not in a Container.
 
 =head2 build_child_node( NODE_TYPE[, ATTRS] )
 

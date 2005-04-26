@@ -1,3 +1,171 @@
+2005-04-25   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.60.
+
+	* New code file versions are: Routine.pm v0.60 and en.pm v0.29.
+
+	* The primary purpose of this release is the removal of the long-standing
+	feature where a SQL::Routine Node is valid to exist either on its own or
+	inside a Container; these 2 states of a Node were referred to as "alone" and
+	"well known" respectively; as of this release, there is only a single valid
+	state, which corresponds to the old "well known".  One result of this change
+	is that the SQL::Routine code can be greatly simplified, and it probably
+	executes faster too.  Note that this constitutes an API change, but the only
+	external code that would be affected is that which directly invokes these
+	low-level functions and methods: new_node(), Node.new(), clear_node_id(),
+	put_in_container(), take_from_container(), build_lonely_node().  Any code
+	not invoking these, such as because they use the other high-level build*()
+	functions instead (including all of the SYNOPSIS code), will not break.
+
+	* All changes in this release are restricted to just the following 3 files
+	unless otherwise explicitly mentioned: Routine.pm and Details.pod and en.pm.
+
+	* Reversed the change in release 0.59 that removed the Node.delete_node()
+	method; its concept is useful after all.
+
+	* It is now the case that every Node's "container" and "node id" properties
+	are always set and never empty, from the moment the Node object is created
+	and up to its destruction.  Any branch conditionals that tested those
+	properties for definedness were reduced to just the result of the 'yes'
+	branch; this includes the removal of many throwable exceptions.
+
+	* In Details.pod, deleted the entire NODE EVOLUTION STATES main
+	documentation section, since there is no longer a multiplicity of Node
+	states as it describes.  Many other small bits of POD documentation and code
+	comments were updated to remove any references to 'alone' or 'well known';
+	any documentation that described an either/or scenario pair was reduced to
+	one always-true scenario.
+
+	* Changed the declaration order of a Node's "container" property so it
+	appears just above "node type"; also moved the method get_container()
+	upwards to just above get_node_type().
+
+	* Merged the method put_in_container(), plus a copy of set_node_id(), into
+	Node.new(); the post-merge new() now creates a Node that lives in a
+	Container and has a set Node Id; it does not create links with any other
+	Nodes, but only the pseudo-Node parent; it now takes 3 arguments: a
+	Container, a Node Type, and a Node Id.  The merged method has 7 associated
+	user text messages in en.pm, down from the 9 its 2 main constituents had. 
+	Updated the new_node() wrapper function to match the new 3 arg signature.
+
+	* Merged the method take_from_container() into delete_node(); the post-merge
+	delete_node() unlinks the invocant Node from everything else and then gets
+	it garbage collected.  The merged method has 1 user text message in en.pm,
+	down from the 2 its constituents had.  Updated the method 
+	Container.build_child_node() to invoke it rather than take_from_container().
+
+	* Deleted method clear_node_id(), along with its single en.pm message.  Also
+	removed its invocation from clear_attributes(), and updated the invocations
+	in clear_surrogate_id_attribute() and clear_attribute() to throw an
+	exception where they had used to invoke it; also added 2 new '*_MAND_NID'
+	en.pm messages to go with those last 2 methods.
+
+	* Updated _normalize_primary_parent_or_node_ref_attribute_value() and en.pm
+	to remove 2 assertions and 4 associated exception messages that will no
+	longer be triggered, SRT_N_SET_[PP|NREF]_AT_[ONE_CONT|MISS_NID].
+
+	* Updated these 4 methods so that they always run their payload rather than
+	only doing so if the nref-attr value (that was or to be) is an object
+	reference: _[clear|set]_[primary_parent|node_ref]_attribute().
+
+	* Removed function build_lonely_node().  Then merged private function
+	_build_node_normalize_attrs() into its only remaining invoker, private
+	method _build_node_is_child_or_not().
+
+	* Updated private method _assert_in_node_deferrable_constraints() so that it 
+	no longer tests for the Node Id being defined; that is now redundant.  Also, 
+	a related piece of documentation in NodeTypes.pod was updated, to say that 
+	the 'id' attribute now has a constantly applied mandatory constraint.
+
+	* Fixed a bug in _build_node_is_child_or_not() where it only trapped
+	SRT_N_ASDC_CH_N_TOO_FEW_SET exceptions and not the similar
+	SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN exceptions.
+
+	* Fixed a bug in _assert_child_comp_deferrable_constraints() where the 
+	SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN exception was missing a variable value.
+
+	* Updated _build_node_is_child_or_not() so that it always sets the new
+	Node's surrogate id attribute prior to any other non-id/pp attribute; this
+	ensures that if any other attribute settings fail, the error messages are
+	more user friendly.
+
+	* Updated the following 7 methods to not assert their invocant Node is in a
+	Container, and removed their corresponding '*_NOT_IN_CONT' en.pm messages:
+	move_before_sibling(), get_surrogate_id_chain(),
+	find[|_child]_node_by_surrogate_id(), get_relative_surrogate_id(),
+	build[|_child]_node().  Also updated all 15 Node methods that conditionally
+	(based on the Container's presence) set the 'deferrable constraints tested'
+	property to false so they don't test.
+
+	* Merged _get_surrogate_id_chain() into get_surrogate_id_chain().
+
+	* Merged each _get_all_properties() into its partner get_all_properties().
+
+	* Updated the UNDERSTANDING NODE ATTRIBUTE ... section of NodeTypes.pod to
+	remove references to Node states and to say that the mandatory constraint
+	Node Ids is now constantly enforced rather than being deferrable.
+
+	* In Routine.pm, deleted the second CAVEATS paragraph, concerning Nodes that 
+	outlive their host Container; deleted a similar section in the TODO file.
+
+	* Updated the sqlrt_dt_node struct definition in API_C.pod so that the
+	'pp_nref' and 'at_nrefs' members are plain refs/pointers and not unions of
+	pointers and unsigned integers.  This corresponds to the Routine.pm changes.
+
+	* Small test suite update: Updated the 2 make_a_[|child_]node small utility
+	functions in t_SRT_Verbose.pm; folded the set_node_id() and
+	put_in_container() invocations into the new_node() invocation.  No changes
+	in SQL_Routine.t besides the usual upping of the 'used' module versions.
+
+	* These core files had exactly zero changes: EnumTypes.pod, Language.pod,
+	t_SRT_Terse.pm, t_SRT_Abstract.pm.
+
+	* Following all of the above changes, the disk space for all 7 core /lib/SQL
+	files in release 0.60 is 430K, which is 16K (or 4%) less than the 446K used
+	by the same files in release 0.59.  Specifically with the executable
+	function+method code (including spaces and dividers and f+m code comments)
+	in Routine.pm, 0.60 is 82K, which is 7K (or 9%) less than the 89K for 0.59;
+	by line count, 0.60 is 2092 f+m code lines, which is 162 (or 7%) lines less
+	than the 2254 lines of 0.59.
+
+	* For speed comparisions between 0.60 and 0.59, based on 100 iterations of
+	most of the test suite; as we can see, 0.60 performs a bit faster by up to
+	15% or so:
+
+		Version 0.60:
+
+		Benchmark: timing 100 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
+		A_AssDefCon: 13 wallclock secs (12.72 usr +  0.00 sys = 12.72 CPU) @  7.86/s (n=100)
+		A_ConvertToXML_NID:  2 wallclock secs ( 2.38 usr +  0.02 sys =  2.40 CPU) @ 41.67/s (n=100)
+		A_ConvertToXML_SID:  6 wallclock secs ( 6.20 usr +  0.04 sys =  6.24 CPU) @ 16.03/s (n=100)
+		A_MakeAndBreak: 14 wallclock secs (13.35 usr +  0.01 sys = 13.36 CPU) @  7.49/s (n=100)
+		T_AssDefCon: 12 wallclock secs (12.81 usr +  0.01 sys = 12.82 CPU) @  7.80/s (n=100)
+		T_ConvertToXML_NID:  2 wallclock secs ( 2.51 usr +  0.02 sys =  2.53 CPU) @ 39.53/s (n=100)
+		T_ConvertToXML_SID:  7 wallclock secs ( 6.41 usr +  0.03 sys =  6.44 CPU) @ 15.53/s (n=100)
+		T_MakeAndBreak:  7 wallclock secs ( 7.88 usr +  0.00 sys =  7.88 CPU) @ 12.69/s (n=100)
+		V_AssDefCon:  6 wallclock secs ( 5.66 usr +  0.01 sys =  5.67 CPU) @ 17.64/s (n=100)
+		V_ConvertToXML_NID:  1 wallclock secs ( 1.33 usr +  0.00 sys =  1.33 CPU) @ 75.19/s (n=100)
+		V_ConvertToXML_SID:  3 wallclock secs ( 2.97 usr +  0.00 sys =  2.97 CPU) @ 33.67/s (n=100)
+		V_MakeAndBreak:  3 wallclock secs ( 2.95 usr +  0.00 sys =  2.95 CPU) @ 33.90/s (n=100)
+
+		Version 0.59
+
+		Benchmark: timing 100 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
+		A_AssDefCon: 12 wallclock secs (12.81 usr +  0.00 sys = 12.81 CPU) @  7.81/s (n=100)
+		A_ConvertToXML_NID:  2 wallclock secs ( 2.38 usr +  0.01 sys =  2.39 CPU) @ 41.84/s (n=100)
+		A_ConvertToXML_SID:  6 wallclock secs ( 6.31 usr +  0.02 sys =  6.33 CPU) @ 15.80/s (n=100)
+		A_MakeAndBreak: 15 wallclock secs (14.66 usr +  0.00 sys = 14.66 CPU) @  6.82/s (n=100)
+		T_AssDefCon: 13 wallclock secs (13.03 usr +  0.00 sys = 13.03 CPU) @  7.67/s (n=100)
+		T_ConvertToXML_NID:  3 wallclock secs ( 2.54 usr +  0.01 sys =  2.55 CPU) @ 39.22/s (n=100)
+		T_ConvertToXML_SID:  6 wallclock secs ( 6.45 usr +  0.03 sys =  6.48 CPU) @ 15.43/s (n=100)
+		T_MakeAndBreak:  9 wallclock secs ( 9.01 usr +  0.00 sys =  9.01 CPU) @ 11.10/s (n=100)
+		V_AssDefCon:  6 wallclock secs ( 5.70 usr +  0.00 sys =  5.70 CPU) @ 17.54/s (n=100)
+		V_ConvertToXML_NID:  1 wallclock secs ( 1.28 usr +  0.01 sys =  1.29 CPU) @ 77.52/s (n=100)
+		V_ConvertToXML_SID:  3 wallclock secs ( 3.02 usr +  0.00 sys =  3.02 CPU) @ 33.11/s (n=100)
+		V_MakeAndBreak:  4 wallclock secs ( 3.53 usr +  0.01 sys =  3.54 CPU) @ 28.25/s (n=100)
+
+	The RAM usage was roughly the same for both, or slightly less for 0.60.
+
 2005-04-20   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.59.

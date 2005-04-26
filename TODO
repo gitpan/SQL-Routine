@@ -1,10 +1,5 @@
 TODO
 
-* Maybe add code to SQL::Routine that detects an attempt to use an externally
-held "Well Known" Node after its host Container was garbage collected, and does
-something appropriate rather than simply misbehaving from an unexpected
-circumstance.
-
 * Continue fleshing out the standard_routine enumerated type documentation.
 
 * Add more deferred constraints to reduce erroneous models.

@@ -12,8 +12,8 @@ use lib 't/lib';
 use t_SRT_Verbose;
 use t_SRT_Terse;
 use t_SRT_Abstract;
-use SQL::Routine 0.59;
-use SQL::Routine::L::en 0.28;
+use SQL::Routine 0.60;
+use SQL::Routine::L::en 0.29;
 
 ######################################################################
 # Here are some utility methods:

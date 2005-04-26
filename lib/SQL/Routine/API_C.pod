@@ -184,16 +184,10 @@ is made, it will be done later for the sake of better performance.
 	typedef struct {
 		sqlrt_dt_node_type  node_type       ; /* what type of Node this is */
 		sqlrt_dt_scale      node_id         ; /* uniq ident for Node within Container+Type */
-		union { /* when 'container' is null, use 'id'; when it isn't null, use 'ref' */
-			sqlrt_dt_scale id ; /* id that has to be resolved to point to a Node */
-			sqlrt_dt_node* ref; /* pointer to a Node */
-		} id_or_ref         pp_nref         ; /* (id_or_ref) primary-parent ('pp') Node attr */
+		sqlrt_dt_node*      pp_nref         ; /* (ref) primary-parent ('pp') Node attr */
 		sqlrt_dt_literal*   at_literals     ; /* (array) attrs of Node which are literals */
 		sqlrt_dt_enum_item* at_enums        ; /* (array) attrs of Node which are enumerated values */
-		union { /* when 'container' is null, use 'id'; when it isn't null, use 'ref' */
-			sqlrt_dt_scale id ; /* id that has to be resolved to point to a Node */
-			sqlrt_dt_node* ref; /* pointer to a Node */
-		} id_or_ref*        at_nrefs        ; /* (array of id_or_ref) attrs of Node which are Nodes */
+		sqlrt_dt_node*      at_nrefs        ; /* (array of ref) attrs of Node which are Nodes */
 			/* Note: if it would be better, we may combine all at* into one longer union list */
 		sqlrt_dt_container* container       ; /* (ref) what Container this Node lives in, if any */
 		sqlrt_dt_node_dll*  prim_child_nrefs; /* (list of refs) recipr to Nodes whose pp_nref ref to us */

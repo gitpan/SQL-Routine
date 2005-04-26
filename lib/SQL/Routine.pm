@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.59';
+our $VERSION = '0.60';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.03;
@@ -89,10 +89,10 @@ my $CPROP_MAY_MATCH_SNIDS = 'may_match_snids'; # boolean - false by def
 	# Node ref attribute values, beyond Node object references and integers representing Node ids to 
 	# look up; if other types of values are provided, SQL::Routine will try to look up Nodes based 
 	# on other attributes than the Id, usually 'si_name', before giving up on finding a Node to link.
-my $CPROP_ALL_NODES = 'all_nodes'; # hash of Node refs; find any Node by its node_id quickly
+my $CPROP_ALL_NODES = 'all_nodes'; # hash of Node refs - find any Node by its node_id quickly
 my $CPROP_PSEUDONODES = 'pseudonodes'; # hash of arrays of Node refs
 	# This property is for remembering the insert order of Nodes having hardwired pseudonode parents
-my $CPROP_NEXT_FREE_NID = 'next_free_nid'; # uint; next free node id
+my $CPROP_NEXT_FREE_NID = 'next_free_nid'; # uint - next free node id
 	# Value is one higher than the highest Node ID that is or was in use by a Node in this Container.
 my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when changes made
 	# This property is a status flag which says there have been no changes to the Nodes 
@@ -100,8 +100,8 @@ my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when
 	# and so the current Nodes are still valid.  It is used internally by 
 	# assert_deferrable_constraints() to make code faster by avoiding un-necessary 
 	# repeated tests from multiple external Container.assert_deferrable_constraints() calls.
-	# It is set true on a new empty Container, and set false when any Nodes are moved in 
-	# or out of the "well known" state within that Container, or are changed while in that state.
+	# It is set true on a new empty Container, and set false when of the Container's 
+	# Nodes are changed, or any Nodes are added to or deleted from the Container.
 #my $CPROP_CURR_NODE = 'curr_node'; # ref to a Node; used when "streaming" to or from XML
 	# I may instead make a new inner class for this, and there can be several of these 
 	# per container, such as if multiple streams are working in different areas at once; 
@@ -118,18 +118,19 @@ my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when
 # Names of properties for objects of the SQL::Routine::Node class are declared here:
 	# The C version will have the following comprise fields in a Node struct;
 	# all fields will be integers or memory references or enums; none will be strings.
+my $NPROP_CONTAINER   = 'container'; # ref to Container this Node lives in
+	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
+	# C version of this would be a pointer to a Container struct
 my $NPROP_NODE_TYPE   = 'node_type'; # str (enum) - what type of Node this is, can not change once set
 	# The Node type is the only property which absolutely can not change, and is set when object created.
 	# (All other Node properties start out undefined or false, and are set separately from object creation.)
 	# C version of this will be an enumerated value.
 my $NPROP_NODE_ID     = 'node_id'; # uint - unique identifier attribute for this node within container+type
-	# Node id must be set when/before Node is put in a container; may lack one when not in container.
 	# C version of this will be an unsigned integer.
 	# This property corresponds to a Node attribute named 'id'.
-my $NPROP_PP_NREF = 'pp_nref'; # Node - special Node attr which points to primary-parent Node (or id reps other Node)
+my $NPROP_PP_NREF = 'pp_nref'; # Node - special Node attr which points to primary-parent Node in the same Container
 	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-	# C version of this will be either an array or a single struct, to handle pointer vs uint
-	# Value can only be actual reference when Node is in a Container, and pointed to must be in same
+	# C version of this will be a Node pointer.
 	# This property is analagous to a non-existing AT_NREFS element whose name is "pp".
 	# When converting to XML, this "pp" attribute won't become an XML attr (redundant)
 my $NPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of Node which are non-enum, non-id literal values
@@ -140,13 +141,9 @@ my $NPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of Node which a
 	# C macros/constants will give names to the indices, like with the hash keys for the above.
 my $NPROP_AT_ENUMS    = 'at_enums'; # hash (enum,enum) - attrs of Node which are enumerated values
 	# C version of this will be an array (pointer) of enumerated values.
-my $NPROP_AT_NREFS    = 'at_nrefs'; # hash (enum,Node) - attrs of Node which point to other Nodes (or ids rep other Nodes)
+my $NPROP_AT_NREFS    = 'at_nrefs'; # hash (enum,Node) - attrs of Node which point to other Nodes in the same Container
 	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-	# C version of this will be either multiple arrays or a single array of structs, to handle pointer vs uint
-	# Hash elements can only be actual references when Node is in a Container, and pointed to must be in same
-my $NPROP_CONTAINER   = 'container'; # ref to Container this Node lives in
-	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-	# C version of this would be a pointer to a Container struct
+	# C version of this will be an array (pointer) of Node pointers.
 my $NPROP_PRIM_CHILD_NREFS = 'prim_child_nrefs'; # array - list of refs to other Nodes having actual refs to this one
 	# We use this to reciprocate actual refs from the PP_NREF property of other Nodes to us.
 	# When converting to XML, only child Nodes linked through PRIM_CHILD_NREFS are rendered.
@@ -161,8 +158,8 @@ my $NPROP_LINK_CHILD_NREFS = 'link_child_nrefs'; # array - list of refs to other
 	# however, when rendering to XML, we only render a Node once, and not as many times as linked; 
 	# it is also possible that we may never be put in this situation from real-world usage.
 	# Note that in the above situation, a normalized child list would have the above two links sitting 
-	# adjacent to each other; put_in_container() will do this, but subsequent calls to 
-	# set_node_ref_attribute() might not.  In the interest of simplicity, any method that wants to 
+	# adjacent to each other; however, calls to set_node_ref_attribute() won't do this, but rather 
+	# append new links to the end of the list.  In the interest of simplicity, any method that wants to 
 	# change the order of a child list should also normalize any multiple same-child occurrances.
 
 # These are programmatically recognized enumerations of values that 
@@ -1537,6 +1534,7 @@ sub _throw_error_message {
 		$msg_vars->{'NTYPE'} = $self->{$NPROP_NODE_TYPE};
 		$msg_vars->{'NID'} = $self->{$NPROP_NODE_ID};
 		if( $self->{$NPROP_CONTAINER} ) {
+			# Note: We get here for all invoking methods except for Node.new().
 			$msg_vars->{'SIDCH'} = $self->get_surrogate_id_chain();
 		}
 	}
@@ -1556,38 +1554,11 @@ sub new_container {
 }
 
 sub new_node {
-	my (undef, $node_type) = @_;
-	return SQL::Routine::Node->new( $node_type );
+	my (undef, $container, $node_type, $node_id) = @_;
+	return SQL::Routine::Node->new( $container, $node_type, $node_id );
 }
 
 ######################################################################
-
-sub build_lonely_node {
-	my ($self, $node_type, $attrs) = @_;
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
-	}
-	my $node = $self->new_node( $node_type );
-	$attrs = $self->_build_node_normalize_attrs( $node, $attrs );
-	$node->set_attributes( $attrs );
-	return $node;
-}
-
-sub _build_node_normalize_attrs {
-	my (undef, $node, $attrs) = @_;
-	if( ref($attrs) eq 'HASH' ) {
-		$attrs = {%{$attrs}}; # copy this, to preserve caller environment
-	} elsif( defined($attrs) ) {
-		if( $attrs =~ m/^\d+$/ and $attrs > 0 ) { # looks like a node id
-			$attrs = { $ATTR_ID => $attrs };
-		} else { # does not look like node id
-			$attrs = { (grep { $_ } @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}})[0] => $attrs };
-		}
-	} else {
-		$attrs = {};
-	}
-	return $attrs;
-}
 
 sub build_container {
 	my ($self, $list, $auto_assert, $auto_ids, $match_surr_ids) = @_;
@@ -1748,11 +1719,6 @@ sub _assert_deferrable_constraints {
 
 sub get_all_properties {
 	my ($container, $links_as_si, $want_shortest) = @_;
-	return $container->_get_all_properties( $links_as_si, $want_shortest );
-}
-
-sub _get_all_properties {
-	my ($container, $links_as_si, $want_shortest) = @_;
 	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
 	return {
 		$NAMED_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
@@ -1760,20 +1726,20 @@ sub _get_all_properties {
 		$NAMED_CHILDREN => [map { {
 			$NAMED_NODE_TYPE => $_,
 			$NAMED_ATTRS => {},
-			$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si, $want_shortest ) } @{$pseudonodes->{$_}}],
+			$NAMED_CHILDREN => [map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$pseudonodes->{$_}}],
 		} } @L2_PSEUDONODE_LIST],
 	};
 }
 
 sub get_all_properties_as_perl_str {
 	my ($container, $links_as_si, $want_shortest) = @_;
-	return $container->_serialize_as_perl( $container->_get_all_properties( $links_as_si, $want_shortest ) );
+	return $container->_serialize_as_perl( $container->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 sub get_all_properties_as_xml_str {
 	my ($container, $links_as_si, $want_shortest) = @_;
 	return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$container->_serialize_as_xml( $container->_get_all_properties( $links_as_si, $want_shortest ) );
+		$container->_serialize_as_xml( $container->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
@@ -1788,29 +1754,55 @@ sub build_node {
 
 sub _build_node_is_child_or_not {
 	my ($container, $node_type, $attrs, $pp_node) = @_;
-	my $node = $container->new_node( $node_type );
-	$attrs = $container->_build_node_normalize_attrs( $node, $attrs );
-	if( my $node_id = delete( $attrs->{$ATTR_ID} ) ) {
-		$node->set_node_id( $node_id );
+
+	# This input validation is the same as what Node.new() does, and throws the same error keys.
+	# It is also done here to head off a bootstrap problem that affects SI_ATNM determination below.  
+	defined( $node_type ) or $container->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARGS' );
+	my $type_info = $NODE_TYPES{$node_type};
+	unless( $type_info ) {
+		$container->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
 	}
-	$node->put_in_container( $container );
+
+	# Now normalize $attrs into a nice orderly hash.
+	if( ref($attrs) eq 'HASH' ) {
+		$attrs = {%{$attrs}}; # copy this, to preserve caller environment
+	} elsif( defined($attrs) ) {
+		if( $attrs =~ m/^\d+$/ and $attrs > 0 ) { # looks like a node id
+			$attrs = { $ATTR_ID => $attrs };
+		} else { # does not look like node id
+			$attrs = { (grep { $_ } @{$type_info->{$TPI_SI_ATNM}})[0] => $attrs };
+		}
+	} else {
+		$attrs = {};
+	}
+
+	# Now create the Node and set its attributes.
+	my $node_id = delete( $attrs->{$ATTR_ID} );
+	my $node = $container->new_node( $container, $node_type, $node_id );
 	my $pp_in_attrs = delete( $attrs->{$ATTR_PP} ); # ensure won't override any $pp_node
 	if( $pp_node ) {
 		$pp_node->add_child_node( $node );
 	} else {
 		$pp_in_attrs and $node->set_primary_parent_attribute( $pp_in_attrs );
 	}
+	if( my $node_surr_id = delete( $attrs->{(grep { $_ } @{$type_info->{$TPI_SI_ATNM}})[0]} ) ) {
+		$node->set_surrogate_id_attribute( $node_surr_id );
+	}
 	$node->set_attributes( $attrs );
+
+	# Apply auto-asserted deferrable constraints.
 	if( $container->{$CPROP_AUTO_ASS_DEF_CON} ) {
 		eval {
 			$node->assert_deferrable_constraints(); # check that this Node's own attrs are correct
 		};
 		if( my $exception = $@ ) {
-			unless( $exception->get_message_key() eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET' ) {
+			my $msg_key = $exception->get_message_key();
+			unless( $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET' or $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN' ) {
 				die $exception; # don't trap any other types of exceptions
 			}
 		}
 	}
+
 	return $node;
 }
 
@@ -1824,7 +1816,7 @@ sub build_child_node {
 	} else { # $node_type is not a valid pseudo-Node
 		my $node = $container->_build_node_is_child_or_not( $node_type, $attrs );
 		unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
-			$node->take_from_container(); # so the new Node doesn't persist
+			$node->delete_node(); # so the new Node doesn't persist
 			$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_NO_PSND', { 'ARGNTYPE' => $node_type } );
 		}
 		return $node;
@@ -1877,26 +1869,101 @@ use base qw( SQL::Routine );
 ######################################################################
 
 sub new {
-	my ($class, $node_type) = @_;
+	my ($class, $container, $node_type, $node_id) = @_;
 	my $node = bless( {}, ref($class) || $class );
 
-	defined( $node_type ) or $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARGS' );
+	defined( $container ) or $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_CONT' );
+	unless( ref($container) and UNIVERSAL::isa( $container, 'SQL::Routine::Container' ) ) {
+		$node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_CONT', { 'ARGNCONT' => $container } );
+	}
+
+	defined( $node_type ) or $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' );
 	my $type_info = $NODE_TYPES{$node_type};
 	unless( $type_info ) {
 		$node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
 	}
 
+	if( defined( $node_id ) ) {
+		unless( $node_id =~ m/^\d+$/ and $node_id > 0 ) {
+			$node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_ID', { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } );
+		}
+		if( $container->{$CPROP_ALL_NODES}->{$node_id} ) {
+			$node->_throw_error_message( 'SRT_N_NEW_NODE_DUPL_ID', { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } );
+		}
+	} elsif( $container->{$CPROP_AUTO_SET_NIDS} ) {
+		$node_id = $container->{$CPROP_NEXT_FREE_NID};
+	} else {
+		$node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_ID', { 'ARGNTYPE' => $node_type } );
+	}
+
+	$node->{$NPROP_CONTAINER} = $container;
+	Scalar::Util::weaken( $node->{$NPROP_CONTAINER} ); # avoid strong circular references
 	$node->{$NPROP_NODE_TYPE} = $node_type;
-	$node->{$NPROP_NODE_ID} = undef;
+	$node->{$NPROP_NODE_ID} = $node_id;
 	$node->{$NPROP_PP_NREF} = undef;
 	$node->{$NPROP_AT_LITERALS} = {};
 	$node->{$NPROP_AT_ENUMS} = {};
 	$node->{$NPROP_AT_NREFS} = {};
-	$node->{$NPROP_CONTAINER} = undef;
 	$node->{$NPROP_PRIM_CHILD_NREFS} = [];
 	$node->{$NPROP_LINK_CHILD_NREFS} = [];
 
+	$container->{$CPROP_ALL_NODES}->{$node_id} = $node;
+
+	# Now get our parent pseudo-Node to link back to us, if there is one.
+	if( my $pp_pseudonode = $type_info->{$TPI_PP_PSEUDONODE} ) {
+		push( @{$container->{$CPROP_PSEUDONODES}->{$pp_pseudonode}}, $node );
+	}
+
+	# Now adjust our "next free node id" counter if appropriate
+	if( $node_id >= $container->{$CPROP_NEXT_FREE_NID} ) {
+		$container->{$CPROP_NEXT_FREE_NID} = 1 + $node_id;
+	}
+
+	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node has arrived.
+		# Turn on tests because this Node's presence affects *other* Nodes.
+
 	return $node;
+}
+
+######################################################################
+
+sub delete_node {
+	my ($node) = @_;
+	my $container = $node->{$NPROP_CONTAINER};
+
+	if( @{$node->{$NPROP_PRIM_CHILD_NREFS}} > 0 or @{$node->{$NPROP_LINK_CHILD_NREFS}} > 0 ) {
+		$node->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD' );
+	}
+
+	# Remove our parent Nodes' links back to us.
+	my $node_type = $node->{$NPROP_NODE_TYPE};
+	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+		my $siblings = $container->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
+		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	}
+	foreach my $attr_value (values %{$node->{$NPROP_AT_NREFS}}) {
+		my $siblings = $attr_value->{$NPROP_LINK_CHILD_NREFS};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove all occurances
+	}
+
+	# Remove primary Container link to us.
+	delete( $container->{$CPROP_ALL_NODES}->{$node->{$NPROP_NODE_ID}} );
+
+	# Remove our links to parent Nodes and the Container.
+	%{$node} = ();
+
+	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node is gone.
+		# Turn on tests because this Node's absence affects *other* Nodes.
+}
+
+######################################################################
+
+sub get_container {
+	my ($node) = @_;
+	return $node->{$NPROP_CONTAINER};
 }
 
 ######################################################################
@@ -1913,34 +1980,21 @@ sub get_node_id {
 	return $node->{$NPROP_NODE_ID};
 }
 
-sub clear_node_id {
-	my ($node) = @_;
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->_throw_error_message( 'SRT_N_CLEAR_NODE_ID_IN_CONT' );
-	}
-	$node->{$NPROP_NODE_ID} = undef;
-}
-
 sub set_node_id {
 	my ($node, $new_id) = @_;
-	defined( $new_id ) or $node->_throw_error_message( 'SRT_N_SET_NODE_ID_NO_ARGS' );
+	my $container = $node->{$NPROP_CONTAINER};
 
+	defined( $new_id ) or $node->_throw_error_message( 'SRT_N_SET_NODE_ID_NO_ARGS' );
 	unless( $new_id =~ m/^\d+$/ and $new_id > 0 ) {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG', { 'ARG' => $new_id } );
 	}
 
-	unless( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_NODE_ID} = $new_id;
-		return;
-	}
-
-	# We would never get here if $node didn't also have a NODE_ID
 	my $old_id = $node->{$NPROP_NODE_ID};
 
 	if( $new_id == $old_id ) {
 		return; # no-op; new id same as old
 	}
-	my $rh_cal = $node->{$NPROP_CONTAINER}->{$CPROP_ALL_NODES};
+	my $rh_cal = $container->{$CPROP_ALL_NODES};
 
 	if( $rh_cal->{$new_id} ) {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID', { 'ARG' => $new_id } );
@@ -1950,13 +2004,11 @@ sub set_node_id {
 	$rh_cal->{$new_id} = $node; # temp reserve new+old
 	$node->{$NPROP_NODE_ID} = $new_id; # change self from old to new
 	delete( $rh_cal->{$old_id} ); # now only new reserved
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 
 	# Now adjust our "next free node id" counter if appropriate
-	if( $new_id >= $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} = 1 + $new_id;
+	if( $new_id >= $container->{$CPROP_NEXT_FREE_NID} ) {
+		$container->{$CPROP_NEXT_FREE_NID} = 1 + $new_id;
 	}
 }
 
@@ -1982,15 +2034,11 @@ sub clear_primary_parent_attribute {
 sub _clear_primary_parent_attribute {
 	my ($node) = @_;
 	my $pp_node = $node->{$NPROP_PP_NREF} or return; # no-op; attr not set
-	if( ref($pp_node) eq ref($node) ) {
-		# The attribute value is a Node object, so clear its link back.
-		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
-		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
-	}
+	# The attribute value is a Node object, so clear its link back.
+	my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
+	@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
 	$node->{$NPROP_PP_NREF} = undef; # removes link to primary-parent, if any
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_primary_parent_attribute {
@@ -2010,28 +2058,22 @@ sub _set_primary_parent_attribute {
 		return; # no-op; new attribute value same as old
 	}
 
-	if( ref($attr_value) eq ref($node) ) {
-		# Attempt is to link two Nodes in the same Container; it would be okay, except 
-		# that we still have to check for circular primary parent Node references.
-		my $pp_node = $attr_value;
-		do { # Also make sure we aren't trying to link to ourself.
-			if( $pp_node eq $node ) {
-				$node->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' );
-			}
-		} while( $pp_node = $pp_node->{$NPROP_PP_NREF} );
-		# For simplicity, we assume circular refs via Node-ref attrs other than 'pp' are impossible.
-	}
+	# Attempt is to link two Nodes in the same Container; it would be okay, except 
+	# that we still have to check for circular primary parent Node references.
+	my $pp_node = $attr_value;
+	do { # Also make sure we aren't trying to link to ourself.
+		if( $pp_node eq $node ) {
+			$node->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' );
+		}
+	} while( $pp_node = $pp_node->{$NPROP_PP_NREF} );
+	# For simplicity, we assume circular refs via Node-ref attrs other than 'pp' are impossible.
 
 	$node->_clear_primary_parent_attribute(); # clears any existing link through this attribute
 	$node->{$NPROP_PP_NREF} = $attr_value;
 	Scalar::Util::weaken( $node->{$NPROP_PP_NREF} ); # avoid strong circular references
-	if( ref($attr_value) eq ref($node) ) {
-		# The attribute value is a Node object, so that Node should link back now.
-		push( @{$attr_value->{$NPROP_PRIM_CHILD_NREFS}}, $node );
-	}
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	# The attribute value is a Node object, so that Node should link back now.
+	push( @{$attr_value->{$NPROP_PRIM_CHILD_NREFS}}, $node );
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 ######################################################################
@@ -2067,17 +2109,13 @@ sub clear_literal_attribute {
 sub _clear_literal_attribute {
 	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_LITERALS}->{$attr_name} );
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub clear_literal_attributes {
 	my ($node) = @_;
 	$node->{$NPROP_AT_LITERALS} = {};
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_literal_attribute {
@@ -2121,9 +2159,7 @@ sub _set_literal_attribute {
 	} else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
 
 	$node->{$NPROP_AT_LITERALS}->{$attr_name} = $attr_value;
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_literal_attributes {
@@ -2170,17 +2206,13 @@ sub clear_enumerated_attribute {
 sub _clear_enumerated_attribute {
 	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_ENUMS}->{$attr_name} );
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub clear_enumerated_attributes {
 	my ($node) = @_;
 	$node->{$NPROP_AT_ENUMS} = {};
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_enumerated_attribute {
@@ -2202,9 +2234,7 @@ sub _set_enumerated_attribute {
 	}
 
 	$node->{$NPROP_AT_ENUMS}->{$attr_name} = $attr_value;
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_enumerated_attributes {
@@ -2232,7 +2262,7 @@ sub get_node_ref_attribute {
 sub _get_node_ref_attribute {
 	my ($node, $attr_name, $get_target_si) = @_;
 	my $attr_val = $node->{$NPROP_AT_NREFS}->{$attr_name};
-	if( $get_target_si and $node->{$NPROP_CONTAINER} and defined($attr_val) ) {
+	if( $get_target_si and defined($attr_val) ) {
 		return $attr_val->get_surrogate_id_attribute( $get_target_si );
 	} else {
 		return $attr_val;
@@ -2242,7 +2272,7 @@ sub _get_node_ref_attribute {
 sub get_node_ref_attributes {
 	my ($node, $get_target_si) = @_;
 	my $at_nrefs = $node->{$NPROP_AT_NREFS};
-	if( $get_target_si and $node->{$NPROP_CONTAINER} ) {
+	if( $get_target_si ) {
 		return { map { ( 
 				$_->get_surrogate_id_attribute( $get_target_si )
 			) } values %{$at_nrefs} };
@@ -2263,21 +2293,17 @@ sub clear_node_ref_attribute {
 sub _clear_node_ref_attribute {
 	my ($node, $attr_name) = @_;
 	my $attr_value = $node->{$NPROP_AT_NREFS}->{$attr_name} or return; # no-op; attr not set
-	if( ref($attr_value) eq ref($node) ) {
-		# The attribute value is a Node object, so clear its link back.
-		my $ra_children_of_parent = $attr_value->{$NPROP_LINK_CHILD_NREFS};
-		foreach my $i (0..$#{$ra_children_of_parent}) {
-			if( $ra_children_of_parent->[$i] eq $node ) {
-				# remove first instance of $node from it's parent's child list
-				splice( @{$ra_children_of_parent}, $i, 1 );
-				last;
-			}
+	# The attribute value is a Node object, so clear its link back.
+	my $ra_children_of_parent = $attr_value->{$NPROP_LINK_CHILD_NREFS};
+	foreach my $i (0..$#{$ra_children_of_parent}) {
+		if( $ra_children_of_parent->[$i] eq $node ) {
+			# remove first instance of $node from it's parent's child list
+			splice( @{$ra_children_of_parent}, $i, 1 );
+			last;
 		}
 	}
 	delete( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # removes link to link-parent, if any
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub clear_node_ref_attributes {
@@ -2285,9 +2311,7 @@ sub clear_node_ref_attributes {
 	foreach my $attr_name (keys %{$node->{$NPROP_AT_NREFS}}) {
 		$node->_clear_node_ref_attribute( $attr_name );
 	}
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_node_ref_attribute {
@@ -2312,13 +2336,9 @@ sub _set_node_ref_attribute {
 	$node->_clear_node_ref_attribute( $attr_name ); # clears any existing link through this attribute
 	$node->{$NPROP_AT_NREFS}->{$attr_name} = $attr_value;
 	Scalar::Util::weaken( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # avoid strong circular references
-	if( ref($attr_value) eq ref($node) ) {
-		# The attribute value is a Node object, so that Node should link back now.
-		push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
-	}
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node was changed.
-	}
+	# The attribute value is a Node object, so that Node should link back now.
+	push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub _normalize_primary_parent_or_node_ref_attribute_value {
@@ -2330,31 +2350,19 @@ sub _normalize_primary_parent_or_node_ref_attribute_value {
 			$node->_throw_error_message( $error_key_pfx.'_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
 				'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NPROP_NODE_TYPE} } );
 		}
-		if( $attr_value->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER} ) {
-			unless( $attr_value->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
-				$node->_throw_error_message( $error_key_pfx.'_DIFF_CONT', { 'ATNM' => $attr_name } );
-			}
-			# If we get here, both Nodes are in the same Container and can link
-		} elsif( $attr_value->{$NPROP_CONTAINER} or $node->{$NPROP_CONTAINER} ) {
-			$node->_throw_error_message( $error_key_pfx.'_ONE_CONT', { 'ATNM' => $attr_name } );
-		} elsif( !$attr_value->{$NPROP_NODE_ID} ) {
-			# both Nodes are not in Containers, and $attr_value has no Node Id
-			$node->_throw_error_message( $error_key_pfx.'_MISS_NID', { 'ATNM' => $attr_name } );
-		} else {
-			# both Nodes are not in Containers, and $attr_value has Node Id, so can link
-			$attr_value = $attr_value->{$NPROP_NODE_ID};
-		} 
+		unless( $attr_value->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
+			$node->_throw_error_message( $error_key_pfx.'_DIFF_CONT', { 'ATNM' => $attr_name } );
+		}
+		# If we get here, both Nodes are in the same Container and can link
 
 	} elsif( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
 		# We were given a Node Id for a new attribute value.
-		if( my $container = $node->{$NPROP_CONTAINER} ) {
-			my $searched_attr_value = $container->{$CPROP_ALL_NODES}->{$attr_value};
-			unless( $searched_attr_value and grep { $searched_attr_value->{$NPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-				$node->_throw_error_message( $error_key_pfx.'_NONEX_NID', 
-					{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
-			}
-			$attr_value = $searched_attr_value;
+		my $searched_attr_value = $node->{$NPROP_CONTAINER}->{$CPROP_ALL_NODES}->{$attr_value};
+		unless( $searched_attr_value and grep { $searched_attr_value->{$NPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
+			$node->_throw_error_message( $error_key_pfx.'_NONEX_NID', 
+				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 		}
+		$attr_value = $searched_attr_value;
 
 	} else {
 		# We were given a Surrogate Node Id for a new attribute value.
@@ -2362,8 +2370,8 @@ sub _normalize_primary_parent_or_node_ref_attribute_value {
 			# This should only be encountered by set_primary_parent_attribute().
 			$node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_ALLOW_SID_FOR_PP', { 'ARG' => $attr_value } );
 		}
-		# These next two should only be encountered by set_node_ref_attribute().
-		unless( $node->{$NPROP_CONTAINER} and $node->{$NPROP_CONTAINER}->{$CPROP_MAY_MATCH_SNIDS} ) {
+		# These next three should only be encountered by set_node_ref_attribute().
+		unless( $node->{$NPROP_CONTAINER}->{$CPROP_MAY_MATCH_SNIDS} ) {
 			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 		my $searched_attr_values = $node->find_node_by_surrogate_id( $attr_name, $attr_value );
@@ -2374,7 +2382,7 @@ sub _normalize_primary_parent_or_node_ref_attribute_value {
 		if( @{$searched_attr_values} > 1 ) {
 			$node->_throw_error_message( 'SRT_N_SET_NREF_AT_AMBIG_SID', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types, 
-				'CANDIDATES' => [';', map { (@{$_->_get_surrogate_id_chain()},';') } @{$searched_attr_values}] } );
+				'CANDIDATES' => [';', map { (@{$_->get_surrogate_id_chain()},';') } @{$searched_attr_values}] } );
 		}
 		$attr_value = $searched_attr_values->[0];
 	}
@@ -2407,7 +2415,7 @@ sub get_surrogate_id_attribute {
 sub clear_surrogate_id_attribute {
 	my ($node) = @_;
 	my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
-	$id and return $node->clear_node_id();
+	$id and $node->_throw_error_message( 'SRT_N_CLEAR_SI_AT_MAND_NID' );
 	$lit and return $node->_clear_literal_attribute( $lit );
 	$enum and return $node->_clear_enumerated_attribute( $enum );
 	$nref and return $node->_clear_node_ref_attribute( $nref );
@@ -2458,7 +2466,7 @@ sub clear_attribute {
 	my ($node, $attr_name) = @_;
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
-	$attr_name eq $ATTR_ID and return $node->clear_node_id();
+	$attr_name eq $ATTR_ID and $node->_throw_error_message( 'SRT_N_CLEAR_AT_MAND_NID' );
 	$attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} and 
 		return $node->_clear_primary_parent_attribute();
 	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} and 
@@ -2472,7 +2480,6 @@ sub clear_attribute {
 
 sub clear_attributes {
 	my ($node) = @_;
-	$node->clear_node_id();
 	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} and $node->_clear_primary_parent_attribute();
 	$node->clear_literal_attributes();
 	$node->clear_enumerated_attributes();
@@ -2538,153 +2545,17 @@ sub set_attributes {
 
 ######################################################################
 
-sub get_container {
-	my ($node) = @_;
-	return $node->{$NPROP_CONTAINER};
-}
-
-sub put_in_container {
-	my ($node, $new_container) = @_;
-	defined( $new_container ) or $node->_throw_error_message( 'SRT_N_PI_CONT_NO_ARGS' );
-
-	unless( ref($new_container) and UNIVERSAL::isa( $new_container, 'SQL::Routine::Container' ) ) {
-		$node->_throw_error_message( 'SRT_N_PI_CONT_BAD_ARG', { 'ARG' => $new_container } );
-	}
-
-	if( $node->{$NPROP_CONTAINER} ) {
-		if( $new_container eq $node->{$NPROP_CONTAINER} ) {
-			return; # no-op; new container same as old
-		}
-		$node->_throw_error_message( 'SRT_N_PI_CONT_HAVE_ALREADY' );
-	}
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-
-	my $node_id = $node->{$NPROP_NODE_ID};
-	unless( $node_id ) {
-		if( $new_container->{$CPROP_AUTO_SET_NIDS} ) {
-			$node_id = $node->{$NPROP_NODE_ID} = $new_container->get_next_free_node_id();
-		} else {
-			$node->_throw_error_message( 'SRT_N_PI_CONT_NO_NODE_ID' );
-		}
-	}
-
-	if( $new_container->{$CPROP_ALL_NODES}->{$node_id} ) {
-		$node->_throw_error_message( 'SRT_N_PI_CONT_DUPL_ID' );
-	}
-
-	# Note: No recursion tests are necessary in put_in_container(); any existing Node 
-	# that the newly added Node would link to can not already be the new Node's direct 
-	# or indirect child, since Nodes in Containers can't reference Nodes that aren't.
-
-	my $exp_pp_types = $NODE_TYPES{$node_type}->{$TPI_PP_NREF};
-	my $exp_at_nrefs_types = $NODE_TYPES{$node_type}->{$TPI_AT_NREFS};
-	my $rh_at_nodes_nids = $node->{$NPROP_AT_NREFS}; # all values should be node ids now
-	my $rh_can = $new_container->{$CPROP_ALL_NODES};
-
-	my $pp_node = $node->{$NPROP_PP_NREF}; # value should be id number
-	if( my $pp_node_id = $pp_node ) {
-		my $pp_node_ref = $rh_can->{$pp_node_id};
-		unless( $pp_node_ref and grep { $pp_node_ref->{$NPROP_NODE_TYPE} eq $_ } @{$exp_pp_types} ) {
-			$node->_throw_error_message( 'SRT_N_PI_CONT_NONEX_AT_NREF', 
-				{ 'EXPNTYPE' => $exp_pp_types, 'EXPNID' => $pp_node_id } );
-		}
-		$pp_node = $pp_node_ref; # change id number to node ref
-	}
-	my %at_nodes_refs = (); # values put in here will be actual references
-	foreach my $at_nodes_atnm (keys %{$rh_at_nodes_nids}) {
-		# Note that if $tpi_at_nodes is undefined, expect that this foreach loop will not run
-		my $exp_at_nref_types = $exp_at_nrefs_types->{$at_nodes_atnm};
-		my $at_nodes_nid = $rh_at_nodes_nids->{$at_nodes_atnm};
-		my $at_nodes_ref = $rh_can->{$at_nodes_nid};
-		unless( $at_nodes_ref and grep { $at_nodes_ref->{$NPROP_NODE_TYPE} eq $_ } @{$exp_at_nref_types} ) {
-			$node->_throw_error_message( 'SRT_N_PI_CONT_NONEX_AT_NREF', 
-				{ 'ATNM' => $at_nodes_atnm, 'EXPNTYPE' => $exp_at_nref_types, 'EXPNID' => $at_nodes_nid } );
-		}
-		$at_nodes_refs{$at_nodes_atnm} = $at_nodes_ref;
-		Scalar::Util::weaken( $at_nodes_refs{$at_nodes_atnm} ); # avoid strong circular references
-	}
-	$node->{$NPROP_CONTAINER} = $new_container;
-	Scalar::Util::weaken( $node->{$NPROP_CONTAINER} ); # avoid strong circular references
-	$node->{$NPROP_PP_NREF} = $pp_node;
-	Scalar::Util::weaken( $node->{$NPROP_PP_NREF} ); # avoid strong circular references
-	$node->{$NPROP_AT_NREFS} = \%at_nodes_refs;
-	$rh_can->{$node_id} = $node;
-
-	# Now get our parent Nodes to link back to us.
-	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
-		push( @{$new_container->{$CPROP_PSEUDONODES}->{$pp_pseudonode}}, $node );
-	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
-		push( @{$pp_node->{$NPROP_PRIM_CHILD_NREFS}}, $node );
-	}
-	foreach my $attr_value (values %{$node->{$NPROP_AT_NREFS}}) {
-		push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
-	}
-
-	# Now adjust our "next free node id" counter if appropriate
-	if( $node_id >= $node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} ) {
-		$node->{$NPROP_CONTAINER}->{$CPROP_NEXT_FREE_NID} = 1 + $node_id;
-	}
-
-	$new_container->{$CPROP_DEF_CON_TESTED} = 0; # A Node has become "Well Known".
-}
-
-sub take_from_container {
-	my ($node) = @_;
-	my $container = $node->{$NPROP_CONTAINER} or return; # no-op; node is already not in a container
-
-	if( @{$node->{$NPROP_PRIM_CHILD_NREFS}} > 0 or @{$node->{$NPROP_LINK_CHILD_NREFS}} > 0 ) {
-		$node->_throw_error_message( 'SRT_N_TF_CONT_HAS_CHILD' );
-	}
-
-	# Remove our parent Nodes' links back to us.
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
-		my $container = $node->{$NPROP_CONTAINER};
-		my $siblings = $container->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
-		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
-	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
-		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
-		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
-	}
-	foreach my $attr_value (values %{$node->{$NPROP_AT_NREFS}}) {
-		my $siblings = $attr_value->{$NPROP_LINK_CHILD_NREFS};
-		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove all occurances
-	}
-
-	my $pp_node = $node->{$NPROP_PP_NREF}; # value should be actual ref
-	if( $pp_node ) {
-		$pp_node = $pp_node->{$NPROP_NODE_ID}; # change node ref to node id number
-	}
-	my $rh_at_nodes_refs = $node->{$NPROP_AT_NREFS}; # all values should be actual references now
-	my %at_nodes_nids = (); # values put in here will be node id numbers
-	foreach my $at_nodes_atnm (keys %{$rh_at_nodes_refs}) {
-		$at_nodes_nids{$at_nodes_atnm} = $rh_at_nodes_refs->{$at_nodes_atnm}->{$NPROP_NODE_ID};
-	}
-
-	delete( $container->{$CPROP_ALL_NODES}->{$node->{$NPROP_NODE_ID}} );
-	$node->{$NPROP_AT_NREFS} = \%at_nodes_nids;
-	$node->{$NPROP_PP_NREF} = $pp_node;
-	$node->{$NPROP_CONTAINER} = undef;
-
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # A "Well Known" Node is gone.
-		# Turn on tests because this Node's absence affects *other* Well Known Nodes.
-}
-
-######################################################################
-
 sub move_before_sibling {
 	my ($node, $sibling, $parent) = @_;
 	my $pp_pseudonode = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE};
 
-	# First make sure we have 3 actual Nodes that are all "Well Known" and in the same Container.
-
-	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_CONT' );
+	# First make sure we have 3 actual Nodes that are all in the same Container.
 
 	defined( $sibling ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_S_ARG' );
 	unless( ref($sibling) eq ref($node) ) {
 		$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_BAD_S_ARG', { 'ARG' => $sibling } );
 	}
-	unless( $sibling->{$NPROP_CONTAINER} and $sibling->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
+	unless( $sibling->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
 		$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_DIFF_CONT' );
 	}
 
@@ -2692,7 +2563,7 @@ sub move_before_sibling {
 		unless( ref($parent) eq ref($node) ) {
 			$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_BAD_P_ARG', { 'ARG' => $parent } );
 		}
-		unless( $parent->{$NPROP_CONTAINER} and $parent->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
+		unless( $parent->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
 			$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_DIFF_CONT' );
 		}
 	} else {
@@ -2735,7 +2606,7 @@ sub move_before_sibling {
 	# Everything checks out, so now we perform the reordering.
 
 	@{$ra_search_list} = (@refs_before_both, @curr_node_refs, @sib_node_refs, @refs_after_both);
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # "Well Known" Node relation chg.
+	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # Node relation chg.
 }
 
 ######################################################################
@@ -2791,16 +2662,10 @@ sub get_referencing_nodes {
 
 sub get_surrogate_id_chain {
 	my ($node) = @_;
-	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_GET_SID_CHAIN_NOT_IN_CONT' );
-	return $node->_get_surrogate_id_chain();
-}
-
-sub _get_surrogate_id_chain {
-	my ($node) = @_;
 	my $si_atvl = $node->get_surrogate_id_attribute( 1 ); # target SI lit/enum is being returned as a string
 	if( my $pp_node = $node->{$NPROP_PP_NREF} ) {
 		# Current Node has a primary-parent Node; append to its id chain.
-		my $elements = $pp_node->_get_surrogate_id_chain();
+		my $elements = $pp_node->get_surrogate_id_chain();
 		push( @{$elements}, $si_atvl );
 		return $elements;
 	} elsif( my $l2_psnd = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
@@ -2816,7 +2681,6 @@ sub _get_surrogate_id_chain {
 
 sub find_node_by_surrogate_id {
 	my ($node, $self_attr_name, $target_attr_value) = @_;
-	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NOT_IN_CONT' );
 	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$self_attr_name} or 
@@ -3056,7 +2920,6 @@ sub _find_node_by_surrogate_id_using_path {
 
 sub find_child_node_by_surrogate_id {
 	my ($node, $target_attr_value) = @_;
-	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_FIND_CH_ND_BY_SID_NOT_IN_CONT' );
 	defined( $target_attr_value ) or $node->_throw_error_message( 'SRT_N_FIND_CH_ND_BY_SID_NO_ARG_VAL' );
 	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
 	if( defined( $target_attr_value->[0] ) ) {
@@ -3084,7 +2947,6 @@ sub find_child_node_by_surrogate_id {
 
 sub get_relative_surrogate_id {
 	my ($node, $self_attr_name, $want_shortest) = @_;
-	$node->{$NPROP_CONTAINER} or $node->_throw_error_message( 'SRT_N_GET_REL_SID_NOT_IN_CONT' );
 	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_GET_REL_SID_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$self_attr_name} or 
@@ -3175,37 +3037,24 @@ sub get_relative_surrogate_id {
 
 sub assert_deferrable_constraints {
 	my ($node) = @_;
-	# Only "Well Known" Nodes would get this invoked by Container.assert_deferrable_constraints().
-	# "Alone" Nodes only get here when Node.assert_deferrable_constraints() 
-	# is invoked directly by external code.
-	$node->_assert_in_node_deferrable_constraints(); # can call on Alone, Well Known
-	if( $node->{$NPROP_CONTAINER} ) {
-		$node->_assert_parent_ref_scope_deferrable_constraints(); # call on Well Known only
-		$node->_assert_child_comp_deferrable_constraints(); # call on Well Known only
-	}
+	$node->_assert_in_node_deferrable_constraints();
+	$node->_assert_parent_ref_scope_deferrable_constraints();
+	$node->_assert_child_comp_deferrable_constraints();
 }
 
 sub _assert_in_node_deferrable_constraints {
-	# All assertions that can be performed on Nodes of all statuses are done in this method.
 	my ($node) = @_;
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 
 	# 1: Now assert constraints associated with Node-type details given in each 
 	# "Attribute List" section of Language.pod.
 
-	# 1.1: Assert that the NODE_ID attribute is set.
-	unless( defined( $node->{$NPROP_NODE_ID} ) ) {
-		# This can only possibly fail at deferrable-constraint assertion time with "Alone" Nodes; 
-		# it is always-enforced for "Well Known" Nodes.
-		$node->_throw_error_message( 'SRT_N_ASDC_NID_VAL_NO_SET' );
-	}
-
-	# 1.2: Assert that any primary parent ("PP") attribute is set.
+	# 1.1: Assert that any primary parent ("PP") attribute is set.
 	unless( defined( $node->{$NPROP_PP_NREF} ) or $type_info->{$TPI_PP_PSEUDONODE} ) {
 		$node->_throw_error_message( 'SRT_N_ASDC_PP_VAL_NO_SET' );
 	}
 
-	# 1.3: Assert that any surrogate id ("SI") attribute is set.
+	# 1.2: Assert that any surrogate id ("SI") attribute is set.
 	if( my $si_atnm = $type_info->{$TPI_SI_ATNM} ) {
 		my (undef, $lit, $enum, $nref) = @{$si_atnm};
 		# Skip 'id', as that's redundant with test 1.1.
@@ -3226,7 +3075,7 @@ sub _assert_in_node_deferrable_constraints {
 		}
 	}
 
-	# 1.4: Assert that any always-mandatory ("MA") attributes are set.
+	# 1.3: Assert that any always-mandatory ("MA") attributes are set.
 	if( my $mand_attrs = $type_info->{$TPI_MA_ATNMS} ) {
 		my ($lits, $enums, $nrefs) = @{$mand_attrs};
 		foreach my $attr_name (@{$lits}) {
@@ -3350,12 +3199,9 @@ sub _assert_in_node_deferrable_constraints {
 			}
 		}
 	}
-
-	# This is the end of the tests that can be performed on "Alone" Nodes.
 }
 
 sub _assert_parent_ref_scope_deferrable_constraints {
-	# Assertions in this method can only be performed on Nodes in "Well Known" status.
 	my ($node) = @_;
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 
@@ -3385,7 +3231,6 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 }
 
 sub _assert_child_comp_deferrable_constraints {
-	# Assertions in this method can only be performed on Nodes in "Well Known" status.
 	my ($node_or_class, $pseudonode_name, $container) = @_;
 	my $type_info = ref($node_or_class) ? 
 		$NODE_TYPES{$node_or_class->{$NPROP_NODE_TYPE}} : 
@@ -3471,7 +3316,8 @@ sub _assert_child_comp_deferrable_constraints {
 						{ 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
 				} else {
 					$node_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN', 
-						{ 'COUNT' => $child_count, 'PSNTYPE' => $pseudonode_name, 'EXPNUM' => $range_min } );
+						{ 'PSNTYPE' => $pseudonode_name, 'COUNT' => $child_count, 
+						'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
 				}
 			}
 			if( defined( $range_max ) and $child_count > $range_max ) {
@@ -3532,18 +3378,11 @@ sub _assert_child_comp_deferrable_constraints {
 	}
 
 	# TODO: more tests that examine multiple nodes together ...
-
-	# This is the end of the tests that can be performed only on "Well Known" Nodes.
 }
 
 ######################################################################
 
 sub get_all_properties {
-	my ($node, $links_as_si, $want_shortest) = @_;
-	return $node->_get_all_properties( $links_as_si, $want_shortest );
-}
-
-sub _get_all_properties {
 	my ($node, $links_as_si, $want_shortest) = @_;
 	my $at_nrefs_in = $node->{$NPROP_AT_NREFS};
 	return {
@@ -3560,28 +3399,26 @@ sub _get_all_properties {
 				) ) } 
 				keys %{$at_nrefs_in}),
 		},
-		$NAMED_CHILDREN => [map { $_->_get_all_properties( $links_as_si, $want_shortest ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
+		$NAMED_CHILDREN => [map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
 	};
 }
 
 sub get_all_properties_as_perl_str {
 	my ($node, $links_as_si, $want_shortest) = @_;
-	return $node->_serialize_as_perl( $node->_get_all_properties( $links_as_si, $want_shortest ) );
+	return $node->_serialize_as_perl( $node->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 sub get_all_properties_as_xml_str {
 	my ($node, $links_as_si, $want_shortest) = @_;
 	return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-		$node->_serialize_as_xml( $node->_get_all_properties( $links_as_si, $want_shortest ) );
+		$node->_serialize_as_xml( $node->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
 
 sub build_node {
 	my ($node, @args) = @_;
-	my $container = $node->get_container() or 
-		$node->_throw_error_message( 'SRT_N_BUILD_ND_NOT_IN_CONT' );
-	return $container->build_node( @args );
+	return $node->{$NPROP_CONTAINER}->build_node( @args );
 }
 
 sub build_child_node {
@@ -3589,9 +3426,7 @@ sub build_child_node {
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
 	}
-	my $container = $node->get_container() or 
-		$node->_throw_error_message( 'SRT_N_BUILD_CH_ND_NOT_IN_CONT' );
-	return $container->_build_node_is_child_or_not( $node_type, $attrs, $node );
+	return $node->{$NPROP_CONTAINER}->_build_node_is_child_or_not( $node_type, $attrs, $node );
 }
 
 sub build_child_nodes {
@@ -4249,7 +4084,7 @@ arguments.  For full details on each one, please see L<SQL::Routine::Details>.
 CONSTRUCTOR WRAPPER FUNCTIONS:
 
 	new_container()
-	new_node( NODE_TYPE )
+	new_node( CONTAINER, NODE_TYPE[, NODE_ID] )
 
 CONTAINER CONSTRUCTOR FUNCTIONS AND METHODS:
 
@@ -4269,13 +4104,14 @@ CONTAINER OBJECT METHODS:
 
 NODE CONSTRUCTOR FUNCTIONS AND METHODS:
 
-	new( NODE_TYPE )
+	new( CONTAINER, NODE_TYPE[, NODE_ID] )
 
 NODE OBJECT METHODS:
 
+	delete_node()
+	get_container()
 	get_node_type()
 	get_node_id()
-	clear_node_id()
 	set_node_id( NEW_ID )
 	get_primary_parent_attribute()
 	clear_primary_parent_attribute()
@@ -4307,9 +4143,6 @@ NODE OBJECT METHODS:
 	clear_attributes()
 	set_attribute( ATTR_NAME, ATTR_VALUE )
 	set_attributes( ATTRS )
-	get_container()
-	put_in_container( NEW_CONTAINER )
-	take_from_container()
 	move_before_sibling( SIBLING[, PARENT] )
 	get_child_nodes([ NODE_TYPE ])
 	add_child_node( NEW_CHILD )
@@ -4329,7 +4162,6 @@ CONTAINER OR NODE METHODS FOR DEBUGGING:
 
 CONTAINER OR NODE FUNCTIONS AND METHODS FOR RAPID DEVELOPMENT:
 
-	build_lonely_node( NODE_TYPE[, ATTRS] )
 	build_node( NODE_TYPE[, ATTRS] )
 	build_child_node( NODE_TYPE[, ATTRS] )
 	build_child_nodes( LIST )
@@ -4373,17 +4205,6 @@ id based on its looking like a valid Node id or not.  You should rarely
 encounter this caveat, though, since you would never use a number as a "SQL
 identifier" in normal cases, and that is only technically possible with a
 "delimited SQL identifier".
-
-Any "Well Known" Nodes should be explicitly taken from their home Container
-prior to that Container's auto-destruction if you intend to keep using them
-afterwards, such as to put in a different Container.  The internal structure of
-a Node, specifically its pp_nref and at_nrefs properties, are different
-depending on the Node's status ("Alone" vs "Well Known"), and they will end up
-being wrong for Nodes that aren't in a Container due to its being garbage
-collected but that weren't explicitly removed from it first.  This means that
-some attempts to use that Node or put it in a new Container will likely fail, as
-the SQL::Routine code currently doesn't do the extra work to gracefully handle 
-this erroneous circumstance.
 
 =head1 CREDITS
 

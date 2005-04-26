@@ -14,18 +14,14 @@ t_SRT_Verbose;
 
 sub make_a_node {
 	my ($node_type, $model) = @_;
-	my $node = $model->new_node( $node_type );
-	$node->set_node_id( $model->get_next_free_node_id() );
-	$node->put_in_container( $model );
+	my $node = $model->new_node( $model, $node_type, $model->get_next_free_node_id() );
 	return $node;
 }
 
 sub make_a_child_node {
 	my ($node_type, $pp_node) = @_;
 	my $container = $pp_node->get_container();
-	my $node = $pp_node->new_node( $node_type );
-	$node->set_node_id( $container->get_next_free_node_id() );
-	$node->put_in_container( $container );
+	my $node = $pp_node->new_node( $container, $node_type, $container->get_next_free_node_id() );
 	$node->set_primary_parent_attribute( $pp_node );
 	return $node;
 }

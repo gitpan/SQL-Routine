@@ -106,7 +106,7 @@ XML), each Node will be output beneath its primary parent.  Every Node type's
 "pp" attribute is implicitly always-mandatory.
 
 I<While there is no special code to draw attention to it, note that some
-primary-parent Node ref attributes are special in that they are
+primary-parent Node ref attributes are special in that they can be
 directly-recursive; they facilitate the construction of N-depth Node trees where
 all Nodes in the tree have the same Node type.  You can spot one of these by the
 fact that the "pp" attribute has the same minor type candidate as the Node type
@@ -139,26 +139,22 @@ you explicitly provide a 'default' value such as zero.
 The "Attribute List" contains all details that pertain to constantly applied
 attribute value constraints.  One of these is that you can never set values of
 the wrong major+minor type to an attribute, guaranteeing they are type-correct
-at all times.  Another of these is that, when a Node is in a Container, its
-NODE_ID attribute must always be set, and have a distinct value relative to all
-other Nodes in the same Container.  Another of these is that, when a Node is in
-a Container, any Node ref attributes can only point to Nodes that are
-simultaneously in the same container.  As another, you can never set a primary
-parent for a Node which is a direct or indirect descendent of that Node
-(including the linking Node itself), so circular references are guaranteed to
-never exist.
+at all times.  Another of these is that a Node's NODE_ID attribute must always
+be set, and have a distinct value relative to all other Nodes in the same
+Container.  Another of these is that any Node ref attributes (including the
+primary-parent) can only point to Nodes that are simultaneously in the same
+container.  As another, you can never set a primary parent for a Node which is a
+direct or indirect descendent of that Node (including the linking Node itself),
+so circular references are guaranteed to never exist.
 
 The "Attribute List" also contains a few details that pertain to deferrable
-constraints.  One deferrable constraint is that a Node's NODE_ID attribute must
-be set; that is, this constraint is only deferrable for Nodes that are not in
-Containers.  Another deferrable constraint is that a Node's primary-parent
+constraints.  One deferrable constraint is that a Node's primary-parent
 attribute must be set, if the Node has one.  Another deferrable constraint is
 that any "SI" and "MA" attributes are populated.  Another deferrable constraint
 is that all Nodes sharing a common primary-parent have a distinct surrogate id
 value; moreover, if a given primary-parent Node is a "wrapper" for another Node,
 then the combined set of child Nodes between all of them must have distinct
-surrogate id values.  All "Attribute List" deferrable constraints can be tested
-on Nodes of any status, including "Alone".
+surrogate id values.
 
 =head2 Exclusive Attribute Groups List
 
@@ -172,8 +168,7 @@ For each mutex-name group, there are 2 or more attr-name which are members of
 the group; if mandatory-flag is present, which looks like "MA", then one member
 of the group must always be set; if mandatory-flag is not present, then it is
 fine for all group members to not be set.  All "Exclusive Attribute Groups
-List" constraints are deferrable and can be tested on Nodes of any status,
-including "Alone".
+List" constraints are deferrable.
 
 =head2 Local Attribute Dependencies List
 
@@ -197,7 +192,7 @@ though in most cases only one value will do.  If there are multiple dependent
 attributes shown on the same line (comma-delimited), then they are a
 mutual-exclusion group; only one of those may be set when the conditions say
 that any may be set.  All "Local Attribute Dependencies List" constraints are
-deferrable and can be tested on Nodes of any status, including "Alone".
+deferrable.
 
 =head2 Ancestor Attribute Correlation List
 
@@ -238,7 +233,7 @@ field, it is implicitly followed in the same way as an nref-attr movement.  If
 circumstances; if the search text is a scalar value, then it only works if all
 cousin Nodes are distinct.  If 'C' is not used, search text is not an array /
 has one scalar value.  All "Ancestor Attribute Correlation List" constraints are
-deferrable and can only be tested on "Well Known" Nodes.
+deferrable.
 
 =head2 Remotely Addressable Types List
 
@@ -255,8 +250,7 @@ Nodes of any Node type that specifies a primary-ancestor-type may be remotely
 addressed if they are primary-descendents of a Node whose type is specified by
 primary-ancestor-type.  One further constraint is that the Node being addressed
 may not have any primary-ancestor Nodes that are the same Node type as it is. 
-All "Remotely Addressable Types List" constraints are deferrable and can only be
-tested on "Well Known" Nodes.
+All "Remotely Addressable Types List" constraints are deferrable.
 
 =head2 Child Quantity List
 
@@ -269,7 +263,7 @@ element is in this format:
 For each child-node-type, there can be a limit on how few or how many
 primary-child Nodes of that Node type are allowed.  A common range-min is 1,
 but if it is 0 then range-max will be valued.  All "Child Quantity List"
-constraints are deferrable and can only be tested on "Well Known" Nodes.
+constraints are deferrable.
 
 =head2 Distinct Child Groups List
 
@@ -294,8 +288,7 @@ number of child-attr-name.  For all comparisons, an undefined attribute value
 always counts as a distinct value; multiple undefined corresponding values will
 not violate the constraint (other constraints eliminate undefined values when
 they are a problem).  The implicit distinct-id constraints all have a mudi-name
-of 'primary'.  All "Distinct Child Groups List" constraints are deferrable and
-can only be tested on "Well Known" Nodes.
+of 'primary'.  All "Distinct Child Groups List" constraints are deferrable.
 
 =head1 PSEUDO-NODE TYPES
 

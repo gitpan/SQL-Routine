@@ -1,13 +1,12 @@
-# http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         SQL-Routine
-version:      0.59
+version:      0.60
 version_from: lib/SQL/Routine.pm
 installdirs:  site
 requires:
+    Test::More:                    0.47
     Locale::KeyedText:             1.03
     Scalar::Util:                  1.11
-    Test::More:                    0.47
 
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.17
+generated_by: ExtUtils::MakeMaker version 6.12
