@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.29';
+our $VERSION = '0.30';
 
 ######################################################################
 
@@ -72,6 +72,9 @@ my $CN = 'SQL::Routine::Node';
 my $ABSINTF = 'using abstract interface';
 
 my %text_strings = (
+	'SRT_C_METH_ASS_READ_ONLY' =>
+		$CC.'.{METH}(): this Container is currently read-only so you may not alter its contents',
+
 	'SRT_C_GET_CH_NODES_BAD_TYPE' => 
 		$CC.'.get_child_nodes(): invalid NODE_TYPE argument; there is no Node Type named "{ARGNTYPE}"',
 
@@ -84,6 +87,10 @@ my %text_strings = (
 
 	'SRT_C_FIND_CH_ND_BY_SID_NO_ARG_VAL' => 
 		$CC.'.find_child_node_by_surrogate_id(): missing TARGET_ATTR_VALUE argument',
+
+	'SRT_N_METH_ASS_READ_ONLY' =>
+		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'its host Container is currently read-only so you may not alter its contents',
 
 	'SRT_N_NEW_NODE_NO_ARG_CONT' => 
 		$CN.'.new_node(): missing CONTAINER argument',

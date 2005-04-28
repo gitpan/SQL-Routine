@@ -1,3 +1,46 @@
+2005-04-27   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.61.
+
+	* New code file versions are: Routine.pm v0.61 and en.pm v0.30.
+
+	* This release saw a large reorganization of the test suite.  The file
+	t/SQL_Routine.t was split-up into these 6 parts (numbers in parens are the
+	portion of the original 35 numbered tests that each part got):
+	t/lib/t_SRT_Util.pm (zero), t/SRT_11_Circular.t (2), t/SRT_40_Verbose.t (6),
+	t/SRT_41_Terse.t (6), t/SRT_42_Abstract.t (6), t/SRT_50_Cloning.t (15).  The
+	test utility module t_SRT_Util.pm contains the message() and
+	error_to_string() functions used by most of the other test scripts; the
+	message() function also received a minor update such that its output is
+	prefixed with '#' rather than '--', like Test::More does for comments.
+
+	* Added new test script t/SRT_00_Compile.t which contains 8 brand new
+	numbered tests; 6 of these use Test::More's use_ok() function to cleanly
+	test that the 2 core modules and 4 test modules will load without errors; 2
+	of these test, with cmp_ok(), that the 2 core modules are of the correct
+	versions.  This new script runs prior to all of the others.  Before this
+	change, the original test script would simply die without any ok/not ok.
+
+	* Updated Routine.pm and Details.pod and en.pm:  Added new boolean Container
+	property, "is read only", plus an accessor method named is_read_only(); any
+	attempt to modify or add/remove the Container's Nodes or most of its other
+	properties will throw an exception when the property is true.  Updated 8
+	Container methods plus 31 Node methods to perform the assertions; also added
+	2 related user text messages to en.pm, 'SRT_[C|N]_METH_ASS_READ_ONLY', which
+	are shared by all the methods.
+
+	* Added new test script t/SRT_10_ReadOnly.t, which has 17 numbered tests, 
+	to test the new read-only functionality.
+
+	* Updated the FAULT TOLERANCE AND MULTI-THREADING SUPPORT main documentation
+	section of Details.pod, concerning types of input validation.
+
+	* Updated the MANIFEST for the 8 added files and 1 removed file.  Also
+	updated the INSTALL file.
+
+	* There were zero changes to all 4 of the other /lib/SQL/Routine/* files and
+	all 3 of the other /t/lib/t_SRT_*.pm files.
+
 2005-04-25   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.60.

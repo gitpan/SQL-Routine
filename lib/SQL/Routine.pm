@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.60';
+our $VERSION = '0.61';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.03;
@@ -74,6 +74,11 @@ way of suggesting improvements to the standard version.
 ######################################################################
 
 # Names of properties for objects of the SQL::Routine::Container class are declared here:
+my $CPROP_IS_READ_ONLY = 'is_read_only'; # boolean - false by def
+	# When this flag is true, any attempt to modify this Container's Nodes (or most other props) 
+	# and/or add/remove Nodes will throw an exception; useful to detect or prevent changes 
+	# that are occurring after the time you expect model population to be completed.
+	# Only the "is read only" and "def con tested" props are permitted to change when read-only.
 my $CPROP_AUTO_ASS_DEF_CON = 'auto_ass_def_con'; # boolean - false by def
 	# When this flag is true, SQL::Routine's build_*() methods will
 	# automatically invoke assert_deferrable_constraints() on the newly created Node,
@@ -1581,6 +1586,7 @@ use base qw( SQL::Routine );
 sub new {
 	my ($class) = @_;
 	my $container = bless( {}, ref($class) || $class );
+	$container->{$CPROP_IS_READ_ONLY} = 0;
 	$container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
 	$container->{$CPROP_AUTO_SET_NIDS} = 0;
 	$container->{$CPROP_MAY_MATCH_SNIDS} = 0;
@@ -1593,9 +1599,21 @@ sub new {
 
 ######################################################################
 
+sub is_read_only {
+	my ($container, $new_value) = @_;
+	if( defined( $new_value ) ) {
+		$container->{$CPROP_IS_READ_ONLY} = $new_value;
+	}
+	return $container->{$CPROP_IS_READ_ONLY};
+}
+
+######################################################################
+
 sub auto_assert_deferrable_constraints {
 	my ($container, $new_value) = @_;
 	if( defined( $new_value ) ) {
+		$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'auto_assert_deferrable_constraints' } );
 		$container->{$CPROP_AUTO_ASS_DEF_CON} = $new_value;
 	}
 	return $container->{$CPROP_AUTO_ASS_DEF_CON};
@@ -1606,6 +1624,8 @@ sub auto_assert_deferrable_constraints {
 sub auto_set_node_ids {
 	my ($container, $new_value) = @_;
 	if( defined( $new_value ) ) {
+		$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'auto_set_node_ids' } );
 		$container->{$CPROP_AUTO_SET_NIDS} = $new_value;
 	}
 	return $container->{$CPROP_AUTO_SET_NIDS};
@@ -1616,6 +1636,8 @@ sub auto_set_node_ids {
 sub may_match_surrogate_node_ids {
 	my ($container, $new_value) = @_;
 	if( defined( $new_value ) ) {
+		$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'may_match_surrogate_node_ids' } );
 		$container->{$CPROP_MAY_MATCH_SNIDS} = $new_value;
 	}
 	return $container->{$CPROP_MAY_MATCH_SNIDS};
@@ -1746,6 +1768,8 @@ sub get_all_properties_as_xml_str {
 
 sub build_node {
 	my ($container, $node_type, $attrs) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_node' } );
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
 	}
@@ -1808,6 +1832,8 @@ sub _build_node_is_child_or_not {
 
 sub build_child_node {
 	my ($container, $node_type, $attrs) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node' } );
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
 	}
@@ -1825,6 +1851,8 @@ sub build_child_node {
 
 sub build_child_nodes {
 	my ($container, $list) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_nodes' } );
 	$list or return;
 	unless( ref($list) eq 'ARRAY' ) {
 		$list = [ $list ];
@@ -1836,6 +1864,8 @@ sub build_child_nodes {
 
 sub build_child_node_tree {
 	my ($container, $node_type, $attrs, $children) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_tree' } );
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
 	}
@@ -1851,6 +1881,8 @@ sub build_child_node_tree {
 
 sub build_child_node_trees {
 	my ($container, $list) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_trees' } );
 	$list or return;
 	unless( ref($list) eq 'ARRAY' ) {
 		$list = [ $list ];
@@ -1907,6 +1939,9 @@ sub new {
 	$node->{$NPROP_PRIM_CHILD_NREFS} = [];
 	$node->{$NPROP_LINK_CHILD_NREFS} = [];
 
+	$container->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'new' } );
+
 	$container->{$CPROP_ALL_NODES}->{$node_id} = $node;
 
 	# Now get our parent pseudo-Node to link back to us, if there is one.
@@ -1930,6 +1965,8 @@ sub new {
 sub delete_node {
 	my ($node) = @_;
 	my $container = $node->{$NPROP_CONTAINER};
+	$container->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'delete_node' } );
 
 	if( @{$node->{$NPROP_PRIM_CHILD_NREFS}} > 0 or @{$node->{$NPROP_LINK_CHILD_NREFS}} > 0 ) {
 		$node->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD' );
@@ -1983,6 +2020,8 @@ sub get_node_id {
 sub set_node_id {
 	my ($node, $new_id) = @_;
 	my $container = $node->{$NPROP_CONTAINER};
+	$container->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_id' } );
 
 	defined( $new_id ) or $node->_throw_error_message( 'SRT_N_SET_NODE_ID_NO_ARGS' );
 	unless( $new_id =~ m/^\d+$/ and $new_id > 0 ) {
@@ -2027,6 +2066,8 @@ sub _get_primary_parent_attribute {
 
 sub clear_primary_parent_attribute {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_primary_parent_attribute' } );
 	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 'SRT_N_CLEAR_PP_AT_NO_PP_AT' );
 	$node->_clear_primary_parent_attribute();
 }
@@ -2043,6 +2084,8 @@ sub _clear_primary_parent_attribute {
 
 sub set_primary_parent_attribute {
 	my ($node, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_primary_parent_attribute' } );
 	my $exp_node_types = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or 
 		$node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_PP_AT' );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_ARG_VAL' );
@@ -2099,6 +2142,8 @@ sub get_literal_attributes {
 
 sub clear_literal_attribute {
 	my ($node, $attr_name) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_LIT_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
@@ -2114,12 +2159,16 @@ sub _clear_literal_attribute {
 
 sub clear_literal_attributes {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attributes' } );
 	$node->{$NPROP_AT_LITERALS} = {};
 	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_literal_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_literal_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
@@ -2164,6 +2213,8 @@ sub _set_literal_attribute {
 
 sub set_literal_attributes {
 	my ($node, $attrs) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_literal_attributes' } );
 	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_LIT_ATS_NO_ARGS' );
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_LIT_ATS_BAD_ARGS', { 'ARG' => $attrs } );
@@ -2196,6 +2247,8 @@ sub get_enumerated_attributes {
 
 sub clear_enumerated_attribute {
 	my ($node, $attr_name) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_ENUM_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
@@ -2211,12 +2264,16 @@ sub _clear_enumerated_attribute {
 
 sub clear_enumerated_attributes {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attributes' } );
 	$node->{$NPROP_AT_ENUMS} = {};
 	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
 }
 
 sub set_enumerated_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_enumerated_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
@@ -2239,6 +2296,8 @@ sub _set_enumerated_attribute {
 
 sub set_enumerated_attributes {
 	my ($node, $attrs) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_enumerated_attributes' } );
 	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_ATS_NO_ARGS' );
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_ENUM_ATS_BAD_ARGS', { 'ARG' => $attrs } );
@@ -2283,6 +2342,8 @@ sub get_node_ref_attributes {
 
 sub clear_node_ref_attribute {
 	my ($node, $attr_name) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_node_ref_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_NREF_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
@@ -2308,6 +2369,8 @@ sub _clear_node_ref_attribute {
 
 sub clear_node_ref_attributes {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_node_ref_attributes' } );
 	foreach my $attr_name (keys %{$node->{$NPROP_AT_NREFS}}) {
 		$node->_clear_node_ref_attribute( $attr_name );
 	}
@@ -2316,6 +2379,8 @@ sub clear_node_ref_attributes {
 
 sub set_node_ref_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_ref_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
@@ -2392,6 +2457,8 @@ sub _normalize_primary_parent_or_node_ref_attribute_value {
 
 sub set_node_ref_attributes {
 	my ($node, $attrs) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_ref_attributes' } );
 	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_NREF_ATS_NO_ARGS' );
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_NREF_ATS_BAD_ARGS', { 'ARG' => $attrs } );
@@ -2414,6 +2481,8 @@ sub get_surrogate_id_attribute {
 
 sub clear_surrogate_id_attribute {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_surrogate_id_attribute' } );
 	my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
 	$id and $node->_throw_error_message( 'SRT_N_CLEAR_SI_AT_MAND_NID' );
 	$lit and return $node->_clear_literal_attribute( $lit );
@@ -2423,6 +2492,8 @@ sub clear_surrogate_id_attribute {
 
 sub set_surrogate_id_attribute {
 	my ($node, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_surrogate_id_attribute' } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my ($id, $lit, $enum, $nref) = @{$type_info->{$TPI_SI_ATNM}};
@@ -2464,6 +2535,8 @@ sub get_attributes {
 
 sub clear_attribute {
 	my ($node, $attr_name) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_AT_NO_ARGS' );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$attr_name eq $ATTR_ID and $node->_throw_error_message( 'SRT_N_CLEAR_AT_MAND_NID' );
@@ -2480,6 +2553,8 @@ sub clear_attribute {
 
 sub clear_attributes {
 	my ($node) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_attributes' } );
 	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} and $node->_clear_primary_parent_attribute();
 	$node->clear_literal_attributes();
 	$node->clear_enumerated_attributes();
@@ -2488,6 +2563,8 @@ sub clear_attributes {
 
 sub set_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_attribute' } );
 	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARGS' );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
@@ -2511,6 +2588,8 @@ sub set_attribute {
 
 sub set_attributes {
 	my ($node, $attrs) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_attributes' } );
 	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARGS' );
 	unless( ref($attrs) eq 'HASH' ) {
 		$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
@@ -2547,6 +2626,8 @@ sub set_attributes {
 
 sub move_before_sibling {
 	my ($node, $sibling, $parent) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'move_before_sibling' } );
 	my $pp_pseudonode = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE};
 
 	# First make sure we have 3 actual Nodes that are all in the same Container.
@@ -2625,6 +2706,8 @@ sub get_child_nodes {
 
 sub add_child_node {
 	my ($node, $new_child) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'add_child_node' } );
 	defined( $new_child ) or $node->_throw_error_message( 'SRT_N_ADD_CH_NODE_NO_ARGS' );
 	unless( ref($new_child) eq ref($node) ) {
 		$node->_throw_error_message( 'SRT_N_ADD_CH_NODE_BAD_ARG', { 'ARG' => $new_child } );
@@ -2635,6 +2718,8 @@ sub add_child_node {
 
 sub add_child_nodes {
 	my ($node, $list) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'add_child_nodes' } );
 	$list or return;
 	unless( ref($list) eq 'ARRAY' ) {
 		$list = [ $list ];
@@ -3418,11 +3503,15 @@ sub get_all_properties_as_xml_str {
 
 sub build_node {
 	my ($node, @args) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_node' } );
 	return $node->{$NPROP_CONTAINER}->build_node( @args );
 }
 
 sub build_child_node {
 	my ($node, $node_type, $attrs) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node' } );
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
 	}
@@ -3431,6 +3520,8 @@ sub build_child_node {
 
 sub build_child_nodes {
 	my ($node, $list) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_nodes' } );
 	$list or return;
 	unless( ref($list) eq 'ARRAY' ) {
 		$list = [ $list ];
@@ -3442,6 +3533,8 @@ sub build_child_nodes {
 
 sub build_child_node_tree {
 	my ($node, $node_type, $attrs, $children) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_tree' } );
 	if( ref($node_type) eq 'HASH' ) {
 		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
 	}
@@ -3452,6 +3545,8 @@ sub build_child_node_tree {
 
 sub build_child_node_trees {
 	my ($node, $list) = @_;
+	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_trees' } );
 	$list or return;
 	unless( ref($list) eq 'ARRAY' ) {
 		$list = [ $list ];
@@ -4092,6 +4187,7 @@ CONTAINER CONSTRUCTOR FUNCTIONS AND METHODS:
 
 CONTAINER OBJECT METHODS:
 
+	is_read_only([ NEW_VALUE ])
 	auto_assert_deferrable_constraints([ NEW_VALUE ])
 	auto_set_node_ids([ NEW_VALUE ])
 	may_match_surrogate_node_ids([ NEW_VALUE ])

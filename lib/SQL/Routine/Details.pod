@@ -234,7 +234,7 @@ from the code in or with other modules which sub-class or use this one.
 
 I<Disclaimer: The following claims assume that only this module's published API
 is used, and that you do not set object properties directly or call private
-methods, which Perl does not prevent.  It also assumes that the module is bug
+methods, which Perl 5 does not prevent.  It also assumes that the module is bug
 free, and that any errors or warnings which appear while the code is running
 are thrown explicitly by this module as part of its normal functioning.>
 
@@ -252,17 +252,20 @@ then the objects will remain un-corrupted and able to accept new input or give
 proper output.  In most cases, the object will be in the same state as it was 
 before the public method was called with the bad input.
 
+Note that, while SQL::Routine objects are always internally consistent, that
+doesn't mean that the data they store is always correct.  Only the most critical
+kinds of input validation, constantly applied constraints, are done prior to
+storing or altering the data.  Many kinds of data validation, deferrable
+constraints, are only done as a separate stage following its input; you apply
+those explicitly by invoking assert_deferrable_constraints().  One reason for
+the separation is to avoid spurious exceptions such as 'mandatory attribute not
+set' while a Node is in the middle of being created piecemeal, such as when it
+is storing details gathered one at a time from the user; another reason is
+performance efficiency, to save on a lot of redundant computation.
+
 This module does not use package variables at all, besides constants like
 $VERSION, and all symbols ($@%) declared at file level are strictly constant
 value declarations.  No object should ever step on another.
-
-This module will allow a Node to be created piecemeal, such as when it is
-storing details gathered one at a time from the user, and during this time some
-mandatory Node properties may not be set, or pending links from this node to
-others may not be validated.  However, until a Node has its required properties
-set and/or its Node links are validated, no references will be made to this
-Node from other Nodes; from their point of view it doesn't exist, and hence the
-other Nodes are all consistent.
 
 SQL::Routine is explicitly not thread-aware (thread-safe); it contains no
 code to synchronize access to its objects' properties, such as semaphores or
@@ -438,6 +441,17 @@ SQL::Routine::Container (or subclass) object.
 =head1 CONTAINER OBJECT METHODS
 
 These methods are stateful and may only be invoked off of Container objects.
+
+=head2 is_read_only([ NEW_VALUE ])
+
+This method returns this Container's "is read only" boolean property; if
+NEW_VALUE is defined, it will first set that property to it.  When this flag is
+true, any attempt to modify this Container's Nodes (or most other Container
+properties) and/or add/remove Nodes will throw an exception.  Only 2 properties
+of a read-only Container may validly be changed, which are "is read only" itself
+(setting to false) and "deferrable constraints are tested" (setting to true). 
+The use of this feature helps to detect and prevent changes that are occurring
+after the time you expect model population to be completed.
 
 =head2 auto_assert_deferrable_constraints([ NEW_VALUE ])
 

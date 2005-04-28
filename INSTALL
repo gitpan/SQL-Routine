@@ -35,9 +35,9 @@ this:
         use lib '/home/me/myperl5/lib';
 
 Then you would want to run the included test programs to make sure the modules
-are installed correctly.  Call them like this:
+are installed correctly.  Call them like this for each sequential t/*.t file:
 
-        perl t/SQL_Routine.t
+        perl t/<file-name>.t
 
 Any existing POD is embedded in the module itself.  The Makefile probably 
 extracted it for you in the usual manner, or you can run a POD extractor on it 
