@@ -6,19 +6,19 @@ SQL::Routine::NodeTypes - What Node types are part of SQL::Routine's language or
 
 =head1 COPYRIGHT AND LICENSE
 
-This file is part of the SQL::Routine library (libSQLRT).
+This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 1999-2005, Darren R. Duncan.  All rights
-reserved. Address comments, suggestions, and bug reports to
-B<perl@DarrenDuncan.net>, or visit "http://www.DarrenDuncan.net" for more
-information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
+visit http://www.DarrenDuncan.net/ for more information.
 
 SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) version 2 as published by the
-Free Software Foundation (http://www.fsf.org/).  You should have received a
-copy of the GPL as part of the SQL::Routine distribution, in the file named
-"LICENSE"; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA.
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (http://www.fsf.org/); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+MA 02111-1307 USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -835,7 +835,6 @@ Attribute List:
 	compound_op - E.compound_operator - how to merge any child rowsets/views of this one together, if any
 	distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
 	may_write - L.bool - true when we should at least try allowing updates through the selecting view
-	set_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are setting value of via "select into"
 	ins_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are inserting into the table/view
 
 	Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
@@ -849,12 +848,10 @@ Local Attribute Dependencies List:
 		compound_op - COMPOUND - MA
 		distinct_rows - JOINED,GROUPED,COMPOUND
 		may_write - ALIAS,JOINED,GROUPED,COMPOUND
-		set_p_routine_item - ALIAS,JOINED,GROUPED,COMPOUND
 		ins_p_routine_item - INSERT - MA
  
 	Note: Not expressable yet; recursive can be set only when pp is a view.
  	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine.
-	Note: Not expressable yet; if pp set to a 'routine' and view_type is [A,J,G,C], then set..item must be set.
 
 Remotely Addressable Types List:
 
@@ -1267,7 +1264,7 @@ Attribute List:
 	id - NODE_ID - unique identifier for each Node within this Node Type
 	pp - N.routine - what routine this statement is in
 	block_routine - N.routine - this child routine defs contents of BEGIN ... END
-	assign_dest - N.routine_context,routine_arg,routine_var - this cxt-arg or 'out' arg or var may be where expr result goes
+	assign_dest - N.routine_arg,routine_var - this 'out' arg or var may be where expr result goes
 	call_sroutine - E.standard_routine - this is the standard built-in procedure to call
 	call_uroutine - N.routine - this is the user-defined stored procedure (routine) to call
 	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
@@ -1316,6 +1313,7 @@ Attribute List:
 	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
 	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
 	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
+	query_dest - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are setting value of via "select/fetch into"
 	cont_type - E.container_type - MA - what basic container type the expression value is
 	valf_literal - L.misc - use a literal value, such as number or string
 	scalar_data_type - N.scalar_data_type,scalar_domain - cast or declare curr literal expr into this data type / domain
@@ -1328,6 +1326,8 @@ Attribute List:
 
 Local Attribute Dependencies List:
 
+	call_sroutine_arg:
+		query_dest - INTO - MA  # assume used only when sroutine is CURSOR_FETCH() or SELECT()
 	cont_type:
 		act_on - SRT_NODE - MA
 	valf_literal:

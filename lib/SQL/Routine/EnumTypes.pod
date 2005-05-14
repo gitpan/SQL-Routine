@@ -6,19 +6,19 @@ SQL::Routine::EnumTypes - What enumerated types are part of SQL::Routine's langu
 
 =head1 COPYRIGHT AND LICENSE
 
-This file is part of the SQL::Routine library (libSQLRT).
+This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 1999-2005, Darren R. Duncan.  All rights
-reserved. Address comments, suggestions, and bug reports to
-B<perl@DarrenDuncan.net>, or visit "http://www.DarrenDuncan.net" for more
-information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
+visit http://www.DarrenDuncan.net/ for more information.
 
 SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) version 2 as published by the
-Free Software Foundation (http://www.fsf.org/).  You should have received a
-copy of the GPL as part of the SQL::Routine distribution, in the file named
-"LICENSE"; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA.
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (http://www.fsf.org/); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+MA 02111-1307 USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -157,7 +157,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
 			- Skips by default any details that CATALOG_INFO() and CONN-context
 			built-ins can handle; it is minimalist for speed.
 		args:
-			- RECURSIVE - SCALAR.bool - Opt: To scan inside each db as well.
+			- RECURSIVE(1) - SCALAR.bool - Opt: To scan inside each db as well.
 		effects: 
 			- A new 'catalog' Node is added to the SQL::Routine::Container for
 			each one found, plus associated 'catalog_link', 'catalog_instance',
@@ -179,8 +179,8 @@ client-side routine, usually with 'routine_stmt' Nodes.
 			can handle; it is minimalist for speed.
 			- Note: There may not be any info to gather in minimalist mode.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to scan.
-			- RECURSIVE - SCALAR.bool - Opt: To get all determinable details.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to scan.
+			- RECURSIVE(1) - SCALAR.bool - Opt: To get all determinable details.
 		effects:
 			- May set some catalog Node attributes, or add child Nodes.
 			- If RECURSIVE is true, call these built-ins in recursive mode: 
@@ -199,8 +199,8 @@ client-side routine, usually with 'routine_stmt' Nodes.
 			are made to the SQL::Routine::Container; existing Nodes therein are
 			compared to instead.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to scan.
-			- RECURSIVE - SCALAR.bool - Opt: To verify all possible details.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to scan.
+			- RECURSIVE(1) - SCALAR.bool - Opt: To verify all possible details.
 		returns:
 			- SCALAR.bool - A true value if the db matches the spec, false if not.
 			- If the details that the database product stores or reports about
@@ -220,8 +220,8 @@ client-side routine, usually with 'routine_stmt' Nodes.
 			- Creates a new database instance.
 			- By default, creates just the catalog but puts nothing inside it.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to create.
-			- RECURSIVE - SCALAR.bool - Opt: To create all possible details.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to create.
+			- RECURSIVE(1) - SCALAR.bool - Opt: To create all possible details.
 		effects:
 			- If RECURSIVE is true, creates all database schemas and users also.
 		throws:
@@ -233,21 +233,21 @@ client-side routine, usually with 'routine_stmt' Nodes.
 		purpose:
 			- Deletes a database instance.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to delete.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to delete.
 
 	CATALOG_CLONE() 
 		purpose:
 			- Makes a clone of a db instance in another storage loc.
 		args:
-			- SOURCE_LINK_BP - SRT_NODE:catalog_link - The catalog to copy from.
-			- DEST_LINK_BP - SRT_NODE:catalog_link - The catalog to copy to / create.
+			- SOURCE_LINK_BP(1) - SRT_NODE:catalog_link - The catalog to copy from.
+			- DEST_LINK_BP(1) - SRT_NODE:catalog_link - The catalog to copy to / create.
 
 	CATALOG_MOVE() 
 		purpose:
 			- Moves a db inst from one storage location to another.
 		args:
-			- SOURCE_LINK_BP - SRT_NODE:catalog_link - The catalog location to move from.
-			- DEST_LINK_BP - SRT_NODE:catalog_link - The catalog location to move to.
+			- SOURCE_LINK_BP(1) - SRT_NODE:catalog_link - The catalog location to move from.
+			- DEST_LINK_BP(1) - SRT_NODE:catalog_link - The catalog location to move to.
 
 This set of connection management built-ins may only be invoked in a
 routine, client or database side, usually with 'routine_stmt' Nodes.
@@ -261,8 +261,8 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - A routine var or arg that will hold the new connection handle.
 		args:
-			- LOGIN_NAME - SCALAR.cstr - Opt: A runtime-provided username to connect with.
-			- LOGIN_PASS - SCALAR.cstr - Opt: A runtime-provided password to connect with.
+			- LOGIN_NAME(1) - SCALAR.cstr - Opt: A runtime-provided username to connect with.
+			- LOGIN_PASS(1) - SCALAR.cstr - Opt: A runtime-provided password to connect with.
 		effects:
 			- The CONN_CX changes from an inactive state to active, ready to pipe data.
 		throws:
@@ -301,7 +301,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to connect to.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to connect to.
 		throws:
 			- SRTX_NO_CONN_ACTIVE_LOST
 
@@ -311,7 +311,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- LINK_BP - SRT_NODE:catalog_link - The catalog to connect to.
+			- LINK_BP(1) - SRT_NODE:catalog_link - The catalog to connect to.
 		throws:
 			- SRTX_NO_CONN_ACTIVE_LOST
 
@@ -392,7 +392,7 @@ with 'routine_stmt' Nodes.
 		purpose:
 			- Causes the parent routine to stop right away, and optionally returns a value.
 		args:
-			- RETURN_VALUE - Opt: The container expression value that the parent routine returns.
+			- RETURN_VALUE(1) - Opt: The container expression value that the parent routine returns.
 
 	CURSOR_OPEN() 
 		purpose:
@@ -415,6 +415,8 @@ with 'routine_stmt' Nodes.
 			- Reads one row from an opened cursor and puts it in a ROW variable.
 		context:
 			- CURSOR_CX - CURSOR - An open cursor to provide our action context.
+		args:
+			- INTO(1) - ROW - The ROW variable being fetched into.
 
 	SELECT() 
 		purpose:
@@ -423,7 +425,8 @@ with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- SELECT_DEFN - SRT_NODE:view - The view that defines this select action.
+			- SELECT_DEFN(1) - SRT_NODE:view - The view that defines this select action.
+			- INTO(1) - ROW|RW_ARY - The ROW/RW_ARY variable being fetched into.
 
 	INSERT() 
 		purpose:
@@ -432,7 +435,7 @@ with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- INSERT_DEFN - SRT_NODE:view - The view that defines this insert action.
+			- INSERT_DEFN(1) - SRT_NODE:view - The view that defines this insert action.
 
 	UPDATE() 
 		purpose:
@@ -441,7 +444,7 @@ with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- UPDATE_DEFN - SRT_NODE:view - The view that defines this update action.
+			- UPDATE_DEFN(1) - SRT_NODE:view - The view that defines this update action.
 
 	DELETE() 
 		purpose:
@@ -450,7 +453,7 @@ with 'routine_stmt' Nodes.
 		context:
 			- CONN_CX - CONN - An open database connection to provide our action context.
 		args:
-			- DELETE_DEFN - SRT_NODE:view - The view that defines this delete action.
+			- DELETE_DEFN(1) - SRT_NODE:view - The view that defines this delete action.
 
 	COMMIT() 
 		purpose:
@@ -500,8 +503,8 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 		purpose:
 			- Cast a single child expression into a different specified scalar data-type.
 		args:
-			- CAST_TARGET - SRT_NODE:scalar_data_type,scalar_domain - The data type to cast the operand as.
-			- CAST_OPERAND - SCALAR - The data value we are casting into a data type.
+			- CAST_TARGET(1) - SRT_NODE:scalar_data_type,scalar_domain - The data type to cast the operand as.
+			- CAST_OPERAND(1) - SCALAR - The data value we are casting into a data type.
 		returns:
 			- SCALAR - The new value having the target data type.
 

@@ -1,4 +1,5 @@
 Changes
+GPL
 INSTALL
 lib/SQL/Routine.pm
 lib/SQL/Routine/API_C.pod
@@ -7,12 +8,12 @@ lib/SQL/Routine/EnumTypes.pod
 lib/SQL/Routine/L/en.pm
 lib/SQL/Routine/Language.pod
 lib/SQL/Routine/NodeTypes.pod
-LICENSE
 Makefile.PL
 MANIFEST
 META.yml                                Module meta-data (added by MakeMaker)
 ReadMe
 t/lib/t_SRT_Abstract.pm
+t/lib/t_SRT_Synopsis.pm
 t/lib/t_SRT_Terse.pm
 t/lib/t_SRT_Util.pm
 t/lib/t_SRT_Verbose.pm
@@ -22,5 +23,6 @@ t/SRT_11_Circular.t
 t/SRT_40_Verbose.t
 t/SRT_41_Terse.t
 t/SRT_42_Abstract.t
+t/SRT_43_Synopsis.t
 t/SRT_50_Cloning.t
 TODO

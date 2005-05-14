@@ -8,7 +8,6 @@ plan( 'tests' => 17 );
 use lib 't/lib';
 use t_SRT_Util;
 use SQL::Routine;
-use SQL::Routine::L::en;
 
 t_SRT_Util->message( 'Test that Containers don\'t allow changes when read-only.' );
 

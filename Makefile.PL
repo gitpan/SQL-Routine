@@ -9,7 +9,7 @@ WriteMakefile(
 	'PREREQ_PM' => {
 		'Scalar::Util' => '1.11', # for weak refs
 		'Test::More' => '0.47', # but only for the test suite
-		'Locale::KeyedText' => '1.03',
+		'Locale::KeyedText' => '1.04',
 	},
 );
 

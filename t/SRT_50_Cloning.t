@@ -9,7 +9,6 @@ use lib 't/lib';
 use t_SRT_Util;
 use t_SRT_Terse;
 use SQL::Routine;
-use SQL::Routine::L::en;
 
 t_SRT_Util->message( 'Test that SRT models can be easily cloned.' );
 

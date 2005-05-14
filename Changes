@@ -1,3 +1,65 @@
+2005-05-13   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.62.
+
+	* New code file versions are: Routine.pm v0.62 and en.pm v0.31.
+
+	* Updated external dependencies on Locale::KeyedText to v1.04.
+
+	* Updated every instance of the COPYRIGHT AND LICENSE documentation in this
+	distribution to correct the declared date range in which the core
+	SQL::Routine files were created.  The new dates are 2002 thru 2005, which is
+	when I actually committed documentation describing or code implementing what
+	became the SQL::Routine core.  The old dates were 1999 thru 2005, which goes
+	back to the time that I started conceiving a larger project which the
+	aforementioned module started out being related to; however, those earlier
+	years did not contain any work on what specifically became the
+	aforementioned module, so they are now excluded.
+
+	* Updated every instance of the COPYRIGHT AND LICENSE documentation in this
+	distribution so that you may now choose between licensing it under the GPL
+	version 2 or any later GPL version, rather than only under version 2.
+
+	* Renamed the "LICENSE" file to "GPL", and correspondingly updated all
+	references to it in this distribution, most of them being in COPYRIGHT AND
+	LICENSE statements.  This change was made to reduce user confusion in
+	situations where files from this distribution may be aggregated with other
+	files that have different licenses; the old name was too generic.
+
+	* Updated every instance of the COPYRIGHT AND LICENSE documentation in this
+	distribution to remove the parenthetical references to "libSQLRT"; there
+	are no references left to a possible C library's name except in API_C.pod.
+
+	* Updated SRT_00_Compile.t to add 14 tests, bringing the total to 22; the
+	new tests are all can_ok(), one for each of the test suite modules' methods.
+
+	* Updated data dictionary in Routine.pm, EnumTypes.pm, NodeTypes.pm: Updated
+	standard-routines CURSOR_FETCH() and SELECT() to add a new INTO argument to
+	each, which takes a ROW or RW_ARY variable to put the query result in; added
+	corresponding routine_expr Node attribute 'query_dest' to use when the
+	Node's call_sroutine_arg is 'INTO'.  Removed 'view' Node attribute
+	'set_p_routine_item', which is how the 'into' information used to be stored
+	in a model.  This change was made so that cursors can be used more easily,
+	such as when you want different cursor-fetch calls to put their results in
+	different variables, or you want to open a cursor in one routine while
+	fetching from it in another.  Updated the Routine.pm SYNOPSIS code/XML and
+	the test file t_SRT_Verbose.pm to remain compatible with the changes.
+
+	* Added 2 new test suite files, t/lib/t_SRT_Synopsis.pm and
+	t/SRT_43_Synopsis.t, which mirror the Routine.pm SYNOPSIS code/XML and makes
+	sure it works; this adds 6 numbered tests.  Updated SRT_00_Compile.t to test
+	that the new test module compiles; this adds 5 numbered tests.
+
+	* Updated data dictionary in Routine.pm, NodeTypes.pm: Updated the
+	'assign_dest' attribute of routine_stmt Nodes so that 'routine_context' is
+	no longer a valid Node type to refer to; it does not make sense to assign to
+	a routine's context, which is analagous to $self.
+
+	* Small documentation updates in EnumTypes.pm concerning standard-routines.
+
+	* Updated every t/SRT_*.t file except 00_Compile to remove its explicit "use
+	SQL::Routine::L::en;" line, which is redundant with what LKT does.
+
 2005-04-27   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.61.
@@ -506,6 +568,11 @@
 	database generic or data dictionary code in separate files, and separate
 	files for parts of the web interface.  The program used the same generic
 	CPAN modules as in the first prototype, DBI/MySQL and CGI::Portable.
+
+	* This is when I started writing self-contained code components that were
+	explicitly designed to enable external code that used them to work
+	seamlessly on multiple database products, and hence 2002 is the start of my
+	declared copyright date range for SQL::Routine.
 
 2001-11-24
 

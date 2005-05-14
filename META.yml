@@ -1,11 +1,11 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         SQL-Routine
-version:      0.61
+version:      0.62
 version_from: lib/SQL/Routine.pm
 installdirs:  site
 requires:
-    Locale::KeyedText:             1.03
+    Locale::KeyedText:             1.04
     Scalar::Util:                  1.11
     Test::More:                    0.47
 

@@ -2,10 +2,10 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.61';
+our $VERSION = '0.62';
 
 use Scalar::Util 1.11;
-use Locale::KeyedText 1.03;
+use Locale::KeyedText 1.04;
 
 ######################################################################
 
@@ -25,23 +25,23 @@ Core Modules:
 
 Non-Core Modules: 
 
-	Locale::KeyedText 1.03 (for error messages)
+	Locale::KeyedText 1.04 (for error messages)
 
 =head1 COPYRIGHT AND LICENSE
 
-This file is part of the SQL::Routine library (libSQLRT).
+This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 1999-2005, Darren R. Duncan.  All rights
-reserved. Address comments, suggestions, and bug reports to
-B<perl@DarrenDuncan.net>, or visit "http://www.DarrenDuncan.net" for more
-information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
+visit http://www.DarrenDuncan.net/ for more information.
 
 SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) version 2 as published by the
-Free Software Foundation (http://www.fsf.org/).  You should have received a
-copy of the GPL as part of the SQL::Routine distribution, in the file named
-"LICENSE"; if not, write to the Free Software Foundation, Inc., 59 Temple
-Place, Suite 330, Boston, MA 02111-1307 USA.
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (http://www.fsf.org/); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not,
+write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+MA 02111-1307 USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -225,6 +225,7 @@ my %ENUMERATED_TYPES = (
 		RECURSIVE LINK_BP SOURCE_LINK_BP DEST_LINK_BP 
 		LOGIN_NAME LOGIN_PASS
 		RETURN_VALUE
+		INTO
 		SELECT_DEFN INSERT_DEFN UPDATE_DEFN DELETE_DEFN
 		CAST_TARGET CAST_OPERAND
 		FACTOR FACTORS LHS RHS ARG TERMS
@@ -676,7 +677,7 @@ my %NODE_TYPES = (
 	'view' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name view_type row_data_type recursive compound_op 
-			distinct_rows may_write set_p_routine_item ins_p_routine_item
+			distinct_rows may_write ins_p_routine_item
 		)],
 		$TPI_PP_NREF => ['view','routine','schema','application'],
 		$TPI_AT_LITERALS => {
@@ -691,7 +692,6 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_NREFS => {
 			'row_data_type' => ['row_data_type','row_domain'],
-			'set_p_routine_item' => ['routine_arg','routine_var'],
 			'ins_p_routine_item' => ['routine_arg','routine_var'],
 		},
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
@@ -704,7 +704,6 @@ my %NODE_TYPES = (
 				[[],['compound_op'],[],['COMPOUND'],1],
 				[['distinct_rows'],[],[],['JOINED','GROUPED','COMPOUND'],0],
 				[['may_write'],[],[],['ALIAS','JOINED','GROUPED','COMPOUND'],0],
-				[[],[],['set_p_routine_item'],['ALIAS','JOINED','GROUPED','COMPOUND'],0],
 				[[],[],['ins_p_routine_item'],['INSERT'],1],
 			]],
 		],
@@ -1080,7 +1079,7 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_NREFS => {
 			'block_routine' => ['routine'],
-			'assign_dest' => ['routine_context','routine_arg','routine_var'],
+			'assign_dest' => ['routine_arg','routine_var'],
 			'call_uroutine' => ['routine'],
 			'catalog_link' => ['catalog_link'],
 		},
@@ -1106,7 +1105,7 @@ my %NODE_TYPES = (
 	},
 	'routine_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id pp call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg 
+			id pp call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg query_dest 
 			cont_type valf_literal scalar_data_type valf_p_routine_item valf_seq_next 
 			valf_call_sroutine valf_call_uroutine catalog_link act_on
 		)],
@@ -1123,6 +1122,7 @@ my %NODE_TYPES = (
 		$TPI_AT_NREFS => {
 			'call_uroutine_cxt' => ['routine_context'],
 			'call_uroutine_arg' => ['routine_arg'],
+			'query_dest' => ['routine_arg','routine_var'],
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'valf_p_routine_item' => ['routine_context','routine_arg','routine_var'],
 			'valf_seq_next' => ['sequence'],
@@ -1134,6 +1134,9 @@ my %NODE_TYPES = (
 		$TPI_SI_ATNM => ['id',undef,undef,undef],
 		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_LOCAL_ATDPS => [
+			[undef,'call_sroutine_arg',undef,[
+				[[],[],['query_dest'],['INTO'],1],
+			]],
 			[undef,'cont_type',undef,[
 				[[],[],['act_on'],['SRT_NODE'],1],
 			]],
@@ -3671,7 +3674,7 @@ of, since more advanced features are not shown for brevity.
 		] );
 
 		# This defines another scalar data type, which is used by some routines that follow below.
-		my $sdt_login_auth = $model->build_child_node_tree( 'scalar_data_type', { 'si_name' => 'login_auth', 
+		my $sdt_login_auth = $model->build_child_node( 'scalar_data_type', { 'si_name' => 'login_auth', 
 			'base_type' => 'STR_CHAR', 'max_chars' => 20, 'char_enc' => 'UTF8', } );
 
 		# This defines an application-side routine/function that connects to the 'Gene Database', fetches all 
@@ -3688,12 +3691,13 @@ of, since more advanced features are not shown for brevity.
 				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_pass', }, ],
 			], ],
 			[ 'routine_var', { 'si_name' => 'pwp_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person_with_parents', }, ],
-			[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', 'set_p_routine_item' => 'pwp_ary', }, [
+			[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', }, [
 				[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
 			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_pwp', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'pwp_ary', 'cont_type' => 'RW_ARY', }, ],
 			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'CATALOG_CLOSE', }, [
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item', 'conn_cx', }, ],
@@ -3725,7 +3729,7 @@ of, since more advanced features are not shown for brevity.
 			[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 			[ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
 			[ 'routine_var', { 'si_name' => 'person_row', 'cont_type' => 'ROW', 'row_data_type' => 'person', }, ],
-			[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', 'set_p_routine_item' => 'person_row', }, [
+			[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', }, [
 				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
 					[ 'view_src_field', 'person_id', ],
 				], ],
@@ -3737,6 +3741,7 @@ of, since more advanced features are not shown for brevity.
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_person', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'person_row', 'cont_type' => 'RW_ARY', }, ],
 			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'RETURN', }, [
 				[ 'routine_expr', { 'call_sroutine_arg' => 'RETURN_VALUE', 'cont_type' => 'ROW', 'valf_p_routine_item' => 'person_row', }, ],
@@ -3925,83 +3930,85 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 						<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
 					</routine_stmt>
 					<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="person_with_parents" />
-					<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents" set_p_routine_item="pwp_ary">
+					<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
 						<view_src id="70" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
 					</view>
 					<routine_stmt id="71" call_sroutine="SELECT">
 						<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 						<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_pwp" />
+						<routine_expr id="74" call_sroutine_arg="INTO" query_dest="pwp_ary" cont_type="RW_ARY" />
 					</routine_stmt>
-					<routine_stmt id="74" call_sroutine="CATALOG_CLOSE">
-						<routine_expr id="75" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+					<routine_stmt id="75" call_sroutine="CATALOG_CLOSE">
+						<routine_expr id="76" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					</routine_stmt>
-					<routine_stmt id="76" call_sroutine="RETURN">
-						<routine_expr id="77" call_sroutine_arg="RETURN_VALUE" cont_type="RW_ARY" valf_p_routine_item="pwp_ary" />
+					<routine_stmt id="77" call_sroutine="RETURN">
+						<routine_expr id="78" call_sroutine_arg="RETURN_VALUE" cont_type="RW_ARY" valf_p_routine_item="pwp_ary" />
 					</routine_stmt>
 				</routine>
-				<routine id="78" si_name="add_people" routine_type="PROCEDURE">
-					<routine_context id="79" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
-					<routine_arg id="80" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
-					<view id="81" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
-						<view_src id="82" si_name="s" match="[person,Gene Schema,Gene Database]" />
+				<routine id="79" si_name="add_people" routine_type="PROCEDURE">
+					<routine_context id="80" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+					<routine_arg id="81" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
+					<view id="82" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
+						<view_src id="83" si_name="s" match="[person,Gene Schema,Gene Database]" />
 					</view>
-					<routine_stmt id="83" call_sroutine="INSERT">
-						<routine_expr id="84" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
-						<routine_expr id="85" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
+					<routine_stmt id="84" call_sroutine="INSERT">
+						<routine_expr id="85" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
 					</routine_stmt>
 				</routine>
-				<routine id="86" si_name="get_person" routine_type="FUNCTION" return_cont_type="ROW" return_row_data_type="person">
-					<routine_context id="87" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
-					<routine_arg id="88" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
-					<routine_var id="89" si_name="person_row" cont_type="ROW" row_data_type="person" />
-					<view id="90" si_name="query_person" view_type="JOINED" row_data_type="person" set_p_routine_item="person_row">
-						<view_src id="91" si_name="s" match="[person,Gene Schema,Gene Database]">
-							<view_src_field id="92" si_match_field="person_id" />
+				<routine id="87" si_name="get_person" routine_type="FUNCTION" return_cont_type="ROW" return_row_data_type="person">
+					<routine_context id="88" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
+					<routine_arg id="89" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
+					<routine_var id="90" si_name="person_row" cont_type="ROW" row_data_type="person" />
+					<view id="91" si_name="query_person" view_type="JOINED" row_data_type="person">
+						<view_src id="92" si_name="s" match="[person,Gene Schema,Gene Database]">
+							<view_src_field id="93" si_match_field="person_id" />
 						</view_src>
-						<view_expr id="93" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-							<view_expr id="94" cont_type="SCALAR" valf_src_field="[person_id,s]" />
-							<view_expr id="95" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="95" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+							<view_expr id="96" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 						</view_expr>
 					</view>
-					<routine_stmt id="96" call_sroutine="SELECT">
-						<routine_expr id="97" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
-						<routine_expr id="98" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
+					<routine_stmt id="97" call_sroutine="SELECT">
+						<routine_expr id="98" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
+						<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
+						<routine_expr id="100" call_sroutine_arg="INTO" query_dest="person_row" cont_type="RW_ARY" />
 					</routine_stmt>
-					<routine_stmt id="99" call_sroutine="RETURN">
-						<routine_expr id="100" call_sroutine_arg="RETURN_VALUE" cont_type="ROW" valf_p_routine_item="person_row" />
+					<routine_stmt id="101" call_sroutine="RETURN">
+						<routine_expr id="102" call_sroutine_arg="RETURN_VALUE" cont_type="ROW" valf_p_routine_item="person_row" />
 					</routine_stmt>
 				</routine>
 			</application>
 		</blueprints>
 		<tools>
-			<data_storage_product id="101" si_name="SQLite v3.2" product_code="SQLite_3_2" is_file_based="1" />
-			<data_storage_product id="102" si_name="MySQL v5.0" product_code="MySQL_5_0" is_network_svc="1" />
-			<data_storage_product id="103" si_name="PostgreSQL v8" product_code="PostgreSQL_8" is_network_svc="1" />
-			<data_storage_product id="104" si_name="Oracle v10g" product_code="Oracle_10_g" is_network_svc="1" />
-			<data_storage_product id="105" si_name="Sybase" product_code="Sybase" is_network_svc="1" />
-			<data_storage_product id="106" si_name="CSV" product_code="CSV" is_file_based="1" />
-			<data_link_product id="107" si_name="Microsoft ODBC v3" product_code="ODBC_3" />
-			<data_link_product id="108" si_name="Oracle OCI*8" product_code="OCI_8" />
-			<data_link_product id="109" si_name="Generic Rosetta Engine" product_code="Rosetta::Engine::Generic" />
+			<data_storage_product id="103" si_name="SQLite v3.2" product_code="SQLite_3_2" is_file_based="1" />
+			<data_storage_product id="104" si_name="MySQL v5.0" product_code="MySQL_5_0" is_network_svc="1" />
+			<data_storage_product id="105" si_name="PostgreSQL v8" product_code="PostgreSQL_8" is_network_svc="1" />
+			<data_storage_product id="106" si_name="Oracle v10g" product_code="Oracle_10_g" is_network_svc="1" />
+			<data_storage_product id="107" si_name="Sybase" product_code="Sybase" is_network_svc="1" />
+			<data_storage_product id="108" si_name="CSV" product_code="CSV" is_file_based="1" />
+			<data_link_product id="109" si_name="Microsoft ODBC v3" product_code="ODBC_3" />
+			<data_link_product id="110" si_name="Oracle OCI*8" product_code="OCI_8" />
+			<data_link_product id="111" si_name="Generic Rosetta Engine" product_code="Rosetta::Engine::Generic" />
 		</tools>
 		<sites>
-			<catalog_instance id="110" si_name="test" blueprint="Gene Database" product="PostgreSQL v8">
-				<user id="111" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="K34dsD" />
-				<user id="112" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
+			<catalog_instance id="112" si_name="test" blueprint="Gene Database" product="PostgreSQL v8">
+				<user id="113" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="K34dsD" />
+				<user id="114" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
 			</catalog_instance>
-			<application_instance id="113" si_name="test app" blueprint="Gene App">
-				<catalog_link_instance id="114" blueprint="editor_link" product="Microsoft ODBC v3" target="test" local_dsn="keep_it" />
+			<application_instance id="115" si_name="test app" blueprint="Gene App">
+				<catalog_link_instance id="116" blueprint="editor_link" product="Microsoft ODBC v3" target="test" local_dsn="keep_it" />
 			</application_instance>
-			<catalog_instance id="115" si_name="production" blueprint="Gene Database" product="Oracle v10g">
-				<user id="116" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="0sfs8G" />
-				<user id="117" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
+			<catalog_instance id="117" si_name="production" blueprint="Gene Database" product="Oracle v10g">
+				<user id="118" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Lord of the Root" password="0sfs8G" />
+				<user id="119" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
 			</catalog_instance>
-			<application_instance id="118" si_name="production app" blueprint="Gene App">
-				<catalog_link_instance id="119" blueprint="editor_link" product="Oracle OCI*8" target="production" local_dsn="ship_it" />
+			<application_instance id="120" si_name="production app" blueprint="Gene App">
+				<catalog_link_instance id="121" blueprint="editor_link" product="Oracle OCI*8" target="production" local_dsn="ship_it" />
 			</application_instance>
-			<catalog_instance id="120" si_name="laptop demo" blueprint="Gene Database" product="SQLite v3.2" file_path="Move It" />
-			<application_instance id="121" si_name="laptop demo app" blueprint="Gene App">
-				<catalog_link_instance id="122" blueprint="editor_link" product="Generic Rosetta Engine" target="laptop demo" />
+			<catalog_instance id="122" si_name="laptop demo" blueprint="Gene Database" product="SQLite v3.2" file_path="Move It" />
+			<application_instance id="123" si_name="laptop demo app" blueprint="Gene App">
+				<catalog_link_instance id="124" blueprint="editor_link" product="Generic Rosetta Engine" target="laptop demo" />
 			</application_instance>
 		</sites>
 		<circumventions />

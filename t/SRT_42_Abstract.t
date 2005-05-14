@@ -9,7 +9,6 @@ use lib 't/lib';
 use t_SRT_Util;
 use t_SRT_Abstract;
 use SQL::Routine;
-use SQL::Routine::L::en;
 
 t_SRT_Util->message( 'Test model construction using abstract wrapper interface.' );
 
