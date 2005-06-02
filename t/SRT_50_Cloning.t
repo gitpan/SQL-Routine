@@ -21,7 +21,7 @@ eval {
 
 	t_SRT_Util->message( 'NID: First build populated Container object from an original model\'s NID dump...' );
 
-	my $nid_model = SQL::Routine->build_container( $props_nid, 1 );
+	my $nid_model = SQL::Routine->build_container( [ $props_nid ], 1 );
 	isa_ok( $nid_model, 'SQL::Routine::Container', "building Container and Nodes" );
 
 	t_SRT_Util->message( 'NID: Now see if deferrable constraints are valid ...' );
@@ -49,7 +49,7 @@ eval {
 
 	t_SRT_Util->message( 'SID-L: First build populated Container object from an original model\'s SID-long dump...' );
 
-	my $sidL_model = SQL::Routine->build_container( $props_sidL, 1, undef, 1 );
+	my $sidL_model = SQL::Routine->build_container( [ $props_sidL ], 1, undef, 1 );
 	isa_ok( $sidL_model, 'SQL::Routine::Container', "building Container and Nodes" );
 
 	t_SRT_Util->message( 'SID-L: Now see if deferrable constraints are valid ...' );
@@ -77,7 +77,7 @@ eval {
 
 	t_SRT_Util->message( 'SID-S: First build populated Container object from an original model\'s SID-long dump...' );
 
-	my $sidS_model = SQL::Routine->build_container( $props_sidS, 1, undef, 1 );
+	my $sidS_model = SQL::Routine->build_container( [ $props_sidS ], 1, undef, 1 );
 	isa_ok( $sidS_model, 'SQL::Routine::Container', "building Container and Nodes" );
 
 	t_SRT_Util->message( 'SID-S: Now see if deferrable constraints are valid ...' );

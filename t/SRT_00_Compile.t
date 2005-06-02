@@ -6,10 +6,10 @@ use Test::More 0.47;
 plan( 'tests' => 27 );
 
 use_ok( 'SQL::Routine' );
-cmp_ok( $SQL::Routine::VERSION, '==', 0.62, "SQL::Routine is the correct version" );
+cmp_ok( $SQL::Routine::VERSION, '==', 0.63, "SQL::Routine is the correct version" );
 
 use_ok( 'SQL::Routine::L::en' );
-cmp_ok( $SQL::Routine::L::en::VERSION, '==', 0.31, "SQL::Routine::L::en is the correct version" );
+cmp_ok( $SQL::Routine::L::en::VERSION, '==', 0.32, "SQL::Routine::L::en is the correct version" );
 
 use lib 't/lib';
 

@@ -1,3 +1,102 @@
+2005-06-01   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.63.
+
+	* New code file versions are: Routine.pm v0.63 and en.pm v0.32.
+
+	* In summary, this release primarily serves to improve the ease of use and
+	reliability of the build_*() methods, such that their allowed argument
+	options are now more consistent and predictable.  The allowed argument
+	formats are now more terse and user-friendly than before.  The
+	get_all_properties() methods will now return the more terse format as well.
+	Finally, the number of static error messages has been greatly reduced,
+	replaced with a much smaller number of dynamic ones, so the total is easier
+	to work with.
+
+	* Refactored a lot of user text messages in en.pm by combining 46
+	method-specific messages into 9 method-generic messages taking more
+	variables (an 80% compression rate); in the process, en.pm became 22%
+	(7K/33K) smaller.  Routine.pm also had its corresponding methods updated to
+	use the replacement messages.  The 1 'SRT_C_METH_ARG_UNDEF' replaced these
+	2: 'SRT_C_FIND_[NODE_BY_ID_NO_ARG_ID|CH_ND_BY_SID_NO_ARG_VAL]'.  The 1
+	'SRT_N_METH_ARG_UNDEF' replaced these 24:
+	'SRT_N_SET_[NODE_ID_NO_ARGS|PP_AT_NO_ARG_VAL]',
+	'SRT_N_[GET|CLEAR|SET]_[LIT|ENUM|NREF]_AT_NO_ARGS',
+	'SRT_N_SET_[LIT|ENUM|NREF]_ATS_NO_ARGS', 'SRT_N_SET_SI_AT_NO_ARGS',
+	'SRT_N_[GET|CLEAR|SET]_AT_NO_ARGS', 'SRT_N_SET_ATS_NO_ARGS',
+	'SRT_N_MOVE_PRE_SIB_NO_S_ARG', 'SRT_N_ADD_CH_NODE_NO_ARGS',
+	'SRT_N_FIND_[ND_BY_SID_NO_ARGS|CH_ND_BY_SID_NO_ARG_VAL]'
+	'SRT_N_GET_REL_SID_NO_ARGS'.  The 1 'SRT_N_METH_ARG_NO_HASH' replaced these
+	4: 'SRT_N_SET_[LIT|ENUM|NREF]_ATS_BAD_ARGS', 'SRT_N_SET_ATS_BAD_ARGS'.  The
+	1 'SRT_N_METH_ARG_NO_NODE' replaced these 3:
+	'SRT_N_MOVE_PRE_SIB_BAD_[S|P]_ARG', 'SRT_N_ADD_CH_NODE_BAD_ARG'.  The 1
+	'SRT_N_METH_NO_PP_AT' replaced these 3:
+	'SRT_N_[GET|CLEAR|SET]_PP_AT_NO_PP_AT'.  The 2
+	'SRT_N_METH_ARG_NO_[LIT|ENUM]_AT_NM' replaced these 6:
+	'SRT_N_[GET|CLEAR|SET]_[LIT|ENUM]_AT_INVAL_NM'.  The 1
+	'SRT_N_METH_ARG_NO_NREF_AT_NM' replaced these 5:
+	'SRT_N_[GET|CLEAR|SET]_NREF_AT_INVAL_NM',
+	'SRT_N_[FIND_ND_BY|GET_REL]_SID_INVAL_NM'.  The 1 'SRT_N_METH_ARG_NO_AT_NM'
+	replaced these 3: 'SRT_N_[GET|CLEAR|SET]_AT_INVAL_NM'.
+
+	* In Routine.pm, refactored Container.build_child_node_tree() to inline what
+	build_child_node() does rather than invoking it; corresponding to this,
+	en.pm saw the user text message 'SRT_C_BUILD_CH_ND_NO_PSND' split into
+	itself and 'SRT_C_BUILD_CH_ND_TR_NO_PSND'.  Node.build_child_node_tree() was
+	likewise refactored to inline build_child_node(), and Node.build_node() to
+	inline Container.build_node(), but for both there were no en.pm messages
+	affected by this.
+
+	* Minor _build_node_is_child_or_not() correction to invoke user text message
+	'SRT_N_NEW_NODE_NO_ARG_TYPE' rather than 'SRT_N_NEW_NODE_NO_ARGS'.
+
+	* Updated Routine.pm and Details.pod to rename all LIST arguments to
+	CHILDREN, which affects these methods: add_child_nodes(),
+	build_child_node[|_tree]s(), build_container().  Also renamed
+	add_child_node() argument from NEW_CHILD to CHILD.
+
+	* Corresponding updates in Routine.pm, Details.pod, en.pm that remove global
+	support for the alternate method input format of "named arguments in a
+	single hash-ref argument"; all of the [Container|Node].build_*() methods
+	were affected, with these 6 being the ones edited: build_node(),
+	build_child_node(), build_child_node_tree().
+
+	* Updated Routine.pm, Details.pod, en.pm so that it is now mandatory for any
+	defined CHILDREN arguments to be array refs where each element is an array
+	ref having the details for one child or child tree (mapping to
+	build[_child]_node() positional arguments).  It was previously possible to
+	pass just the details for a single child Node in place of the first array
+	ref, but that is no longer valid.  A further change is that, for the
+	build_child_nod[e_tree]s() methods, the CHILDREN argument is now enforced
+	mandatory; previously those methods would no-op if it was undefined, which
+	permitted other methods to invoke them regardless of the passed argument
+	being valued.  Updated these methods to only invoke the aforementioned if
+	they have defined CHILDREN to pass: build_child_node_tree(),
+	build_container().  Added these 6 new method-generic user text messages to
+	en.pm, which are used by the newly updated 4 build_*s() methods:
+	'SRT_[C|N]_METH_ARG_NO_ARY', 'SRT_[C|N]_METH_ARG_ARY_ELEM_[UNDEF|NO_ARY]'.
+
+	* Updated the populate_model() functions in t_SRT_[Terse|Abstract].pm to
+	invoke the build_*() methods with the same argument formats that
+	t_SRT_Synopsis.pm has already been using, since they are now the only valid
+	build_*() input formats following the above-mentioned Routine.pm changes; 
+	the expected XML output strings are identical to before.  Following the 
+	changes, each of those test suite files is 4K smaller than before.
+
+	* Updated Routine.pm and Details.pod to alter the data format that
+	get_all_properties() and get_all_properties_as_perl_str() return, such that
+	each Node is represented by a 3-element array-ref, rather than a 3-element
+	hash-ref; the get_all_properties_as_xml_str() method's return values did not
+	change at all, however.  To implement this, the only methods that actually
+	saw a code change were: [Container|Node].get_all_properties(),
+	_serialize_as_perl(), _serialize_as_xml().
+
+	* Updated the SRT_50_Cloning.t test script so it invokes build_container() 
+	with an array ref wrapped around the get_all_properties() return value.
+
+	* There were zero data dictionary updates in this release, and zero changes 
+	to the Verbose and Synopsis test suites, and no other documentation changes.
+
 2005-05-13   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.62.

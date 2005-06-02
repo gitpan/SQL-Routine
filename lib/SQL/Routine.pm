@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.62';
+our $VERSION = '0.63';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.04;
@@ -1371,13 +1371,10 @@ while( my ($_node_type, $_type_info) = each %NODE_TYPES ) {
 	}
 }
 
-# These special hash keys are used by the get_all_properties[/*]() methods, 
+# These special attribute hash keys are used by the get_all_properties[/*]() methods, 
 # and/or by the build*node*() functions and methods for RAD:
-my $NAMED_NODE_TYPE = 'NODE_TYPE'; # str - what type of Node we are
-my $NAMED_ATTRS     = 'ATTRS'; # hash - all attributes, including 'id' (and 'pp' if appropriate)
-my $NAMED_CHILDREN  = 'CHILDREN'; # array - list of primary-child Node descriptors
-my $ATTR_ID         = 'id'; # attribute name to use for the node id
-my $ATTR_PP         = 'pp'; # attribute name to use for the node's primary parent nref
+my $ATTR_ID = 'id'; # attribute name to use for the node id
+my $ATTR_PP = 'pp'; # attribute name to use for the node's primary parent nref
 
 ######################################################################
 
@@ -1460,14 +1457,13 @@ sub _serialize_as_perl {
 	my ($self, $node_dump, $pad) = @_;
 	$pad ||= '';
 	my $padc = "$pad\t\t";
-	my $node_type = $node_dump->{$NAMED_NODE_TYPE};
+	my ($node_type, $attrs, $children) = @{$node_dump};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node_dump->{$NAMED_ATTRS};
 	return join( '', 
-		$pad."{\n",
-		$pad."\t'".$NAMED_NODE_TYPE."' => '".$node_type."',\n",
+		$pad."[\n",
+		$pad."\t'".$node_type."',\n",
 		(scalar(keys %{$attrs}) ? (
-			$pad."\t'".$NAMED_ATTRS."' => {\n",
+			$pad."\t{\n",
 			(map { $pad."\t\t'".$_."' => ".(
 					ref($attrs->{$_}) eq 'ARRAY' ? 
 						"[".join( ',', map { 
@@ -1477,12 +1473,12 @@ sub _serialize_as_perl {
 				).",\n" } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
 			$pad."\t},\n",
 		) : ''),
-		(scalar(@{$node_dump->{$NAMED_CHILDREN}}) ? (
-			$pad."\t'".$NAMED_CHILDREN."' => [\n",
-			(map { $self->_serialize_as_perl( $_,$padc ) } @{$node_dump->{$NAMED_CHILDREN}}),
+		(scalar(@{$children}) ? (
+			$pad."\t[\n",
+			(map { $self->_serialize_as_perl( $_,$padc ) } @{$children}),
 			$pad."\t],\n",
 		) : ''),
-		$pad."},\n",
+		$pad."],\n",
 	);
 }
 
@@ -1500,9 +1496,8 @@ sub _serialize_as_xml {
 	my ($self, $node_dump, $pad) = @_;
 	$pad ||= '';
 	my $padc = "$pad\t";
-	my $node_type = $node_dump->{$NAMED_NODE_TYPE};
+	my ($node_type, $attrs, $children) = @{$node_dump};
 	my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-	my $attrs = $node_dump->{$NAMED_ATTRS};
 	return join( '', 
 		$pad.'<'.$node_type,
 		(map { ' '.$_.'="'.(
@@ -1512,9 +1507,9 @@ sub _serialize_as_xml {
 						} @{$attrs->{$_}} )."]" : 
 					$self->_s_a_x_esc($attrs->{$_})
 			).'"' } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
-		(scalar(@{$node_dump->{$NAMED_CHILDREN}}) ? (
+		(scalar(@{$children}) ? (
 			'>'."\n",
-			(map { $self->_serialize_as_xml( $_,$padc ) } @{$node_dump->{$NAMED_CHILDREN}}),
+			(map { $self->_serialize_as_xml( $_,$padc ) } @{$children}),
 			$pad.'</'.$node_type.'>'."\n",
 		) : ' />'."\n"),
 	);
@@ -1569,12 +1564,12 @@ sub new_node {
 ######################################################################
 
 sub build_container {
-	my ($self, $list, $auto_assert, $auto_ids, $match_surr_ids) = @_;
+	my ($self, $children, $auto_assert, $auto_ids, $match_surr_ids) = @_;
 	my $container = $self->new_container();
 	$auto_assert and $container->auto_assert_deferrable_constraints( 1 );
 	$auto_ids and $container->auto_set_node_ids( 1 );
 	$match_surr_ids and $container->may_match_surrogate_node_ids( 1 );
-	$container->build_child_node_trees( $list );
+	$container->build_child_node_trees( $children );
 	return $container;
 }
 
@@ -1666,7 +1661,8 @@ sub get_child_nodes {
 
 sub find_node_by_id {
 	my ($container, $node_id) = @_;
-	defined( $node_id ) or $container->_throw_error_message( 'SRT_C_FIND_NODE_BY_ID_NO_ARG_ID' );
+	defined( $node_id ) or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_UNDEF', { 'METH' => 'find_node_by_id', 'ARGNM' => 'NODE_ID' } );
 	return $container->{$CPROP_ALL_NODES}->{$node_id};
 }
 
@@ -1674,7 +1670,8 @@ sub find_node_by_id {
 
 sub find_child_node_by_surrogate_id {
 	my ($container, $target_attr_value) = @_;
-	defined( $target_attr_value ) or $container->_throw_error_message( 'SRT_C_FIND_CH_ND_BY_SID_NO_ARG_VAL' );
+	defined( $target_attr_value ) or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_UNDEF', { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } );
 	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
 	my ($l2_psn, $chain_first, @chain_rest);
 	unless( defined( $target_attr_value->[0] ) ) {
@@ -1745,15 +1742,11 @@ sub _assert_deferrable_constraints {
 sub get_all_properties {
 	my ($container, $links_as_si, $want_shortest) = @_;
 	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
-	return {
-		$NAMED_NODE_TYPE => $SQLRT_L1_ROOT_PSND,
-		$NAMED_ATTRS => {},
-		$NAMED_CHILDREN => [map { {
-			$NAMED_NODE_TYPE => $_,
-			$NAMED_ATTRS => {},
-			$NAMED_CHILDREN => [map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$pseudonodes->{$_}}],
-		} } @L2_PSEUDONODE_LIST],
-	};
+	return [ $SQLRT_L1_ROOT_PSND, {}, [
+		map { [ $_, {}, [
+			map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$pseudonodes->{$_}}
+		], ], } @L2_PSEUDONODE_LIST,
+	], ];
 }
 
 sub get_all_properties_as_perl_str {
@@ -1773,9 +1766,6 @@ sub build_node {
 	my ($container, $node_type, $attrs) = @_;
 	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
 		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_node' } );
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
-	}
 	return $container->_build_node_is_child_or_not( $node_type, $attrs );
 }
 
@@ -1784,7 +1774,7 @@ sub _build_node_is_child_or_not {
 
 	# This input validation is the same as what Node.new() does, and throws the same error keys.
 	# It is also done here to head off a bootstrap problem that affects SI_ATNM determination below.  
-	defined( $node_type ) or $container->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARGS' );
+	defined( $node_type ) or $container->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' );
 	my $type_info = $NODE_TYPES{$node_type};
 	unless( $type_info ) {
 		$container->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
@@ -1837,9 +1827,6 @@ sub build_child_node {
 	my ($container, $node_type, $attrs) = @_;
 	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
 		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node' } );
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
-	}
 	if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
 		return $container;
 	} else { # $node_type is not a valid pseudo-Node
@@ -1853,15 +1840,19 @@ sub build_child_node {
 }
 
 sub build_child_nodes {
-	my ($container, $list) = @_;
+	my ($container, $children) = @_;
 	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
 		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_nodes' } );
-	$list or return;
-	unless( ref($list) eq 'ARRAY' ) {
-		$list = [ $list ];
-	}
-	foreach my $element (@{$list}) {
-		$container->build_child_node( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	defined( $children ) or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
+	ref($children) eq 'ARRAY' or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
+	foreach my $child (@{$children}) {
+		defined( $child ) or $container->_throw_error_message( 
+			'SRT_C_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
+		ref($child) eq 'ARRAY' or $container->_throw_error_message( 
+			'SRT_C_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+		$container->build_child_node( @{$child} );
 	}
 }
 
@@ -1869,29 +1860,34 @@ sub build_child_node_tree {
 	my ($container, $node_type, $attrs, $children) = @_;
 	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
 		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_tree' } );
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
-	}
 	if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
-		$container->build_child_node_trees( $children );
+		defined( $children ) and $container->build_child_node_trees( $children );
 		return $container;
 	} else { # $node_type is not a valid pseudo-Node
-		my $node = $container->build_child_node( $node_type, $attrs );
-		$node->build_child_node_trees( $children );
+		my $node = $container->_build_node_is_child_or_not( $node_type, $attrs );
+		unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+			$node->delete_node(); # so the new Node doesn't persist
+			$container->_throw_error_message( 'SRT_C_BUILD_CH_ND_TR_NO_PSND', { 'ARGNTYPE' => $node_type } );
+		}
+		defined( $children ) and $node->build_child_node_trees( $children );
 		return $node;
 	}
 }
 
 sub build_child_node_trees {
-	my ($container, $list) = @_;
+	my ($container, $children) = @_;
 	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
 		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_trees' } );
-	$list or return;
-	unless( ref($list) eq 'ARRAY' ) {
-		$list = [ $list ];
-	}
-	foreach my $element (@{$list}) {
-		$container->build_child_node_tree( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	defined( $children ) or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
+	ref($children) eq 'ARRAY' or $container->_throw_error_message( 
+		'SRT_C_METH_ARG_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
+	foreach my $child (@{$children}) {
+		defined( $child ) or $container->_throw_error_message( 
+			'SRT_C_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
+		ref($child) eq 'ARRAY' or $container->_throw_error_message( 
+			'SRT_C_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+		$container->build_child_node_tree( @{$child} );
 	}
 }
 
@@ -2026,7 +2022,8 @@ sub set_node_id {
 	$container->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_id' } );
 
-	defined( $new_id ) or $node->_throw_error_message( 'SRT_N_SET_NODE_ID_NO_ARGS' );
+	defined( $new_id ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_id', 'ARGNM' => 'NEW_ID' } );
 	unless( $new_id =~ m/^\d+$/ and $new_id > 0 ) {
 		$node->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG', { 'ARG' => $new_id } );
 	}
@@ -2058,7 +2055,8 @@ sub set_node_id {
 
 sub get_primary_parent_attribute {
 	my ($node) = @_;
-	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 'SRT_N_GET_PP_AT_NO_PP_AT' );
+	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 
+		'SRT_N_METH_NO_PP_AT', { 'METH' => 'get_primary_parent_attribute' } );
 	return $node->_get_primary_parent_attribute();
 }
 
@@ -2071,7 +2069,8 @@ sub clear_primary_parent_attribute {
 	my ($node) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_primary_parent_attribute' } );
-	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 'SRT_N_CLEAR_PP_AT_NO_PP_AT' );
+	$NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 
+		'SRT_N_METH_NO_PP_AT', { 'METH' => 'clear_primary_parent_attribute' } );
 	$node->_clear_primary_parent_attribute();
 }
 
@@ -2089,9 +2088,10 @@ sub set_primary_parent_attribute {
 	my ($node, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_primary_parent_attribute' } );
-	my $exp_node_types = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or 
-		$node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_PP_AT' );
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_PP_AT_NO_ARG_VAL' );
+	my $exp_node_types = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_NREF} or $node->_throw_error_message( 
+		'SRT_N_METH_NO_PP_AT', { 'METH' => 'set_primary_parent_attribute' } );
+	defined( $attr_value ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_primary_parent_attribute', 'ARGNM' => 'ATTR_VALUE' } );
 	$node->_set_primary_parent_attribute( $exp_node_types, $attr_value );
 }
 
@@ -2126,10 +2126,12 @@ sub _set_primary_parent_attribute {
 
 sub get_literal_attribute {
 	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_LIT_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_GET_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
+		{ 'METH' => 'get_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	return $node->_get_literal_attribute( $attr_name );
 }
 
@@ -2147,10 +2149,12 @@ sub clear_literal_attribute {
 	my ($node, $attr_name) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_LIT_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_CLEAR_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
+		{ 'METH' => 'clear_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	$node->_clear_literal_attribute( $attr_name );
 }
 
@@ -2172,10 +2176,12 @@ sub set_literal_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_literal_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
+		{ 'METH' => 'set_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 	$node->_set_literal_attribute( $attr_name, $exp_lit_type, $attr_value );
 }
@@ -2218,10 +2224,10 @@ sub set_literal_attributes {
 	my ($node, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_literal_attributes' } );
-	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_LIT_ATS_NO_ARGS' );
-	unless( ref($attrs) eq 'HASH' ) {
-		$node->_throw_error_message( 'SRT_N_SET_LIT_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-	}
+	defined( $attrs ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_literal_attributes', 'ARGNM' => 'ATTRS' } );
+	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_literal_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
 	foreach my $attr_name (keys %{$attrs}) {
 		$node->set_literal_attribute( $attr_name, $attrs->{$attr_name} );
 	}
@@ -2231,10 +2237,12 @@ sub set_literal_attributes {
 
 sub get_enumerated_attribute {
 	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_ENUM_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_GET_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
+		{ 'METH' => 'get_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	return $node->_get_enumerated_attribute( $attr_name );
 }
 
@@ -2252,10 +2260,12 @@ sub clear_enumerated_attribute {
 	my ($node, $attr_name) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_ENUM_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_CLEAR_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
+		{ 'METH' => 'clear_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	$node->_clear_enumerated_attribute( $attr_name );
 }
 
@@ -2277,10 +2287,12 @@ sub set_enumerated_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_enumerated_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
+		{ 'METH' => 'set_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 	$node->_set_enumerated_attribute( $attr_name, $exp_enum_type, $attr_value );
 }
@@ -2301,10 +2313,10 @@ sub set_enumerated_attributes {
 	my ($node, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_enumerated_attributes' } );
-	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_ATS_NO_ARGS' );
-	unless( ref($attrs) eq 'HASH' ) {
-		$node->_throw_error_message( 'SRT_N_SET_ENUM_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-	}
+	defined( $attrs ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_enumerated_attributes', 'ARGNM' => 'ATTRS' } );
+	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_enumerated_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
 	foreach my $attr_name (keys %{$attrs}) {
 		$node->set_enumerated_attribute( $attr_name, $attrs->{$attr_name} );
 	}
@@ -2314,10 +2326,12 @@ sub set_enumerated_attributes {
 
 sub get_node_ref_attribute {
 	my ($node, $attr_name, $get_target_si) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_NREF_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_GET_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
+		{ 'METH' => 'get_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	return $node->_get_node_ref_attribute( $attr_name, $get_target_si );
 }
 
@@ -2347,10 +2361,12 @@ sub clear_node_ref_attribute {
 	my ($node, $attr_name) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_node_ref_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_NREF_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_CLEAR_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
+		{ 'METH' => 'clear_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	$node->_clear_node_ref_attribute( $attr_name );
 }
 
@@ -2384,10 +2400,12 @@ sub set_node_ref_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_ref_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_SET_NREF_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
+		{ 'METH' => 'set_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 	$node->_set_node_ref_attribute( $attr_name, $exp_node_types, $attr_value );
 }
@@ -2462,10 +2480,10 @@ sub set_node_ref_attributes {
 	my ($node, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_ref_attributes' } );
-	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_NREF_ATS_NO_ARGS' );
-	unless( ref($attrs) eq 'HASH' ) {
-		$node->_throw_error_message( 'SRT_N_SET_NREF_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-	}
+	defined( $attrs ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_ref_attributes', 'ARGNM' => 'ATTRS' } );
+	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_node_ref_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
 	foreach my $attr_name (keys %{$attrs}) {
 		$node->set_node_ref_attribute( $attr_name, $attrs->{$attr_name} );
 	}
@@ -2497,7 +2515,8 @@ sub set_surrogate_id_attribute {
 	my ($node, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_surrogate_id_attribute' } );
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_SI_AT_NO_ARGS' );
+	defined( $attr_value ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_surrogate_id_attribute', 'ARGNM' => 'ATTR_VALUE' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my ($id, $lit, $enum, $nref) = @{$type_info->{$TPI_SI_ATNM}};
 	$id and return $node->set_node_id( $attr_value );
@@ -2510,7 +2529,8 @@ sub set_surrogate_id_attribute {
 
 sub get_attribute {
 	my ($node, $attr_name, $get_target_si) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_GET_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$attr_name eq $ATTR_ID and return $node->get_node_id();
 	$attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} and 
@@ -2521,7 +2541,8 @@ sub get_attribute {
 		return $node->_get_enumerated_attribute( $attr_name );
 	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} and 
 		return $node->_get_node_ref_attribute( $attr_name, $get_target_si );
-	$node->_throw_error_message( 'SRT_N_GET_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	$node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+		{ 'METH' => 'get_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
 sub get_attributes {
@@ -2540,7 +2561,8 @@ sub clear_attribute {
 	my ($node, $attr_name) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_CLEAR_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	$attr_name eq $ATTR_ID and $node->_throw_error_message( 'SRT_N_CLEAR_AT_MAND_NID' );
 	$attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NREF} and 
@@ -2551,7 +2573,8 @@ sub clear_attribute {
 		return $node->_clear_enumerated_attribute( $attr_name );
 	$type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} and 
 		return $node->_clear_node_ref_attribute( $attr_name );
-	$node->_throw_error_message( 'SRT_N_CLEAR_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	$node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+		{ 'METH' => 'clear_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
 sub clear_attributes {
@@ -2568,7 +2591,8 @@ sub set_attribute {
 	my ($node, $attr_name, $attr_value) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_attribute' } );
-	defined( $attr_name ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARGS' );
+	defined( $attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_attribute', 'ARGNM' => 'ATTR_NAME' } );
 	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	if( $attr_name eq $ATTR_ID ) {
@@ -2586,17 +2610,18 @@ sub set_attribute {
 	if( my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$attr_name} ) {
 		return $node->_set_node_ref_attribute( $attr_name, $exp_node_types, $attr_value );
 	}
-	$node->_throw_error_message( 'SRT_N_SET_AT_INVAL_NM', { 'ATNM' => $attr_name } );
+	$node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+		{ 'METH' => 'set_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
 sub set_attributes {
 	my ($node, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_attributes' } );
-	defined( $attrs ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARGS' );
-	unless( ref($attrs) eq 'HASH' ) {
-		$node->_throw_error_message( 'SRT_N_SET_ATS_BAD_ARGS', { 'ARG' => $attrs } );
-	}
+	defined( $attrs ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS' } );
+	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	foreach my $attr_name (keys %{$attrs}) {
 		my $attr_value = $attrs->{$attr_name};
@@ -2635,18 +2660,17 @@ sub move_before_sibling {
 
 	# First make sure we have 3 actual Nodes that are all in the same Container.
 
-	defined( $sibling ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_S_ARG' );
-	unless( ref($sibling) eq ref($node) ) {
-		$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_BAD_S_ARG', { 'ARG' => $sibling } );
-	}
+	defined( $sibling ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING' } );
+	ref($sibling) eq ref($node) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING', 'ARGVL' => $sibling } );
 	unless( $sibling->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
 		$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_DIFF_CONT' );
 	}
 
 	if( defined( $parent ) ) {
-		unless( ref($parent) eq ref($node) ) {
-			$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_BAD_P_ARG', { 'ARG' => $parent } );
-		}
+		ref($parent) eq ref($node) or $node->_throw_error_message( 
+			'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'move_before_sibling', 'ARGNM' => 'PARENT', 'ARGVL' => $parent } );
 		unless( $parent->{$NPROP_CONTAINER} eq $node->{$NPROP_CONTAINER} ) {
 			$node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_DIFF_CONT' );
 		}
@@ -2708,27 +2732,27 @@ sub get_child_nodes {
 }
 
 sub add_child_node {
-	my ($node, $new_child) = @_;
+	my ($node, $child) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'add_child_node' } );
-	defined( $new_child ) or $node->_throw_error_message( 'SRT_N_ADD_CH_NODE_NO_ARGS' );
-	unless( ref($new_child) eq ref($node) ) {
-		$node->_throw_error_message( 'SRT_N_ADD_CH_NODE_BAD_ARG', { 'ARG' => $new_child } );
-	}
-	$new_child->set_primary_parent_attribute( $node ); # will die if not same Container
+	defined( $child ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD' } );
+	ref($child) eq ref($node) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD', 'ARGVL' => $child } );
+	$child->set_primary_parent_attribute( $node ); # will die if not same Container
 		# will also die if the change would result in a circular reference
 }
 
 sub add_child_nodes {
-	my ($node, $list) = @_;
+	my ($node, $children) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'add_child_nodes' } );
-	$list or return;
-	unless( ref($list) eq 'ARRAY' ) {
-		$list = [ $list ];
-	}
-	foreach my $element (@{$list}) {
-		$node->add_child_node( $element );
+	defined( $children ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN' } );
+	ref($children) eq 'ARRAY' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
+	foreach my $child (@{$children}) {
+		$node->add_child_node( $child );
 	}
 }
 
@@ -2769,17 +2793,19 @@ sub get_surrogate_id_chain {
 
 sub find_node_by_surrogate_id {
 	my ($node, $self_attr_name, $target_attr_value) = @_;
-	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARGS' );
+	defined( $self_attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$self_attr_name} or 
-		$node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_INVAL_NM', { 'ATNM' => $self_attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
+		{ 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } );
 	defined( $target_attr_value ) or $node->_throw_error_message( 
 		'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
 	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
 	scalar( @{$target_attr_value} ) >= 1 or $node->_throw_error_message( 
 		'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
-	foreach my $element (@{$target_attr_value}) {
-		defined( $element ) or $node->_throw_error_message( 
+	foreach my $child (@{$target_attr_value}) {
+		defined( $child ) or $node->_throw_error_message( 
 			'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
 	}
 	# If we get here, most input checks passed.
@@ -3008,7 +3034,8 @@ sub _find_node_by_surrogate_id_using_path {
 
 sub find_child_node_by_surrogate_id {
 	my ($node, $target_attr_value) = @_;
-	defined( $target_attr_value ) or $node->_throw_error_message( 'SRT_N_FIND_CH_ND_BY_SID_NO_ARG_VAL' );
+	defined( $target_attr_value ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } );
 	ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
 	if( defined( $target_attr_value->[0] ) ) {
 		# The given surrogate id chain is relative to the current Node.
@@ -3035,10 +3062,12 @@ sub find_child_node_by_surrogate_id {
 
 sub get_relative_surrogate_id {
 	my ($node, $self_attr_name, $want_shortest) = @_;
-	defined( $self_attr_name ) or $node->_throw_error_message( 'SRT_N_GET_REL_SID_NO_ARGS' );
+	defined( $self_attr_name ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } );
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 	my $exp_node_types = $type_info->{$TPI_AT_NREFS} && $type_info->{$TPI_AT_NREFS}->{$self_attr_name} or 
-		$node->_throw_error_message( 'SRT_N_GET_REL_SID_INVAL_NM', { 'ATNM' => $self_attr_name } );
+		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
+		{ 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } );
 	my $attr_value_node = $node->{$NPROP_AT_NREFS}->{$self_attr_name} or return;
 	my $attr_value_si_atvl = $attr_value_node->get_surrogate_id_attribute( 1 );
 	if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
@@ -3473,22 +3502,20 @@ sub _assert_child_comp_deferrable_constraints {
 sub get_all_properties {
 	my ($node, $links_as_si, $want_shortest) = @_;
 	my $at_nrefs_in = $node->{$NPROP_AT_NREFS};
-	return {
-		$NAMED_NODE_TYPE => $node->{$NPROP_NODE_TYPE},
-		$NAMED_ATTRS => {
-			$ATTR_ID => $node->{$NPROP_NODE_ID},
-			# Note: We do not output $ATTR_PP => $NPROP_PP_NREF since it is redundant.
-			%{$node->{$NPROP_AT_LITERALS}},
-			%{$node->{$NPROP_AT_ENUMS}},
-			(map { ( $_ => (
-					$links_as_si ? 
-					$node->get_relative_surrogate_id( $_, $want_shortest ) : 
-					$at_nrefs_in->{$_}->{$NPROP_NODE_ID}
-				) ) } 
-				keys %{$at_nrefs_in}),
-		},
-		$NAMED_CHILDREN => [map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}],
-	};
+	return [ $node->{$NPROP_NODE_TYPE}, {
+		$ATTR_ID => $node->{$NPROP_NODE_ID},
+		# Note: We do not output $ATTR_PP => $NPROP_PP_NREF since it is redundant.
+		%{$node->{$NPROP_AT_LITERALS}},
+		%{$node->{$NPROP_AT_ENUMS}},
+		(map { ( $_ => (
+				$links_as_si ? 
+				$node->get_relative_surrogate_id( $_, $want_shortest ) : 
+				$at_nrefs_in->{$_}->{$NPROP_NODE_ID}
+			) ) } 
+			keys %{$at_nrefs_in}),
+	}, [
+		map { $_->get_all_properties( $links_as_si, $want_shortest ) } @{$node->{$NPROP_PRIM_CHILD_NREFS}}
+	], ];
 }
 
 sub get_all_properties_as_perl_str {
@@ -3505,32 +3532,33 @@ sub get_all_properties_as_xml_str {
 ######################################################################
 
 sub build_node {
-	my ($node, @args) = @_;
+	my ($node, $node_type, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_node' } );
-	return $node->{$NPROP_CONTAINER}->build_node( @args );
+	return $node->{$NPROP_CONTAINER}->_build_node_is_child_or_not( $node_type, $attrs );
 }
 
 sub build_child_node {
 	my ($node, $node_type, $attrs) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node' } );
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS};
-	}
 	return $node->{$NPROP_CONTAINER}->_build_node_is_child_or_not( $node_type, $attrs, $node );
 }
 
 sub build_child_nodes {
-	my ($node, $list) = @_;
+	my ($node, $children) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_nodes' } );
-	$list or return;
-	unless( ref($list) eq 'ARRAY' ) {
-		$list = [ $list ];
-	}
-	foreach my $element (@{$list}) {
-		$node->build_child_node( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	defined( $children ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
+	ref($children) eq 'ARRAY' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
+	foreach my $child (@{$children}) {
+		defined( $child ) or $node->_throw_error_message( 
+			'SRT_N_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
+		ref($child) eq 'ARRAY' or $node->_throw_error_message( 
+			'SRT_N_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+		$node->build_child_node( @{$child} );
 	}
 }
 
@@ -3538,24 +3566,25 @@ sub build_child_node_tree {
 	my ($node, $node_type, $attrs, $children) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_tree' } );
-	if( ref($node_type) eq 'HASH' ) {
-		($node_type, $attrs, $children) = @{$node_type}{$NAMED_NODE_TYPE, $NAMED_ATTRS, $NAMED_CHILDREN};
-	}
-	my $new_node = $node->build_child_node( $node_type, $attrs );
-	$new_node->build_child_node_trees( $children );
+	my $new_node = $node->{$NPROP_CONTAINER}->_build_node_is_child_or_not( $node_type, $attrs, $node );
+	defined( $children ) and $new_node->build_child_node_trees( $children );
 	return $new_node;
 }
 
 sub build_child_node_trees {
-	my ($node, $list) = @_;
+	my ($node, $children) = @_;
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'build_child_node_trees' } );
-	$list or return;
-	unless( ref($list) eq 'ARRAY' ) {
-		$list = [ $list ];
-	}
-	foreach my $element (@{$list}) {
-		$node->build_child_node_tree( ref($element) eq 'ARRAY' ? @{$element} : $element );
+	defined( $children ) or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
+	ref($children) eq 'ARRAY' or $node->_throw_error_message( 
+		'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
+	foreach my $child (@{$children}) {
+		defined( $child ) or $node->_throw_error_message( 
+			'SRT_N_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
+		ref($child) eq 'ARRAY' or $node->_throw_error_message( 
+			'SRT_N_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+		$node->build_child_node_tree( @{$child} );
 	}
 }
 
@@ -4248,8 +4277,8 @@ NODE OBJECT METHODS:
 	set_attributes( ATTRS )
 	move_before_sibling( SIBLING[, PARENT] )
 	get_child_nodes([ NODE_TYPE ])
-	add_child_node( NEW_CHILD )
-	add_child_nodes( LIST )
+	add_child_node( CHILD )
+	add_child_nodes( CHILDREN )
 	get_referencing_nodes([ NODE_TYPE ])
 	get_surrogate_id_chain()
 	find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
@@ -4267,10 +4296,10 @@ CONTAINER OR NODE FUNCTIONS AND METHODS FOR RAPID DEVELOPMENT:
 
 	build_node( NODE_TYPE[, ATTRS] )
 	build_child_node( NODE_TYPE[, ATTRS] )
-	build_child_nodes( LIST )
+	build_child_nodes( CHILDREN )
 	build_child_node_tree( NODE_TYPE[, ATTRS][, CHILDREN] )
-	build_child_node_trees( LIST )
-	build_container( LIST[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] )
+	build_child_node_trees( CHILDREN )
+	build_container([ CHILDREN[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] ])
 
 INFORMATION FUNCTIONS AND METHODS:
 

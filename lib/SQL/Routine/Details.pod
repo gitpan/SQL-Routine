@@ -828,22 +828,22 @@ array ref.  If the optional argument NODE_TYPE is defined, then only child Nodes
 of that Node Type are returned; otherwise, all child Nodes are returned.  All
 Nodes are returned in the same order they were added.
 
-=head2 add_child_node( NEW_CHILD )
+=head2 add_child_node( CHILD )
 
 	$node->add_child_node( $child );
 
 This "setter" method allows you to add a new primary-child Node to this Node,
-which is provided as the single NEW_CHILD Node ref argument.  The new child Node
-is appended to the list of existing child Nodes, and the current Node becomes
-the new or first primary parent Node of NEW_CHILD.
+which is provided as the single CHILD Node ref argument.  The new child Node is
+appended to the list of existing child Nodes, and the current Node becomes the
+new or first primary parent Node of CHILD.
 
-=head2 add_child_nodes( LIST )
+=head2 add_child_nodes( CHILDREN )
 
 	$model->add_child_nodes( [$child1,$child2] );
-	$model->add_child_nodes( $child );
 
-This "setter" method takes an array ref in its single LIST argument, and calls
-add_child_node() for each element found in it.
+This "setter" method takes an array ref in its single CHILDREN argument, and
+calls add_child_node() for each element found in it.  This method does not
+return anything.
 
 =head2 get_referencing_nodes([ NODE_TYPE ])
 
@@ -944,13 +944,9 @@ find anything wrong.
 =head1 CONTAINER OR NODE METHODS FOR DEBUGGING
 
 The following 3 "getter" methods can be invoked either on Container or Node
-objects, and will return a tree-arranged structure having the contents of a
-Node and all its children (to the Nth generation).  The previous statement
-assumes that all the 'children' are in the same Container, which means that a
-Node's parent is aware of it; if a child is not in the Container, the
-assumption is that said Node is still being constructed, and neither it nor its
-children will be included in the output.  If you invoke the 3 methods on a
-Node, then that Node will be the root of the returned structure. If you invoke
+objects, and will return a tree-arranged structure having the contents of a Node
+and all its children (to the Nth generation).  If you invoke the 3 methods on a
+Node, then that Node will be the root of the returned structure.  If you invoke
 them on a Container, then a few pseudo-Nodes will be output with all the normal
 Nodes in the Container as their children.
 
@@ -965,25 +961,29 @@ Nodes in the Container as their children.
 
 This method returns a deep copy of all of the properties of this object as
 non-blessed Perl data structures.  These data structures are also arranged in a
-tree, but they do not have any circular references.  For each Node, all
-attributes are output, including 'id', except for the 'pp' attribute, which is
-redundant; the value of the 'pp' attribute can be determined from an output
-Node's context, as it is equal to the 'id' of the parent Node.  The main
-purpose, currently, of get_all_properties() is to make it easier to debug or
-test this class; it makes it easier to see at a glance whether the other class
-methods are doing what you expect.  The output of this method should also be
-easy to serialize or unserialize to strings of Perl code or xml or other things,
-should you want to compare your results easily by string compare; see
+tree, but they do not have any circular references.  Each node in the returned
+tree, which represents a single Node or pseudo-Node, consists of an array-ref
+having 3 elements: a scalar having the Node type, a hash-ref having the Node
+attributes, and an array-ref having the child nodes (one per array element). 
+For each Node, all attributes are output, including 'id', except for the 'pp'
+attribute, which is redundant; the value of the 'pp' attribute can be determined
+from an output Node's context, as it is equal to the 'id' of the parent Node. 
+The main purpose, currently, of get_all_properties() is to make it easier to
+debug or test this class; it makes it easier to see at a glance whether the
+other class methods are doing what you expect.  The output of this method should
+also be easy to serialize or unserialize to strings of Perl code or xml or other
+things, should you want to compare your results easily by string compare; see
 "get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()".  If
 the optional boolean argument LINKS_AS_SI is true, then each Node ref attribute
 will be output as the target Node's surrogate id value, as returned by
 get_relative_surrogate_id( <attr-name>, WANT_SHORTEST ), if it has a valued
 surrogate id attribute; if the argument is false, or a Node doesn't have a
 valued surrogate id attribute, then its Node id will be output by default.  The
-output can alternately be passed as a parameter to build_container() so that the
-method creates a clone of the original Container, where applicable; iff the
-output was generated using LINKS_AS_SI, then build_container() will need to be
-given a true MATCH_SURR_IDS argument (its other boolean args can all be false).
+output can alternately be passed as the CHILDREN parameter (when first wrapped
+in an array-ref) to build_container() so that the method creates a clone of the
+original Container, where applicable; iff the output was generated using
+LINKS_AS_SI, then build_container() will need to be given a true MATCH_SURR_IDS
+argument (its other boolean args can all be false).
 
 =head2 get_all_properties_as_perl_str([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
@@ -1022,13 +1022,6 @@ what otherwise requires about 4-10 method calls, meaning your code base is
 significantly smaller (unless you implement your own simplifying wrapper
 functions, which is recommended in some situations).
 
-For convenience, these methods can take both positional and named arguments; if
-the first actual positional argument is a Perl hash-ref, then the method
-assumes it contains all the arguments in named format; otherwise, the method
-assumes all of the actual positional arguments are the arguments.  All of the 
-argument names are uppercased strings that are identical to what is shown in 
-the positional-oriented argument list documentation.
-
 Note that when a subroutine is referred to as a "function", it is stateless and
 can be invoked off of either a class name or class object; when a subroutine is
 called a "method", it can only be invoked off of Container or Node objects.
@@ -1036,21 +1029,17 @@ called a "method", it can only be invoked off of Container or Node objects.
 =head2 build_node( NODE_TYPE[, ATTRS] )
 
 	my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } ); 
-	my $nodeP2 = $model->build_node( 
-		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
 	my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } ); 
-	my $nodeN2 = $node->build_node( 
-		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'id' => 1, } } ); 
 
 This method will create and return a new Node, that lives in the invocant
 Container or in the same Container as the invocant Node, whose type is specified
 in NODE_TYPE, and also set its attributes.  The ATTRS argument is mainly
-processed by Node.set_attributes() if it is provided; a Node id can also be
-provided this way, or it will be generated if that is allowed.  If ATTRS is
-defined but not a Hash ref, then this method will build a new one having a
-single element, where the value is ATTRS and the key is either 'id' or the new
-Node's surrogate id attribute name, depending on whether the value looks like a
-valid Node id.
+processed by Node.set_attributes() if it is provided; a Node id ('id') can also
+be provided this way, or it will be generated if that is allowed.  ATTRS may
+also contain a 'pp' if applicable.  If ATTRS is defined but not a Hash ref, then
+this method will build a new one having a single element, where the value is
+ATTRS and the key is either 'id' or the new Node's surrogate id attribute name,
+depending on whether the value looks like a valid Node id.
 
 =head2 build_child_node( NODE_TYPE[, ATTRS] )
 
@@ -1061,45 +1050,47 @@ that would have a pseudo-Node as their primary parent.  When creating a Node
 with this method, you do not set any PP candidates in ATTRS (if a 'pp' attribute
 is given in ATTRS, it will be ignored).
 
-=head2 build_child_nodes( LIST )
+=head2 build_child_nodes( CHILDREN )
 
-This method takes an array ref in its single LIST argument, and calls
-build_child_node() for each element found in it; if LIST is not an array ref,
-then one is constructed with LIST as its single element.  This method does not
-return anything.
+This method takes an array ref in its single CHILDREN argument, and calls
+build_child_node() for each element found in it; each element of CHILDREN must
+be an array ref whose elements correspond to the arguments of
+build_child_node().  This method does not return anything.
 
 =head2 build_child_node_tree( NODE_TYPE[, ATTRS][, CHILDREN] )
 
 This method is like build_child_node() except that it will recursively create
-all of the child Nodes of the new Node as well; CHILDREN is a Perl array-ref
-(or, if defined, it will become the single element of a new array-ref), and
-build_child_node_tree() will be called for each of its elements after their
-parent has been fully created.  In the context of SQL::Routine, a "Node tree"
-or "tree" consists of one arbitrary Node and all of its "descendants".  If
-invoked on a Container object, this method will recognize any pseudo-Node names
-given in 'NODE_TYPE' and simply move on to creating the child Nodes of that
-pseudo-Node, rather than throwing an error exception for an invalid Node type. 
-Therefore, you can populate a whole Container with one call to this method. 
-This method returns the root Node that it creates, if NODE_TYPE was a valid
-Node type; it returns the Container instead if NODE_TYPE is a pseudo-Node name.
+all of the child Nodes of the new Node as well; build_child_node_trees( CHILDREN
+) will be invoked following the first Node's creation (if applicable).  In the
+context of SQL::Routine, a "Node tree" or "tree" consists of one arbitrary Node
+and all of its "descendants".  If invoked on a Container object, this method
+will recognize any pseudo-Node names given in 'NODE_TYPE' and simply move on to
+creating the child Nodes of that pseudo-Node, rather than throwing an error
+exception for an invalid Node type.  Therefore, you can populate a whole
+Container with one call to this method.  This method returns the root Node that
+it creates, if NODE_TYPE was a valid Node type; it returns the Container instead
+if NODE_TYPE is a pseudo-Node name.
 
-=head2 build_child_node_trees( LIST )
+=head2 build_child_node_trees( CHILDREN )
 
-This method takes an array ref in its single LIST argument, and calls
-build_child_node_tree() for each element found in it; if LIST is not an array
-ref, then one is constructed with LIST as its single element.  This method does
-not return anything.
+This method takes an array ref in its single CHILDREN argument, and calls
+build_child_node_tree() for each element found in it; each element of CHILDREN
+must be an array ref whose elements correspond to the arguments of
+build_child_node_tree().  This method does not return anything.
 
-=head2 build_container( LIST[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] )
+=head2 build_container([ CHILDREN[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] ])
 
-This function is like build_child_node_trees( LIST ) except that it will also
-create and return a new Container object that holds the newly built Nodes.  If
-any of the optional boolean arguments [AUTO_ASSERT, AUTO_IDS, MATCH_SURR_IDS]
-are true, then the corresponding flag properties of the new Container will be
-set to true prior to creating any Nodes.  This function is the exact opposite of
-Container.get_all_properties(); you should be able to take the Hash-ref output
-of Container.get_all_properties(), give it to build_container(), and end up with
-a clone of the original Container.
+When called with no arguments, this function is like new_container(), in that it
+will create and return a new Container object; if the array ref argument
+CHILDREN is set, then this function also behaves like build_child_node_trees(
+CHILDREN ) but that all of the newly built Nodes are held in the newly built
+Container.  If any of the optional boolean arguments [AUTO_ASSERT, AUTO_IDS,
+MATCH_SURR_IDS] are true, then the corresponding flag properties of the new
+Container will be set to true prior to creating any Nodes.  This function is
+almost the exact opposite of Container.get_all_properties(); you should be able
+to take the Array-ref output of Container.get_all_properties(), wrap that in
+another Array-ref (to produce a single-element list of Array-refs), give it to
+build_container(), and end up with a clone of the original Container.
 
 =head1 INFORMATION FUNCTIONS AND METHODS
 

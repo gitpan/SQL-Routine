@@ -17,7 +17,7 @@ sub populate_model {
 
 	##### NEXT SET CATALOG ELEMENT-TYPE DETAILS #####
 
-	$model->build_child_node_trees( [ map { { 'NODE_TYPE' => 'scalar_data_type', 'ATTRS' => $_ } } (
+	$model->build_child_node_trees( [ map { [ 'scalar_data_type', $_ ] } (
 		{ 'si_name' => 'bin1k' , 'base_type' => 'STR_BIT', 'max_octets' =>  1_000, },
 		{ 'si_name' => 'bin32k', 'base_type' => 'STR_BIT', 'max_octets' => 32_000, },
 		{ 'si_name' => 'str4'  , 'base_type' => 'STR_CHAR', 'max_chars' =>  4, 'store_fixed' => 1, 
@@ -53,14 +53,14 @@ sub populate_model {
 	) ] );
 
 	my $sex = $model->find_child_node_by_surrogate_id( [undef,'root','elements','sex'] );
-	$sex->build_child_node_trees( [ map { { 'NODE_TYPE' => 'scalar_data_type_opt', 'ATTRS' => $_ } } (
+	$sex->build_child_node_trees( [ map { [ 'scalar_data_type_opt', $_ ] } (
 		{ 'si_value' => 'M', },
 		{ 'si_value' => 'F', },
 	) ] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'person', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'person', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'person_id'   , 'scalar_data_type' => 'int'   , },
 			{ 'si_name' => 'alternate_id', 'scalar_data_type' => 'str20' , },
 			{ 'si_name' => 'name'        , 'scalar_data_type' => 'str100', },
@@ -68,11 +68,11 @@ sub populate_model {
 			{ 'si_name' => 'father_id'   , 'scalar_data_type' => 'int'   , },
 			{ 'si_name' => 'mother_id'   , 'scalar_data_type' => 'int'   , },
 		) ),
-	] } );
+	] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'person_with_parents', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'person_with_parents', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'self_id'    , 'scalar_data_type' => 'int'   , },
 			{ 'si_name' => 'self_name'  , 'scalar_data_type' => 'str100', },
 			{ 'si_name' => 'father_id'  , 'scalar_data_type' => 'int'   , },
@@ -80,11 +80,11 @@ sub populate_model {
 			{ 'si_name' => 'mother_id'  , 'scalar_data_type' => 'int'   , },
 			{ 'si_name' => 'mother_name', 'scalar_data_type' => 'str100', },
 		) ),
-	] } );
+	] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'user_auth', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'user_auth', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'user_id'      , 'scalar_data_type' => 'int'    , },
 			{ 'si_name' => 'login_name'   , 'scalar_data_type' => 'str20'  , },
 			{ 'si_name' => 'login_pass'   , 'scalar_data_type' => 'str20'  , },
@@ -93,11 +93,11 @@ sub populate_model {
 			{ 'si_name' => 'may_login'    , 'scalar_data_type' => 'boolean', },
 			{ 'si_name' => 'max_sessions' , 'scalar_data_type' => 'byte'   , },
 		) ),
-	] } );
+	] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'user_profile', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'user_profile', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'user_id'     , 'scalar_data_type' => 'int'   , },
 			{ 'si_name' => 'public_name' , 'scalar_data_type' => 'str250', },
 			{ 'si_name' => 'public_email', 'scalar_data_type' => 'str250', },
@@ -108,11 +108,11 @@ sub populate_model {
 			{ 'si_name' => 'plan'        , 'scalar_data_type' => 'str250', },
 			{ 'si_name' => 'comments'    , 'scalar_data_type' => 'str250', },
 		) ),
-	] } );
+	] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'user', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'user', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'user_id'      , 'scalar_data_type' => 'int'    , },
 			{ 'si_name' => 'login_name'   , 'scalar_data_type' => 'str20'  , },
 			{ 'si_name' => 'login_pass'   , 'scalar_data_type' => 'str20'  , },
@@ -129,44 +129,44 @@ sub populate_model {
 			{ 'si_name' => 'plan'         , 'scalar_data_type' => 'str250' , },
 			{ 'si_name' => 'comments'     , 'scalar_data_type' => 'str250' , },
 		) ),
-	] } );
+	] );
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'user_pref', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'user_pref', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'user_id'   , 'scalar_data_type' => 'int'     , },
 			{ 'si_name' => 'pref_name' , 'scalar_data_type' => 'entitynm', },
 			{ 'si_name' => 'pref_value', 'scalar_data_type' => 'generic' , },
 		) ),
-	] } );
+	] );
 
 	##### NEXT SET APPLICATION ELEMENT-TYPE DETAILS #####
 
-	$model->build_child_node_tree( { 'NODE_TYPE' => 'row_data_type', 
-			'ATTRS' => { 'si_name' => 'user_theme', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'row_data_type_field', 'ATTRS' => $_ } } (
+	$model->build_child_node_tree( 'row_data_type', 
+			{ 'si_name' => 'user_theme', }, [ 
+		( map { [ 'row_data_type_field', $_ ] } (
 			{ 'si_name' => 'theme_name' , 'scalar_data_type' => 'generic', },
 			{ 'si_name' => 'theme_count', 'scalar_data_type' => 'int'    , },
 		) ),
-	] } );
+	] );
 
 	##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
 
 	my $catalog = $model->build_child_node_tree( 
-		{ 'NODE_TYPE' => 'catalog', 'ATTRS' => { 'si_name' => 'The Catalog Blueprint' }, 
-		'CHILDREN' => [ { 'NODE_TYPE' => 'owner', 'ATTRS' => { 'si_name' => 'Gene\'s Owner' } } ] } ); 
+		'catalog', { 'si_name' => 'The Catalog Blueprint' }, 
+		[ [ 'owner', { 'si_name' => 'Gene\'s Owner' } ] ] ); 
 
-	my $schema = $catalog->build_child_node_tree( { 'NODE_TYPE' => 'schema', 
-		'ATTRS' => { 'si_name' => 'gene', 'owner' => 'Gene\'s Owner', } } ); 
+	my $schema = $catalog->build_child_node_tree( 'schema', 
+		{ 'si_name' => 'gene', 'owner' => 'Gene\'s Owner', } ); 
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
-			'ATTRS' => { 'si_name' => 'person', 'row_data_type' => 'person', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'table_field', 'ATTRS' => $_ } } (
+	$schema->build_child_node_tree( 'table', 
+			{ 'si_name' => 'person', 'row_data_type' => 'person', }, [ 
+		( map { [ 'table_field', $_ ] } (
 			{ 'si_row_field' => 'person_id', 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, },
 			{ 'si_row_field' => 'name'     , 'mandatory' => 1, },
 		) ),
-		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
-				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
+		( map { [ 'table_index', $_->[0], 
+				[ [ 'table_index_field', $_->[1] ] ] ] } (
 			[ { 'si_name' => 'primary'        , 'index_type' => 'UNIQUE', }, 'person_id'    ], 
 			[ { 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, 'alternate_id' ], 
 			[ { 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, 
@@ -174,17 +174,17 @@ sub populate_model {
 			[ { 'si_name' => 'fk_mother', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, 
 				{ 'si_field' => 'mother_id', 'f_field' => 'person_id' } ], 
 		) ),
-	] } );
+	] );
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'view', 
-			'ATTRS' => { 'si_name' => 'person_with_parents', 'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => $_, 'match' => 'person', }, 
-			'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( person_id name father_id mother_id ) ] 
-		} } qw( self ) ),
-		( map { { 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => $_, 'match' => 'person', }, 
-			'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( person_id name ) ] 
-		} } qw( father mother ) ),
-		( map { { 'NODE_TYPE' => 'view_field', 'ATTRS' => $_ } } (
+	$schema->build_child_node_tree( 'view', 
+			{ 'si_name' => 'person_with_parents', 'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [ 
+		( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, 
+			[ map { [ 'view_src_field', $_ ] } qw( person_id name father_id mother_id ) ] 
+		] } qw( self ) ),
+		( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, 
+			[ map { [ 'view_src_field', $_ ] } qw( person_id name ) ] 
+		] } qw( father mother ) ),
+		( map { [ 'view_field', $_ ] } (
 			{ 'si_row_field' => 'self_id'    , 'src_field' => ['person_id','self'  ], },
 			{ 'si_row_field' => 'self_name'  , 'src_field' => ['name'     ,'self'  ], },
 			{ 'si_row_field' => 'father_id'  , 'src_field' => ['person_id','father'], },
@@ -192,19 +192,19 @@ sub populate_model {
 			{ 'si_row_field' => 'mother_id'  , 'src_field' => ['person_id','mother'], },
 			{ 'si_row_field' => 'mother_name', 'src_field' => ['name'     ,'mother'], },
 		) ),
-		{ 'NODE_TYPE' => 'view_join', 'ATTRS' => { 'lhs_src' => 'self', 
-				'rhs_src' => 'father', 'join_op' => 'LEFT', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_join_field', 'ATTRS' => { 'lhs_src_field' => 'father_id', 'rhs_src_field' => 'person_id',  } },
-		] },
-		{ 'NODE_TYPE' => 'view_join', 'ATTRS' => { 'lhs_src' => 'self', 
-				'rhs_src' => 'mother', 'join_op' => 'LEFT', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_join_field', 'ATTRS' => { 'lhs_src_field' => 'mother_id', 'rhs_src_field' => 'person_id',  } },
-		] },
-	] } );
+		[ 'view_join', { 'lhs_src' => 'self', 
+				'rhs_src' => 'father', 'join_op' => 'LEFT', }, [ 
+			[ 'view_join_field', { 'lhs_src_field' => 'father_id', 'rhs_src_field' => 'person_id',  } ],
+		] ],
+		[ 'view_join', { 'lhs_src' => 'self', 
+				'rhs_src' => 'mother', 'join_op' => 'LEFT', }, [ 
+			[ 'view_join_field', { 'lhs_src_field' => 'mother_id', 'rhs_src_field' => 'person_id',  } ],
+		] ],
+	] );
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
-			'ATTRS' => { 'si_name' => 'user_auth', 'row_data_type' => 'user_auth', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'table_field', 'ATTRS' => $_ } } (
+	$schema->build_child_node_tree( 'table', 
+			{ 'si_name' => 'user_auth', 'row_data_type' => 'user_auth', }, [ 
+		( map { [ 'table_field', $_ ] } (
 			{ 'si_row_field' => 'user_id'      , 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, },
 			{ 'si_row_field' => 'login_name'   , 'mandatory' => 1, },
 			{ 'si_row_field' => 'login_pass'   , 'mandatory' => 1, },
@@ -213,44 +213,44 @@ sub populate_model {
 			{ 'si_row_field' => 'may_login'    , 'mandatory' => 1, },
 			{ 'si_row_field' => 'max_sessions' , 'mandatory' => 1, 'default_val' => 3, },
 		) ),
-		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
-				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
+		( map { [ 'table_index', $_->[0], 
+				[ [ 'table_index_field', $_->[1] ] ] ] } (
 			[ { 'si_name' => 'primary'         , 'index_type' => 'UNIQUE', }, 'user_id'       ],
 			[ { 'si_name' => 'ak_login_name'   , 'index_type' => 'UNIQUE', }, 'login_name'    ],
 			[ { 'si_name' => 'ak_private_email', 'index_type' => 'UNIQUE', }, 'private_email' ],
 		) ),
-	] } );
+	] );
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
-			'ATTRS' => { 'si_name' => 'user_profile', 'row_data_type' => 'user_profile', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'table_field', 'ATTRS' => $_ } } (
+	$schema->build_child_node_tree( 'table', 
+			{ 'si_name' => 'user_profile', 'row_data_type' => 'user_profile', }, [ 
+		( map { [ 'table_field', $_ ] } (
 			{ 'si_row_field' => 'user_id'    , 'mandatory' => 1, },
 			{ 'si_row_field' => 'public_name', 'mandatory' => 1, },
 		) ),
-		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 
-				'CHILDREN' => { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_->[1] } } } (
+		( map { [ 'table_index', $_->[0], 
+				[ [ 'table_index_field', $_->[1] ] ] ] } (
 			[ { 'si_name' => 'primary'       , 'index_type' => 'UNIQUE', }, 'user_id'     ],
 			[ { 'si_name' => 'ak_public_name', 'index_type' => 'UNIQUE', }, 'public_name' ],
 			[ { 'si_name' => 'fk_user', 'index_type' => 'FOREIGN', 'f_table' => 'user_auth', }, 
 				{ 'si_field' => 'user_id', 'f_field' => 'user_id' } ], 
 		) ),
-	] } );
+	] );
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'view', 
-			'ATTRS' => { 'si_name' => 'user', 'view_type' => 'JOINED', 'row_data_type' => 'user', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'user_auth', 
-				'match' => 'user_auth', }, 'CHILDREN' => [ 
-			( map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw(
+	$schema->build_child_node_tree( 'view', 
+			{ 'si_name' => 'user', 'view_type' => 'JOINED', 'row_data_type' => 'user', }, [ 
+		[ 'view_src', { 'si_name' => 'user_auth', 
+				'match' => 'user_auth', }, [ 
+			( map { [ 'view_src_field', $_ ] } qw(
 				user_id login_name login_pass private_name private_email may_login max_sessions
 			) ),
-		] },
-		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'user_profile', 
-				'match' => 'user_profile', }, 'CHILDREN' => [ 
-			( map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw(
+		] ],
+		[ 'view_src', { 'si_name' => 'user_profile', 
+				'match' => 'user_profile', }, [ 
+			( map { [ 'view_src_field', $_ ] } qw(
 				user_id public_name public_email web_url contact_net contact_phy bio plan comments
 			) ),
-		] },
-		( map { { 'NODE_TYPE' => 'view_field', 'ATTRS' => $_ } } (
+		] ],
+		( map { [ 'view_field', $_ ] } (
 			{ 'si_row_field' => 'user_id'      , 'src_field' => ['user_id','user_auth'], },
 			{ 'si_row_field' => 'login_name'   , 'src_field' => 'login_name'   , },
 			{ 'si_row_field' => 'login_pass'   , 'src_field' => 'login_pass'   , },
@@ -267,145 +267,145 @@ sub populate_model {
 			{ 'si_row_field' => 'plan'         , 'src_field' => 'plan'         , },
 			{ 'si_row_field' => 'comments'     , 'src_field' => 'comments'     , },
 		) ),
-		{ 'NODE_TYPE' => 'view_join', 'ATTRS' => { 'lhs_src' => 'user_auth', 
-				'rhs_src' => 'user_profile', 'join_op' => 'LEFT', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_join_field', 'ATTRS' => { 'lhs_src_field' => 'user_id', 'rhs_src_field' => 'user_id',  } },
-		] },
-	] } );
+		[ 'view_join', { 'lhs_src' => 'user_auth', 
+				'rhs_src' => 'user_profile', 'join_op' => 'LEFT', }, [ 
+			[ 'view_join_field', { 'lhs_src_field' => 'user_id', 'rhs_src_field' => 'user_id',  } ],
+		] ],
+	] );
 
-	$schema->build_child_node_tree( { 'NODE_TYPE' => 'table', 
-			'ATTRS' => { 'si_name' => 'user_pref', 'row_data_type' => 'user_pref', }, 'CHILDREN' => [ 
-		( map { { 'NODE_TYPE' => 'table_field', 'ATTRS' => $_ } } (
+	$schema->build_child_node_tree( 'table', 
+			{ 'si_name' => 'user_pref', 'row_data_type' => 'user_pref', }, [ 
+		( map { [ 'table_field', $_ ] } (
 			{ 'si_row_field' => 'user_id'  , 'mandatory' => 1, },
 			{ 'si_row_field' => 'pref_name', 'mandatory' => 1, },
 		) ),
-		( map { { 'NODE_TYPE' => 'table_index', 'ATTRS' => $_->[0], 'CHILDREN' => [ 
-				map { { 'NODE_TYPE' => 'table_index_field', 'ATTRS' => $_ } } @{$_->[1]}
-				] } } (
+		( map { [ 'table_index', $_->[0], [ 
+				map { [ 'table_index_field', $_ ] } @{$_->[1]}
+				] ] } (
 			[ { 'si_name' => 'primary', 'index_type' => 'UNIQUE', }, 
 				[ 'user_id', 'pref_name', ], ], 
 			[ { 'si_name' => 'fk_user', 'index_type' => 'FOREIGN', 'f_table' => 'user_auth', }, 
 				[ { 'si_field' => 'user_id', 'f_field' => 'user_id' }, ], ], 
 		) ),
-	] } );
+	] );
 
 	##### NEXT SET APPLICATION BLUEPRINT-TYPE DETAILS #####
 
-	my $application = $model->build_child_node_tree( { 'NODE_TYPE' => 'application', 
-		'ATTRS' => { 'si_name' => 'My App', }, } ); 
+	my $application = $model->build_child_node_tree( 'application', 
+		{ 'si_name' => 'My App', } ); 
 
-	$application->build_child_node_tree( { 'NODE_TYPE' => 'view', 
-			'ATTRS' => { 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 'user_theme', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'user_pref', 'match' => 'user_pref', }, 
-			'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( pref_name pref_value ) ] 
-		},
-		{ 'NODE_TYPE' => 'view_field', 'ATTRS' => { 'si_row_field' => 'theme_name', 'src_field' => 'pref_value', }, },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'RESULT', 
-				'set_result_field' => 'theme_count', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, },
-		] },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_name', }, },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', 'valf_literal' => 'theme', }, },
-		] },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'GROUP', 
-			'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'HAVING', 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-				'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', 'valf_literal' => '1', }, },
-		] },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_count', }, },
-		{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_name', }, },
-	] } );
+	$application->build_child_node_tree( 'view', 
+			{ 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 'user_theme', }, [ 
+		[ 'view_src', { 'si_name' => 'user_pref', 'match' => 'user_pref', }, 
+			[ map { [ 'view_src_field', $_ ] } qw( pref_name pref_value ) ] 
+		],
+		[ 'view_field', { 'si_row_field' => 'theme_name', 'src_field' => 'pref_value', }, ],
+		[ 'view_expr', { 'view_part' => 'RESULT', 
+				'set_result_field' => 'theme_count', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, [ 
+			[ 'view_expr', { 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, ],
+		] ],
+		[ 'view_expr', { 'view_part' => 'WHERE', 
+				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+			[ 'view_expr', { 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_name', }, ],
+			[ 'view_expr', { 
+				'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', 'valf_literal' => 'theme', }, ],
+		] ],
+		[ 'view_expr', { 'view_part' => 'GROUP', 
+			'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, ],
+		[ 'view_expr', { 'view_part' => 'HAVING', 
+				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, [ 
+			[ 'view_expr', { 
+				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
+			[ 'view_expr', { 
+				'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', 'valf_literal' => '1', }, ],
+		] ],
+		[ 'view_expr', { 'view_part' => 'ORDER', 
+			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_count', }, ],
+		[ 'view_expr', { 'view_part' => 'ORDER', 
+			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_name', }, ],
+	] );
 
-	$application->build_child_node_tree( { 'NODE_TYPE' => 'routine', 
-			'ATTRS' => { 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 
-			'return_cont_type' => 'CURSOR', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'routine_arg', 'ATTRS' => { 'si_name' => 'curr_uid', 
-			'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', }, },
-		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_user', 
-				'view_type' => 'JOINED', 'row_data_type' => 'user', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 'match' => 'user', }, 
-				'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( user_id login_name ) ] 
-			},
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
-					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, 'CHILDREN' => [ 
-				{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-					'cont_type' => 'SCALAR', 'valf_src_field' => 'user_id', }, },
-				{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-					'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'curr_uid', }, },
-			] },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'login_name', }, },
-		] },
-		{ 'NODE_TYPE' => 'routine_stmt', 'ATTRS' => { 'call_sroutine' => 'CURSOR_OPEN' }, },
-	] } );
+	$application->build_child_node_tree( 'routine', 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 
+			'return_cont_type' => 'CURSOR', }, [ 
+		[ 'routine_arg', { 'si_name' => 'curr_uid', 
+			'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', }, ],
+		[ 'view', { 'si_name' => 'get_user', 
+				'view_type' => 'JOINED', 'row_data_type' => 'user', }, [ 
+			[ 'view_src', { 'si_name' => 'm', 'match' => 'user', }, 
+				[ map { [ 'view_src_field', $_ ] } qw( user_id login_name ) ] 
+			],
+			[ 'view_expr', { 'view_part' => 'WHERE', 
+					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+				[ 'view_expr', { 
+					'cont_type' => 'SCALAR', 'valf_src_field' => 'user_id', }, ],
+				[ 'view_expr', { 
+					'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'curr_uid', }, ],
+			] ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'login_name', }, ],
+		] ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+	] );
 
-	$application->build_child_node_tree( { 'NODE_TYPE' => 'routine', 
-			'ATTRS' => { 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 
-			'return_cont_type' => 'CURSOR', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'routine_arg', 'ATTRS' => { 'si_name' => 'srchw_fa', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, },
-		{ 'NODE_TYPE' => 'routine_arg', 'ATTRS' => { 'si_name' => 'srchw_mo', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, },
-		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_pwp', 
-				'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 'match' => 'person_with_parents', }, 
-				'CHILDREN' => [ map { { 'NODE_TYPE' => 'view_src_field', 'ATTRS' => $_ } } qw( self_name father_name mother_name ) ] 
-			},
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'WHERE', 
-					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, 'CHILDREN' => [ 
-				{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, 'CHILDREN' => [ 
-					{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, },
-					{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_fa', }, },
-				] },
-				{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, 'CHILDREN' => [ 
-					{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, },
-					{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 
-						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_mo', }, },
-				] },
-			] },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'self_name', }, },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, },
-			{ 'NODE_TYPE' => 'view_expr', 'ATTRS' => { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, },
-		] },
-		{ 'NODE_TYPE' => 'routine_stmt', 'ATTRS' => { 'call_sroutine' => 'CURSOR_OPEN' }, },
-	] } );
+	$application->build_child_node_tree( 'routine', 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 
+			'return_cont_type' => 'CURSOR', }, [ 
+		[ 'routine_arg', { 'si_name' => 'srchw_fa', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, ],
+		[ 'routine_arg', { 'si_name' => 'srchw_mo', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, ],
+		[ 'view', { 'si_name' => 'get_pwp', 
+				'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [ 
+			[ 'view_src', { 'si_name' => 'm', 'match' => 'person_with_parents', }, 
+				[ map { [ 'view_src_field', $_ ] } qw( self_name father_name mother_name ) ] 
+			],
+			[ 'view_expr', { 'view_part' => 'WHERE', 
+					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, [ 
+				[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+					[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
+					[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_fa', }, ],
+				] ],
+				[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+					[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
+					[ 'view_expr', { 
+						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_mo', }, ],
+				] ],
+			] ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'self_name', }, ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 
+				'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
+		] ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+	] );
 
-	$application->build_child_node_tree( { 'NODE_TYPE' => 'routine', 
-			'ATTRS' => { 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 
-			'return_cont_type' => 'CURSOR', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_theme', 
-				'view_type' => 'ALIAS', 'row_data_type' => 'user_theme', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'm', 'match' => 'user_theme', }, },
-		] },
-		{ 'NODE_TYPE' => 'routine_stmt', 'ATTRS' => { 'call_sroutine' => 'CURSOR_OPEN' }, },
-	] } );
+	$application->build_child_node_tree( 'routine', 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 
+			'return_cont_type' => 'CURSOR', }, [ 
+		[ 'view', { 'si_name' => 'get_theme', 
+				'view_type' => 'ALIAS', 'row_data_type' => 'user_theme', }, [ 
+			[ 'view_src', { 'si_name' => 'm', 'match' => 'user_theme', }, ],
+		] ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+	] );
 
-	$application->build_child_node_tree( { 'NODE_TYPE' => 'routine', 
-			'ATTRS' => { 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 
-			'return_cont_type' => 'CURSOR', }, 'CHILDREN' => [ 
-		{ 'NODE_TYPE' => 'view', 'ATTRS' => { 'si_name' => 'get_person', 
-				'view_type' => 'ALIAS', 'row_data_type' => 'person', }, 'CHILDREN' => [ 
-			{ 'NODE_TYPE' => 'view_src', 'ATTRS' => { 'si_name' => 'person', 'match' => 'person', }, },
-		] },
-		{ 'NODE_TYPE' => 'routine_stmt', 'ATTRS' => { 'call_sroutine' => 'CURSOR_OPEN' }, },
-	] } );
+	$application->build_child_node_tree( 'routine', 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 
+			'return_cont_type' => 'CURSOR', }, [ 
+		[ 'view', { 'si_name' => 'get_person', 
+				'view_type' => 'ALIAS', 'row_data_type' => 'person', }, [ 
+			[ 'view_src', { 'si_name' => 'person', 'match' => 'person', }, ],
+		] ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+	] );
 
 	##### NEXT SET PRODUCT-TYPE DETAILS #####
 
@@ -413,8 +413,8 @@ sub populate_model {
 
 	##### NEXT SET INSTANCE-TYPE DETAILS #####
 
-	my $app_inst = $model->build_child_node_tree( { 'NODE_TYPE' => 'application_instance', 
-		'ATTRS' => { 'si_name' => 'My App Instance', 'blueprint' => 'My App', }, } ); 
+	my $app_inst = $model->build_child_node_tree( 'application_instance', 
+		{ 'si_name' => 'My App Instance', 'blueprint' => 'My App', } ); 
 
 	##### END OF DETAILS SETTING #####
 }
