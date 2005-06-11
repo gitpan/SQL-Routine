@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.32';
+our $VERSION = '0.33';
 
 ######################################################################
 
@@ -142,7 +142,15 @@ my %text_strings = (
 
 	'SRT_N_DEL_NODE_HAS_CHILD' => 
 		$CN.'.delete_node(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'this Node can not be deleted yet because it has child Nodes of its own',
+		'this Node can not be deleted yet because it has child Nodes of its own; '.
+		'specifically {PRIM_COUNT} primary-child Nodes plus {LINK_COUNT} link-child Nodes',
+
+	'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD' => 
+		$CN.'.delete_node_tree(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'the Node tree rooted here can not be deleted yet because one or more of '.
+		'its members are referenced by other Nodes that are outside of the tree; '.
+		'the "{CNTYPE}" Node with Id "{CNID}" and Surrogate Id Chain "{CSIDCH}" is a link-child of '.
+		'the "{PNTYPE}" tree member Node with Id "{PNID}" and Surrogate Id Chain "{PSIDCH}".',
 
 	'SRT_N_SET_NODE_ID_BAD_ARG' => 
 		$CN.'.set_node_id(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -368,6 +376,27 @@ my %text_strings = (
 		'that parent Node is not within the visible scope of the current child '.
 		'(when searching with the target surrogate id "{PSID}") so the child may not link to it',
 
+	'SRT_N_ASDC_REL_ENUM_BAD_P_NTYPE' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; the enumerated attribute "{CATNM}" may only be '.
+		'set when the parent Node\'s type is one of "{PALLOWED}"; the type is currently "{PNTYPE}"',
+	'SRT_N_ASDC_REL_ENUM_NO_P' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; the enumerated attribute "{CATNM}" may not be '.
+		'set because the parent Node\'s related enumerated attribute "{PATNM}" is not set',
+	'SRT_N_ASDC_REL_ENUM_P_NEVER_P' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; the enumerated ("{CENUMTYPE}") attribute "{CATNM}" '.
+		'(having the value "{CATVL}") may not be set because the parent Node\'s related '.
+		'enumerated ("{PENUMTYPE}") attribute "{PATNM}" has the value "{PATVL}", '.
+		'which does not allow any children of the child attribute\'s enumerated type',
+	'SRT_N_ASDC_REL_ENUM_P_C_NOT_REL' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; the enumerated ("{CENUMTYPE}") attribute "{CATNM}" '.
+		'has an invalid value of "{CATVL}" when used with the parent Node\'s related '.
+		'enumerated ("{PENUMTYPE}") attribute "{PATNM}" value of "{PATVL}"; '.
+		'that parent only allows these child values of the child\'s enumerated type: {CALLOWED}',
+
 	'SRT_N_ASDC_SI_NON_DISTINCT' => 
 		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'a deferrable constraint was violated; at least two of its child Nodes have '.
@@ -398,6 +427,25 @@ my %text_strings = (
 		'at least two of its child Nodes have identical attribute set values ("{VALUES}") '.
 		'with respect to the mutual-distinct child group "{MUDI}"; you must change '.
 		'either the "{C1NTYPE}" Node with Id "{C1NID}" or the "{C2NTYPE}" Node with Id "{C2NID}"',
+
+	'SRT_N_ASDC_MA_REL_ENUM_TOO_MANY_SET' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; '.
+		'when its parent Node\'s related enumerated attribute "{PATNM}" is set, '.
+		'exactly one of its related enumerated attributes ({CATNMS}) must be set; '.
+		'{NUMVALS} are currently set, so you must unset all but one of those',
+	'SRT_N_ASDC_MA_REL_ENUM_ZERO_SET' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; '.
+		'when its parent Node\'s related enumerated attribute "{PATNM}" is set, '.
+		'exactly one of its related enumerated attributes ({CATNMS}) must be set; '.
+		'none are currently set, so you must give a value to exactly one of them',
+	'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES' => 
+		$CN.'.assert_deferrable_constraints(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a deferrable constraint was violated; '.
+		'when its enumerated ("{PENUMTYPE}") attribute "{PATNM}" has a value value of "{PATVL}", '.
+		'this Node must have a child Node whose appropriate related enumerated attribute is set '.
+		'for each of these child enumerated values, which are all missing: {CATVLS}',
 );
 
 ######################################################################

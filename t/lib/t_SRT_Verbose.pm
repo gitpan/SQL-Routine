@@ -385,9 +385,11 @@ sub populate_model {
 	$vwe_upd_w1->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_upd_w1->set_enumerated_attribute( 'valf_call_sroutine', 'EQ' );
 	my $vwe_upd_w2 = make_a_child_node( 'view_expr', $vwe_upd_w1 );
+	$vwe_upd_w2->set_enumerated_attribute( 'call_sroutine_arg', 'LHS' );
 	$vwe_upd_w2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_upd_w2->set_node_ref_attribute( 'valf_src_field', $vwsc_upd_pid );
 	my $vwe_upd_w3 = make_a_child_node( 'view_expr', $vwe_upd_w1 );
+	$vwe_upd_w3->set_enumerated_attribute( 'call_sroutine_arg', 'RHS' );
 	$vwe_upd_w3->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_upd_w3->set_node_ref_attribute( 'valf_p_routine_item', $rta_upd_pid );
 	my $rts_update = make_a_child_node( 'routine_stmt', $rt_updateone );
@@ -427,9 +429,11 @@ sub populate_model {
 	$vwe_del_w1->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_del_w1->set_enumerated_attribute( 'valf_call_sroutine', 'EQ' );
 	my $vwe_del_w2 = make_a_child_node( 'view_expr', $vwe_del_w1 );
+	$vwe_del_w2->set_enumerated_attribute( 'call_sroutine_arg', 'LHS' );
 	$vwe_del_w2->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_del_w2->set_node_ref_attribute( 'valf_src_field', $vwsc_del_pid );
 	my $vwe_del_w3 = make_a_child_node( 'view_expr', $vwe_del_w1 );
+	$vwe_del_w3->set_enumerated_attribute( 'call_sroutine_arg', 'RHS' );
 	$vwe_del_w3->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_del_w3->set_node_ref_attribute( 'valf_p_routine_item', $rta_del_pid );
 	my $rts_delete = make_a_child_node( 'routine_stmt', $rt_deleteone );
@@ -671,8 +675,8 @@ sub expected_model_nid_xml_output {
 					<view_expr id="82" view_part="SET" set_src_field="79" cont_type="SCALAR" valf_p_routine_item="73" />
 					<view_expr id="83" view_part="SET" set_src_field="80" cont_type="SCALAR" valf_p_routine_item="74" />
 					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" cont_type="SCALAR" valf_src_field="77" />
-						<view_expr id="86" cont_type="SCALAR" valf_p_routine_item="71" />
+						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="77" />
+						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="71" />
 					</view_expr>
 				</view>
 				<routine_stmt id="87" call_sroutine="UPDATE">
@@ -688,8 +692,8 @@ sub expected_model_nid_xml_output {
 						<view_src_field id="95" si_match_field="4" />
 					</view_src>
 					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" cont_type="SCALAR" valf_src_field="95" />
-						<view_expr id="98" cont_type="SCALAR" valf_p_routine_item="92" />
+						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="95" />
+						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="92" />
 					</view_expr>
 				</view>
 				<routine_stmt id="99" call_sroutine="DELETE">
@@ -851,8 +855,8 @@ sub expected_model_sid_long_xml_output {
 					<view_expr id="82" view_part="SET" set_src_field="[father_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
 					<view_expr id="83" view_part="SET" set_src_field="[mother_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
 					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" cont_type="SCALAR" valf_src_field="[person_id,person]" />
-						<view_expr id="86" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
+						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="87" call_sroutine="UPDATE">
@@ -868,8 +872,8 @@ sub expected_model_sid_long_xml_output {
 						<view_src_field id="95" si_match_field="person_id" />
 					</view_src>
 					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" cont_type="SCALAR" valf_src_field="[person_id,person]" />
-						<view_expr id="98" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
+						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="99" call_sroutine="DELETE">
@@ -1031,8 +1035,8 @@ sub expected_model_sid_short_xml_output {
 					<view_expr id="82" view_part="SET" set_src_field="father_id" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
 					<view_expr id="83" view_part="SET" set_src_field="mother_id" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
 					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="86" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="87" call_sroutine="UPDATE">
@@ -1048,8 +1052,8 @@ sub expected_model_sid_short_xml_output {
 						<view_src_field id="95" si_match_field="person_id" />
 					</view_src>
 					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="98" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="99" call_sroutine="DELETE">

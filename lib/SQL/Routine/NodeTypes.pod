@@ -70,8 +70,9 @@ parents go, because those details are explained in terms of "child Nodes".
 
 For each Node Type, there are several detail lists: B<Attribute List>,
 B<Exclusive Attribute Groups List>, B<Local Attribute Dependencies List>,
-B<Ancestor Attribute Correlation List>, B<Remotely Addressable Types List>,
-B<Child Quantity List>, B<Distinct Child Groups List>.
+B<Ancestor Attribute Correlation List>, B<Related Parent Enumerated Attributes
+List>, B<Remotely Addressable Types List>, B<Child Quantity List>, B<Distinct
+Child Groups List>, B<Mandatory Related Child Enumerated Attributes List>.
 
 =head2 Attribute List
 
@@ -144,7 +145,7 @@ be set, and have a distinct value relative to all other Nodes in the same
 Container.  Another of these is that any Node ref attributes (including the
 primary-parent) can only point to Nodes that are simultaneously in the same
 container.  As another, you can never set a primary parent for a Node which is a
-direct or indirect descendent of that Node (including the linking Node itself),
+direct or indirect descendant of that Node (including the linking Node itself),
 so circular references are guaranteed to never exist.
 
 The "Attribute List" also contains a few details that pertain to deferrable
@@ -205,11 +206,12 @@ child Node of what the latter's parent "table" Node's row_data_type or
 row_domain attribute points to.  Each list element is in this format:
 
 	<correlation> ::= <dep-attr-name> - <step>(.<step>){0,} - <description>
-	<step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>
+	<step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>|<nref-attr-pick>
 	<self> ::= S
 	<primary-parent> ::= P
 	<root-of-type> ::= R
 	<primary-child> ::= C
+	<nref-attr-pick> ::= <node-type>=<nref-attr>(,<node-type>=<nref-attr>){0,}
 
 For each correlated Node ref attribute (dep-attr-name), there is an ordered list
 of one or more movement steps that must be followed in order, where the result
@@ -220,7 +222,11 @@ more steps in the path, then we should have matched the dependent attribute
 value, or there is a failure condition.  Each step is one of several movement
 types.  The nref-attr movement type means to examine the specified Node-ref
 attribute in the Node we are standing on and move to stand on the Node it points
-to.  The 'self' movement type is a no-op and is displayed only for easier
+to.  The nref-attr-pick movement type is similar but that it may qualify a
+different attribute name (nref-attr) to move to depending on what the Node type
+(node-type) is of the Node we are standing on; moreover, if the standing Node's
+type is not mentioned in this list at all, we have an explicit failure
+condition.  The 'self' movement type is a no-op and is displayed only for easier
 documentation reading.  The primary-parent movement type means to stand on the
 primary-parent Node of the current one.  The root-of-type means to move to the
 current Node's primary-parent, recursively, if that Node is the same Node type
@@ -247,10 +253,32 @@ Attribute Correlation List").  The list element is in this format:
 	<primary-ancestor-type>(,<primary-ancestor-type>){0,}
 
 Nodes of any Node type that specifies a primary-ancestor-type may be remotely
-addressed if they are primary-descendents of a Node whose type is specified by
+addressed if they are primary-descendants of a Node whose type is specified by
 primary-ancestor-type.  One further constraint is that the Node being addressed
 may not have any primary-ancestor Nodes that are the same Node type as it is. 
 All "Remotely Addressable Types List" constraints are deferrable.
+
+=head2 Related Parent Enumerated Attributes List
+
+The B<Related Parent Enumerated Attributes List> says what enumerated attributes
+in a Node must be related to what other enumerated attributes in its
+primary-primary Node, such that the current Node's attribute value must be a
+conceptual child of said parent's attribute value.  For example, the
+call_sroutine_arg attribute of a routine_expr Node must be a conceptual child of
+its parent routine_expr's valf_call_sroutine attribute.  Each list element is in
+this format:
+
+	<child-attr-name>:
+		<parent-node-type> - <parent-attr-name>
+
+The dependent child Node enumerated attribute, child-attr-name, must be related
+to the depended-on parent Node enumerated attribute, parent-attr-name; moreover,
+when the child attribute is valued, it is mandatory for parent attribute to be
+valued (the child does not necessarily have to be valued when the parent is,
+however).  Given that the same child Node type may have more than one valid
+parent Node type (parent-node-type), whose relevant attribute name is distinct
+for the type, the parent-attr-name is specified separately for each.  All
+"Related Parent Enumerated Attributes List" constraints are deferrable.
 
 =head2 Child Quantity List
 
@@ -289,6 +317,29 @@ always counts as a distinct value; multiple undefined corresponding values will
 not violate the constraint (other constraints eliminate undefined values when
 they are a problem).  The implicit distinct-id constraints all have a mudi-name
 of 'primary'.  All "Distinct Child Groups List" constraints are deferrable.
+
+=head2 Mandatory Related Child Enumerated Attributes List
+
+The B<Mandatory Related Child Enumerated Attributes List> is concerned with the
+same enumerated Node attribute pairs that the "Related Parent Enumerated
+Attributes List" does.  Operating from the point of view of the parent Node, it
+says which related child Node enumerated attribute values might be mandatory
+(depending on the exact values), such that the current Node must have a child
+Node for each of those values; moreover, no child Node may exist where the
+related attribute is empty, when the related parent/current Node attribute is
+set.  For example, when the call_sroutine attribute of a routine_stmt Node is
+'SELECT', there must be two child routine_expr Nodes whose call_sroutine_arg
+attributes are 'SELECT_DEFN' and 'INTO' respectively.  Each list element is in
+this format:
+
+	<parent-attr-name>:
+		<child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
+
+The depended-on parent Node enumerated attribute, parent-attr-name, requires
+that a dependent child-node-type child Node exists whose enumerated attribute,
+child-attr-name, is set.  If there are more than 1 child-attr-name, then they
+are mutually exclusive and exactly 1 of them must be set.  All "Mandatory
+Related Child Enumerated Attributes List" constraints are deferrable.
 
 =head1 PSEUDO-NODE TYPES
 
@@ -1111,11 +1162,18 @@ Ancestor Attribute Correlation List:
 	set_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
 	set_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
 	call_src_arg - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
-	call_view_arg - S.P.valf_call_view - match child of S.P(view_expr).valf_call_view(view)
-	call_uroutine_cxt - S.P.valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
-	call_uroutine_arg - S.P.valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
+	call_view_arg - S.P.view_expr=valf_call_view - match child of S.P(view_expr).valf_call_view(view)
+	call_uroutine_cxt - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
+	call_uroutine_arg - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
 	valf_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
 	valf_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
+
+Related Parent Enumerated Attributes List:
+
+	call_sroutine_cxt:
+		view_expr - valf_call_sroutine
+	call_sroutine_arg:
+		view_expr - valf_call_sroutine
 
 Distinct Child Groups List:
 
@@ -1127,6 +1185,11 @@ Distinct Child Groups List:
 	ak_uroutine_arg:
 		view_expr - call_uroutine_cxt
 		view_expr - call_uroutine_arg
+
+Mandatory Related Child Enumerated Attributes List:
+
+	valf_call_sroutine:
+		view_expr - call_sroutine_cxt,call_sroutine_arg
 
 =head2 routine
 
@@ -1296,6 +1359,11 @@ Distinct Child Groups List:
 		routine_expr - call_uroutine_cxt
 		routine_expr - call_uroutine_arg
 
+Mandatory Related Child Enumerated Attributes List:
+
+	call_sroutine:
+		routine_expr - call_sroutine_cxt,call_sroutine_arg
+
 =head2 routine_expr
 
 This type of Node describes a sub-expression that is part of a main/root
@@ -1337,8 +1405,17 @@ Local Attribute Dependencies List:
 
 Ancestor Attribute Correlation List:
 
-	call_uroutine_cxt - S.P.valf_call_uroutine - match child of S.P(routine_[expr|stmt]).valf_call_uroutine(routine)
-	call_uroutine_arg - S.P.valf_call_uroutine - match child of S.P(routine_[expr|stmt]).valf_call_uroutine(routine)
+	call_uroutine_cxt - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
+	call_uroutine_arg - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
+
+Related Parent Enumerated Attributes List:
+
+	call_sroutine_cxt:
+		routine_stmt - call_sroutine
+		routine_expr - valf_call_sroutine
+	call_sroutine_arg:
+		routine_stmt - call_sroutine
+		routine_expr - valf_call_sroutine
 
 Distinct Child Groups List:
 
@@ -1348,6 +1425,11 @@ Distinct Child Groups List:
 	ak_uroutine_arg:
 		routine_expr - call_uroutine_cxt
 		routine_expr - call_uroutine_arg
+
+Mandatory Related Child Enumerated Attributes List:
+
+	valf_call_sroutine:
+		routine_expr - call_sroutine_cxt,call_sroutine_arg
 
 =head1 TOOLS CATEGORY NODE TYPES
 

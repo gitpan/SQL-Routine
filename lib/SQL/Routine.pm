@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.63';
+our $VERSION = '0.64';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.04;
@@ -105,7 +105,7 @@ my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when
 	# and so the current Nodes are still valid.  It is used internally by 
 	# assert_deferrable_constraints() to make code faster by avoiding un-necessary 
 	# repeated tests from multiple external Container.assert_deferrable_constraints() calls.
-	# It is set true on a new empty Container, and set false when of the Container's 
+	# It is set false on a new empty Container, and set false when of the Container's 
 	# Nodes are changed, or any Nodes are added to or deleted from the Container.
 #my $CPROP_CURR_NODE = 'curr_node'; # ref to a Node; used when "streaming" to or from XML
 	# I may instead make a new inner class for this, and there can be several of these 
@@ -274,6 +274,280 @@ my %ENUMERATED_TYPES = (
 	) },
 );
 
+# For each pair of related enumerated types, this says which specific values in 
+# one type go with which specific values of another type in a parent-child 
+# relationship.  Level 1 is the parent enum type name; level 2 is the child enum 
+# type name; level 3 is a parent type value; level 4 is the child type value.
+my %P_C_REL_ENUMS = (
+	'standard_routine' => {
+		'standard_routine_context' => {
+			'CATALOG_OPEN' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'CATALOG_CLOSE' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'CATALOG_PING' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'CATALOG_ATTACH' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'CATALOG_DETACH' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'SCHEMA_LIST' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_INFO' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_LIST' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_INFO' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_LIST' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_INFO' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_LIST' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_INFO' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_LIST' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_INFO' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_LIST' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_INFO' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_LIST' => { map { ($_ => 1) } qw(  ) },
+			'USER_INFO' => { map { ($_ => 1) } qw(  ) },
+			'USER_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'USER_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'USER_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'USER_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_GRANT' => { map { ($_ => 1) } qw(  ) },
+			'USER_REVOKE' => { map { ($_ => 1) } qw(  ) },
+			'REC_FETCH' => { map { ($_ => 1) } qw(  ) },
+			'REC_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'REC_INSERT' => { map { ($_ => 1) } qw(  ) },
+			'REC_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'REC_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'REC_REPLACE' => { map { ($_ => 1) } qw(  ) },
+			'REC_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'REC_LOCK' => { map { ($_ => 1) } qw(  ) },
+			'REC_UNLOCK' => { map { ($_ => 1) } qw(  ) },
+			'CURSOR_OPEN' => { map { ($_ => 1) } qw( CURSOR_CX ) },
+			'CURSOR_CLOSE' => { map { ($_ => 1) } qw( CURSOR_CX ) },
+			'CURSOR_FETCH' => { map { ($_ => 1) } qw( CURSOR_CX ) },
+			'SELECT' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'INSERT' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'UPDATE' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'DELETE' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'COMMIT' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'ROLLBACK' => { map { ($_ => 1) } qw( CONN_CX ) },
+			'LOCK' => { map { ($_ => 1) } qw(  ) },
+			'UNLOCK' => { map { ($_ => 1) } qw(  ) },
+			'PLAIN' => { map { ($_ => 1) } qw(  ) },
+			'THROW' => { map { ($_ => 1) } qw(  ) },
+			'TRY' => { map { ($_ => 1) } qw(  ) },
+			'CATCH' => { map { ($_ => 1) } qw(  ) },
+			'IF' => { map { ($_ => 1) } qw(  ) },
+			'ELSEIF' => { map { ($_ => 1) } qw(  ) },
+			'ELSE' => { map { ($_ => 1) } qw(  ) },
+			'SWITCH' => { map { ($_ => 1) } qw(  ) },
+			'CASE' => { map { ($_ => 1) } qw(  ) },
+			'OTHERWISE' => { map { ($_ => 1) } qw(  ) },
+			'FOREACH' => { map { ($_ => 1) } qw(  ) },
+			'FOR' => { map { ($_ => 1) } qw(  ) },
+			'WHILE' => { map { ($_ => 1) } qw(  ) },
+			'UNTIL' => { map { ($_ => 1) } qw(  ) },
+			'MAP' => { map { ($_ => 1) } qw(  ) },
+			'GREP' => { map { ($_ => 1) } qw(  ) },
+			'REGEXP' => { map { ($_ => 1) } qw(  ) },
+			'LOOP' => { map { ($_ => 1) } qw(  ) },
+			'CONDITION' => { map { ($_ => 1) } qw(  ) },
+			'LOGIC' => { map { ($_ => 1) } qw(  ) },
+		},
+		'standard_routine_arg' => {
+			'CATALOG_LIST' => { map { ($_ => 1) } qw( RECURSIVE ) },
+			'CATALOG_INFO' => { map { ($_ => 1) } qw( LINK_BP RECURSIVE ) },
+			'CATALOG_VERIFY' => { map { ($_ => 1) } qw( LINK_BP RECURSIVE ) },
+			'CATALOG_CREATE' => { map { ($_ => 1) } qw( LINK_BP RECURSIVE ) },
+			'CATALOG_DELETE' => { map { ($_ => 1) } qw( LINK_BP ) },
+			'CATALOG_CLONE' => { map { ($_ => 1) } qw( SOURCE_LINK_BP DEST_LINK_BP ) },
+			'CATALOG_MOVE' => { map { ($_ => 1) } qw( SOURCE_LINK_BP DEST_LINK_BP ) },
+			'CATALOG_OPEN' => { map { ($_ => 1) } qw( LOGIN_NAME LOGIN_PASS ) },
+			'CATALOG_ATTACH' => { map { ($_ => 1) } qw( LINK_BP ) },
+			'CATALOG_DETACH' => { map { ($_ => 1) } qw( LINK_BP ) },
+			'SCHEMA_LIST' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_INFO' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'SCHEMA_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_LIST' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_INFO' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'DOMAIN_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_LIST' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_INFO' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'SEQU_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_LIST' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_INFO' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'TABLE_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_LIST' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_INFO' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'VIEW_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_LIST' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_INFO' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'ROUTINE_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_LIST' => { map { ($_ => 1) } qw(  ) },
+			'USER_INFO' => { map { ($_ => 1) } qw(  ) },
+			'USER_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'USER_CREATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'USER_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'USER_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'USER_GRANT' => { map { ($_ => 1) } qw(  ) },
+			'USER_REVOKE' => { map { ($_ => 1) } qw(  ) },
+			'REC_FETCH' => { map { ($_ => 1) } qw(  ) },
+			'REC_VERIFY' => { map { ($_ => 1) } qw(  ) },
+			'REC_INSERT' => { map { ($_ => 1) } qw(  ) },
+			'REC_UPDATE' => { map { ($_ => 1) } qw(  ) },
+			'REC_DELETE' => { map { ($_ => 1) } qw(  ) },
+			'REC_REPLACE' => { map { ($_ => 1) } qw(  ) },
+			'REC_CLONE' => { map { ($_ => 1) } qw(  ) },
+			'REC_LOCK' => { map { ($_ => 1) } qw(  ) },
+			'REC_UNLOCK' => { map { ($_ => 1) } qw(  ) },
+			'RETURN' => { map { ($_ => 1) } qw( RETURN_VALUE ) },
+			'CURSOR_FETCH' => { map { ($_ => 1) } qw( INTO ) },
+			'SELECT' => { map { ($_ => 1) } qw( SELECT_DEFN INTO ) },
+			'INSERT' => { map { ($_ => 1) } qw( INSERT_DEFN ) },
+			'UPDATE' => { map { ($_ => 1) } qw( UPDATE_DEFN ) },
+			'DELETE' => { map { ($_ => 1) } qw( DELETE_DEFN ) },
+			'LOCK' => { map { ($_ => 1) } qw(  ) },
+			'UNLOCK' => { map { ($_ => 1) } qw(  ) },
+			'PLAIN' => { map { ($_ => 1) } qw(  ) },
+			'THROW' => { map { ($_ => 1) } qw(  ) },
+			'TRY' => { map { ($_ => 1) } qw(  ) },
+			'CATCH' => { map { ($_ => 1) } qw(  ) },
+			'IF' => { map { ($_ => 1) } qw(  ) },
+			'ELSEIF' => { map { ($_ => 1) } qw(  ) },
+			'ELSE' => { map { ($_ => 1) } qw(  ) },
+			'SWITCH' => { map { ($_ => 1) } qw(  ) },
+			'CASE' => { map { ($_ => 1) } qw(  ) },
+			'OTHERWISE' => { map { ($_ => 1) } qw(  ) },
+			'FOREACH' => { map { ($_ => 1) } qw(  ) },
+			'FOR' => { map { ($_ => 1) } qw(  ) },
+			'WHILE' => { map { ($_ => 1) } qw(  ) },
+			'UNTIL' => { map { ($_ => 1) } qw(  ) },
+			'MAP' => { map { ($_ => 1) } qw(  ) },
+			'GREP' => { map { ($_ => 1) } qw(  ) },
+			'REGEXP' => { map { ($_ => 1) } qw(  ) },
+			'LOOP' => { map { ($_ => 1) } qw(  ) },
+			'CONDITION' => { map { ($_ => 1) } qw(  ) },
+			'LOGIC' => { map { ($_ => 1) } qw(  ) },
+			'CAST' => { map { ($_ => 1) } qw( CAST_TARGET CAST_OPERAND ) },
+			'NOT' => { map { ($_ => 1) } qw( FACTOR ) },
+			'AND' => { map { ($_ => 1) } qw( FACTORS ) },
+			'OR' => { map { ($_ => 1) } qw( FACTORS ) },
+			'XOR' => { map { ($_ => 1) } qw( FACTORS ) },
+			'EQ' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'NE' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'LT' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'GT' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'LE' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'GE' => { map { ($_ => 1) } qw( LHS RHS ) },
+			'IS_NULL' => { map { ($_ => 1) } qw( ARG ) },
+			'NOT_NULL' => { map { ($_ => 1) } qw( ARG ) },
+			'COALESCE' => { map { ($_ => 1) } qw( TERMS ) },
+			'SWITCH' => { map { ($_ => 1) } qw( LOOK_IN CASES DEFAULT ) },
+			'LIKE' => { map { ($_ => 1) } qw( LOOK_IN LOOK_FOR FIXED_LEFT FIXED_RIGHT ) },
+			'ADD' => { map { ($_ => 1) } qw( TERMS ) },
+			'SUB' => { map { ($_ => 1) } qw( START REMOVE ) },
+			'MUL' => { map { ($_ => 1) } qw( FACTORS ) },
+			'DIV' => { map { ($_ => 1) } qw( DIVIDEND DIVISOR ) },
+			'DIVI' => { map { ($_ => 1) } qw( DIVIDEND DIVISOR ) },
+			'MOD' => { map { ($_ => 1) } qw( DIVIDEND DIVISOR ) },
+			'ROUND' => { map { ($_ => 1) } qw( START PLACES ) },
+			'ABS' => { map { ($_ => 1) } qw( OPERAND ) },
+			'POWER' => { map { ($_ => 1) } qw( RADIX EXPONENT ) },
+			'LOG' => { map { ($_ => 1) } qw( START RADIX ) },
+			'SCONCAT' => { map { ($_ => 1) } qw( FACTORS ) },
+			'SLENGTH' => { map { ($_ => 1) } qw( SOURCE ) },
+			'SINDEX' => { map { ($_ => 1) } qw( LOOK_IN LOOK_FOR START_POS ) },
+			'SUBSTR' => { map { ($_ => 1) } qw( LOOK_IN START_POS STR_LEN ) },
+			'SREPEAT' => { map { ($_ => 1) } qw( FACTOR REPEAT ) },
+			'STRIM' => { map { ($_ => 1) } qw( SOURCE ) },
+			'SPAD' => { map { ($_ => 1) } qw( SOURCE ) },
+			'SPADL' => { map { ($_ => 1) } qw( SOURCE ) },
+			'LC' => { map { ($_ => 1) } qw( SOURCE ) },
+			'UC' => { map { ($_ => 1) } qw( SOURCE ) },
+			'MIN' => { map { ($_ => 1) } qw( FACTOR ) },
+			'MAX' => { map { ($_ => 1) } qw( FACTOR ) },
+			'SUM' => { map { ($_ => 1) } qw( FACTOR ) },
+			'AVG' => { map { ($_ => 1) } qw( FACTOR ) },
+			'CONCAT' => { map { ($_ => 1) } qw( FACTOR ) },
+			'EVERY' => { map { ($_ => 1) } qw( FACTOR ) },
+			'ANY' => { map { ($_ => 1) } qw( FACTOR ) },
+			'EXISTS' => { map { ($_ => 1) } qw( FACTOR ) },
+			'GB_SETS' => { map { ($_ => 1) } qw( FACTORS ) },
+			'GB_RLUP' => { map { ($_ => 1) } qw( FACTORS ) },
+			'GB_CUBE' => { map { ($_ => 1) } qw( FACTORS ) },
+		},
+	},
+);
+
+# This goes with %P_C_REL_ENUMS and says which of the child values specified 
+# there are optional; any values listed there but not here are mandatory.
+# Every hash key in the top 2 levels of %P_C_REL_ENUMS has a matching hash key 
+# here; every level 3 hash key there may not have a match here, however.
+my %OPT_P_C_REL_ENUMS = (
+	'standard_routine' => {
+		'standard_routine_cxt' => {
+		},
+		'standard_routine_arg' => {
+			'CATALOG_LIST' => { map { ($_ => 1) } qw( RECURSIVE ) },
+			'CATALOG_INFO' => { map { ($_ => 1) } qw( RECURSIVE ) },
+			'CATALOG_VERIFY' => { map { ($_ => 1) } qw( RECURSIVE ) },
+			'CATALOG_CREATE' => { map { ($_ => 1) } qw( RECURSIVE ) },
+			'CATALOG_OPEN' => { map { ($_ => 1) } qw( LOGIN_NAME LOGIN_PASS ) },
+			'RETURN' => { map { ($_ => 1) } qw( RETURN_VALUE ) },
+			'LIKE' => { map { ($_ => 1) } qw( FIXED_LEFT FIXED_RIGHT ) },
+		},
+	},
+);
+
 # Names of hash keys in %NODE_TYPES elements:
 my $TPI_AT_SEQUENCE = 'at_sequence'; # Array of all 'attribute' names in canon order
 my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
@@ -309,6 +583,9 @@ my $TPI_LOCAL_ATDPS = 'local_atdps'; # Array of attributes depended-on by other 
 		# 5. mandatory-flag (boolean).
 my $TPI_ANCES_ATCORS = 'ances_atcors'; # Hash of Arrays of steps to follow when linking Nodes using SI
 	# Each hash key is a Node-ref attr name, each hash value is an array of steps.
+my $TPI_REL_P_ENUMS = 'rel_p_enums'; # Hash of enum attrs dependent on other enum attrs in parent Nodes
+	# Each hash key is an enum attr name in current Node; value is a hash where:
+	# each hash value is an enum attr name in parent Node, and the key is the Node type for the parent where that's true.
 my $TPI_REMOTE_ADDR = 'remote_addr'; # Array of ancestor Node type names under which this Node can be remotely addressed
 my $TPI_CHILD_QUANTS = 'child_quants'; # Array of quantity limits for child Nodes
 	# Each array element is an array ref with 3 elements: 
@@ -320,6 +597,9 @@ my $TPI_MUDI_ATGPS  = 'mudi_atgps'; # Array of groups of mutually distinct attri
 		# 2. an array ref with 0..N elements that are names of lit child-node-attrs; 
 		# 3. an array ref with 0..N elements that are names of enum child-node-attrs; 
 		# 4. an array ref with 0..N elements that are names of nref child-node-attrs.
+my $TPI_MA_REL_C_ENUMS = 'ma_rel_c_enums'; # Hash of enum attrs that may have mandatory related child Node attrs
+	# Each hash key is an enum attr name in current Node; value is a hash where:
+	# each hash value is an array of enum attr names in child Node, and the key is the Node type for the child that applies to.
 
 # Names of special "pseudo-Nodes" that are used in an XML version of this structure.
 my $SQLRT_L1_ROOT_PSND = 'root';
@@ -915,11 +1195,19 @@ my %NODE_TYPES = (
 			'set_result_field' => [$S,$R,$P],
 			'set_src_field' => [$S,$R,$P,$C],
 			'call_src_arg' => [$S,$R,$P,$C],
-			'call_view_arg' => [$S,$P,'valf_call_view'],
-			'call_uroutine_cxt' => [$S,$P,'valf_call_uroutine'],
-			'call_uroutine_arg' => [$S,$P,'valf_call_uroutine'],
+			'call_view_arg' => [$S,$P,{'view_expr'=>'valf_call_view'}],
+			'call_uroutine_cxt' => [$S,$P,{'view_expr'=>'valf_call_uroutine'}],
+			'call_uroutine_arg' => [$S,$P,{'view_expr'=>'valf_call_uroutine'}],
 			'valf_src_field' => [$S,$R,$P,$C],
 			'valf_result_field' => [$S,$R,$P],
+		},
+		$TPI_REL_P_ENUMS => {
+			'call_sroutine_cxt' => {
+				'view_expr' => 'valf_call_sroutine',
+			},
+			'call_sroutine_arg' => {
+				'view_expr' => 'valf_call_sroutine',
+			},
 		},
 		$TPI_MUDI_ATGPS => [
 			['ak_view_arg',[
@@ -934,6 +1222,11 @@ my %NODE_TYPES = (
 				['view_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
+		$TPI_MA_REL_C_ENUMS => {
+			'valf_call_sroutine' => {
+				'view_expr' => ['call_sroutine_cxt','call_sroutine_arg'],
+			},
+		},
 	},
 	'routine' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -1102,6 +1395,11 @@ my %NODE_TYPES = (
 				['routine_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
+		$TPI_MA_REL_C_ENUMS => {
+			'call_sroutine' => {
+				'routine_expr' => ['call_sroutine_cxt','call_sroutine_arg'],
+			},
+		},
 	},
 	'routine_expr' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -1148,8 +1446,18 @@ my %NODE_TYPES = (
 			]],
 		],
 		$TPI_ANCES_ATCORS => {
-			'call_uroutine_cxt' => [$S,$P,'valf_call_uroutine'],
-			'call_uroutine_arg' => [$S,$P,'valf_call_uroutine'],
+			'call_uroutine_cxt' => [$S,$P,{'routine_stmt'=>'call_uroutine','routine_expr'=>'valf_call_uroutine'}],
+			'call_uroutine_arg' => [$S,$P,{'routine_stmt'=>'call_uroutine','routine_expr'=>'valf_call_uroutine'}],
+		},
+		$TPI_REL_P_ENUMS => {
+			'call_sroutine_cxt' => {
+				'routine_stmt' => 'call_sroutine',
+				'routine_expr' => 'valf_call_sroutine',
+			},
+			'call_sroutine_arg' => {
+				'routine_stmt' => 'call_sroutine',
+				'routine_expr' => 'valf_call_sroutine',
+			},
 		},
 		$TPI_MUDI_ATGPS => [
 			['ak_sroutine_arg',[
@@ -1161,6 +1469,11 @@ my %NODE_TYPES = (
 				['routine_expr',[],[],['call_uroutine_arg']],
 			]],
 		],
+		$TPI_MA_REL_C_ENUMS => {
+			'valf_call_sroutine' => {
+				'routine_expr' => ['call_sroutine_cxt','call_sroutine_arg'],
+			},
+		},
 	},
 	'data_storage_product' => {
 		$TPI_AT_SEQUENCE => [qw( 
@@ -1591,7 +1904,7 @@ sub new {
 	$container->{$CPROP_ALL_NODES} = {};
 	$container->{$CPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
 	$container->{$CPROP_NEXT_FREE_NID} = 1;
-	$container->{$CPROP_DEF_CON_TESTED} = 1;
+	$container->{$CPROP_DEF_CON_TESTED} = 0;
 	return $container;
 }
 
@@ -1639,6 +1952,21 @@ sub may_match_surrogate_node_ids {
 		$container->{$CPROP_MAY_MATCH_SNIDS} = $new_value;
 	}
 	return $container->{$CPROP_MAY_MATCH_SNIDS};
+}
+
+######################################################################
+
+sub delete_node_tree {
+	my ($container) = @_;
+	$container->{$CPROP_IS_READ_ONLY} and $container->_throw_error_message( 
+		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'delete_node_tree' } );
+	%{$container->{$CPROP_ALL_NODES}} = ();
+	my $pseudonodes = $container->{$CPROP_PSEUDONODES};
+	foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
+		@{$pseudonodes->{$_}} = ();
+	}
+	$container->{$CPROP_DEF_CON_TESTED} = 0; # All Nodes are gone.
+		# Turn on tests because a tree having zero Nodes may violate deferrable constraints.
 }
 
 ######################################################################
@@ -1814,7 +2142,9 @@ sub _build_node_is_child_or_not {
 		};
 		if( my $exception = $@ ) {
 			my $msg_key = $exception->get_message_key();
-			unless( $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET' or $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN' ) {
+			unless( $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET' or 
+					$msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN' or 
+					$msg_key eq 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES' ) {
 				die $exception; # don't trap any other types of exceptions
 			}
 		}
@@ -1968,12 +2298,13 @@ sub delete_node {
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'delete_node' } );
 
 	if( @{$node->{$NPROP_PRIM_CHILD_NREFS}} > 0 or @{$node->{$NPROP_LINK_CHILD_NREFS}} > 0 ) {
-		$node->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD' );
+		$node->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD', 
+			{ 'PRIM_COUNT' => scalar( @{$node->{$NPROP_PRIM_CHILD_NREFS}} ), 
+			'LINK_COUNT' => scalar( @{$node->{$NPROP_LINK_CHILD_NREFS}} ) } );
 	}
 
 	# Remove our parent Nodes' links back to us.
-	my $node_type = $node->{$NPROP_NODE_TYPE};
-	if( my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+	if( my $pp_pseudonode = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
 		my $siblings = $container->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
 		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
 	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
@@ -1988,11 +2319,82 @@ sub delete_node {
 	# Remove primary Container link to us.
 	delete( $container->{$CPROP_ALL_NODES}->{$node->{$NPROP_NODE_ID}} );
 
-	# Remove our links to parent Nodes and the Container.
-	%{$node} = ();
+	# Note: We do not need to explicitly remove any links held by the invocant 
+	# Node to its Container or parent Nodes because they will be garbage 
+	# collected along with the invocant Node once the invocant reference held by 
+	# the external invoker code goes out of scope.
 
 	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node is gone.
 		# Turn on tests because this Node's absence affects *other* Nodes.
+}
+
+######################################################################
+
+sub delete_node_tree {
+	my ($node) = @_;
+	my $container = $node->{$NPROP_CONTAINER};
+	$container->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
+		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'delete_node' } );
+
+	# Now build a list of all primary-descendant Nodes (includes self), 
+	# which are the deletion candidates.
+	my %candidates = ();
+	$node->_delete_node_tree__add_to_candidates( \%candidates );
+
+	# Now assert that all primary-descendant Nodes (includes self) may be deleted, 
+	# and lack children outside the candidates.
+	foreach my $candidate (keys %candidates) {
+		foreach my $link_child_node (@{$candidate->{$NPROP_LINK_CHILD_NREFS}}) {
+			unless( $candidates{$link_child_node} ) {
+				$node->_throw_error_message( 'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD', 
+					{ 'PNTYPE' => $candidate->{$NPROP_NODE_TYPE}, 
+					'PNID' => $candidate->{$NPROP_NODE_ID}, 
+					'PSIDCH' => $candidate->get_surrogate_id_chain(), 
+					'CNTYPE' => $link_child_node->{$NPROP_NODE_TYPE}, 
+					'CNID' => $link_child_node->{$NPROP_NODE_ID}, 
+					'CSIDCH' => $link_child_node->get_surrogate_id_chain() } );
+			}
+		}
+	}
+
+	# If we get here, then all of the candidate Nodes may be deleted.
+
+	# Now remove the single prim-child ref to the tree's root Node.
+	if( my $pp_pseudonode = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
+		my $siblings = $container->{$CPROP_PSEUDONODES}->{$pp_pseudonode};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	} elsif( my $pp_node = $node->{$NPROP_PP_NREF} ) {
+		my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
+		@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
+	}
+
+	# Now remove all of the link-child refs to the candidates that are in non-candidate Nodes.
+	# Also remove all candidates from their Container's all-nodes list.
+	my $cont_all_nodes = $container->{$CPROP_ALL_NODES};
+	foreach my $candidate (keys %candidates) {
+		foreach my $attr_value (values %{$candidate->{$NPROP_AT_NREFS}}) {
+			$candidates{$attr_value} and next; # just do this slower unlinking process if parent not being deleted
+			my $siblings = $attr_value->{$NPROP_LINK_CHILD_NREFS};
+			@{$siblings} = grep { $_ ne $candidate } @{$siblings}; # remove all occurances
+		}
+		delete( $cont_all_nodes->{$candidate->{$NPROP_NODE_ID}} );
+	}
+
+	# Note: We do not need to explicitly remove any links held by the candidate 
+	# Nodes to their Container or parent Nodes because they will be garbage 
+	# collected along with the invocant Node once the invocant reference held by 
+	# the external invoker code goes out of scope.
+
+	$container->{$CPROP_DEF_CON_TESTED} = 0; # Several Nodes are gone.
+		# Turn on tests because this Node's absence affects *other* Nodes.
+}
+
+sub _delete_node_tree__add_to_candidates {
+	my ($node, $candidates) = @_;
+	$candidates->{$node} = 1;
+	foreach my $prim_child_node (@{$node->{$NPROP_PRIM_CHILD_NREFS}}) {
+		$prim_child_node->_delete_node_tree__add_to_candidates( $candidates );
+	}
 }
 
 ######################################################################
@@ -2956,6 +3358,11 @@ sub _find_node_by_surrogate_id_using_path {
 	# Now enumerate through the explicit search path elements, updating $curr_node in the process.
 
 	foreach my $path_seg (@{$search_path}) {
+		if( ref($path_seg) eq 'HASH' ) { # <nref-attr-pick>
+			# Convert the <nref-attr-pick> into an <nref-attr> based on the current Node's Node type.
+			# If the lookup returns nothing, then this is an explicit failure condition so return.
+			$path_seg = $path_seg->{$curr_node->{$NPROP_NODE_TYPE}} or return;
+		}
 		if( $path_seg eq $S ) { # <self> is a no-op, existing for easier-to-read documentation only
 			# no-op
 		} elsif( $path_seg eq $P ) { # <primary-parent>
@@ -3164,7 +3571,7 @@ sub _assert_in_node_deferrable_constraints {
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 
 	# 1: Now assert constraints associated with Node-type details given in each 
-	# "Attribute List" section of Language.pod.
+	# "Attribute List" section of NodeTypes.pod.
 
 	# 1.1: Assert that any primary parent ("PP") attribute is set.
 	unless( defined( $node->{$NPROP_PP_NREF} ) or $type_info->{$TPI_PP_PSEUDONODE} ) {
@@ -3213,7 +3620,7 @@ sub _assert_in_node_deferrable_constraints {
 	}
 
 	# 2: Now assert constraints associated with Node-type details given in each 
-	# "Exclusive Attribute Groups List" section of Language.pod.
+	# "Exclusive Attribute Groups List" section of NodeTypes.pod.
 
 	if( my $mutex_atgps = $type_info->{$TPI_MUTEX_ATGPS} ) {
 		foreach my $mutex_atgp (@{$mutex_atgps}) {
@@ -3237,20 +3644,20 @@ sub _assert_in_node_deferrable_constraints {
 			if( scalar( @valued_candidates ) > 1 ) {
 				$node->_throw_error_message( 'SRT_N_ASDC_MUTEX_TOO_MANY_SET', 
 					{ 'NUMVALS' => scalar( @valued_candidates ), 
-					'ATNMS' => "@valued_candidates", 'MUTEX' => $mutex_name } );
+					'ATNMS' => \@valued_candidates, 'MUTEX' => $mutex_name } );
 			}
 			if( scalar( @valued_candidates ) == 0 ) {
 				if( $is_mandatory ) {
 					my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
 					$node->_throw_error_message( 'SRT_N_ASDC_MUTEX_ZERO_SET', 
-						{ 'ATNMS' => "@possible_candidates", 'MUTEX' => $mutex_name } );
+						{ 'ATNMS' => \@possible_candidates, 'MUTEX' => $mutex_name } );
 				}
 			}
 		}
 	}
 
 	# 3: Now assert constraints associated with Node-type details given in each 
-	# "Local Attribute Dependencies List" section of Language.pod.
+	# "Local Attribute Dependencies List" section of NodeTypes.pod.
 
 	if( my $local_atdps_list = $type_info->{$TPI_LOCAL_ATDPS} ) {
 		foreach my $local_atdps_item (@{$local_atdps_list}) {
@@ -3282,7 +3689,7 @@ sub _assert_in_node_deferrable_constraints {
 					if( scalar( @valued_dependents ) > 0 ) {
 						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
 							{ 'DEP_ON' => $dep_on_attr_nm, 'NUMVALS' => scalar( @valued_dependents ), 
-							'ATNMS' => "@valued_dependents" } );
+							'ATNMS' => \@valued_dependents } );
 					}
 					# If we get here, the tests have passed concerning this $dependency.
 				} elsif( scalar( @{$dep_on_enum_vals} ) > 0 and 
@@ -3292,7 +3699,7 @@ sub _assert_in_node_deferrable_constraints {
 					if( scalar( @valued_dependents ) > 0 ) {
 						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_HAS_WRONG_VAL', 
 							{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
+							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => \@valued_dependents } );
 					}
 					# If we get here, the tests have passed concerning this $dependency.
 				} else {
@@ -3301,14 +3708,14 @@ sub _assert_in_node_deferrable_constraints {
 					if( scalar( @valued_dependents ) > 1 ) {
 						$node->_throw_error_message( 'SRT_N_ASDC_LATDP_TOO_MANY_SET', 
 							{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => "@valued_dependents" } );
+							'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => \@valued_dependents } );
 					}
 					if( scalar( @valued_dependents ) == 0 ) {
 						if( $is_mandatory ) {
 							my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
 							$node->_throw_error_message( 'SRT_N_ASDC_LATDP_ZERO_SET', 
 								{ 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-								'ATNMS' => "@possible_candidates" } );
+								'ATNMS' => \@possible_candidates } );
 						}
 					}
 					# If we get here, the tests have passed concerning this $dependency.
@@ -3322,8 +3729,10 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 	my ($node) = @_;
 	my $type_info = $NODE_TYPES{$node->{$NPROP_NODE_TYPE}};
 
-	# Assert that all non-PP Node-ref attributes of the current Node point to Nodes that 
-	# are actually within the visible scope of the current Node.
+	# 1. Now assert that all non-PP Node-ref attributes of the current Node point to Nodes that 
+	# are actually within the visible scope of the current Node.  
+	# Some of these applied constraints are associated with Node-type details given in each 
+	# "Ancestor Attribute Correlation List" and "Remotely Addressable Types List" section of NodeTypes.pod.
 
 	if( my $at_nrefs = $type_info->{$TPI_AT_NREFS} ) {
 		foreach my $attr_name (keys %{$at_nrefs}) {
@@ -3345,6 +3754,52 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 	}
 
 	# This is the end of the searching tests.
+
+	# 2. Now assert constraints associated with Node-type details given in each 
+	# "Related Parent Enumerated Attributes List" section of NodeTypes.pod.
+
+	if( my $rel_p_enums = $type_info->{$TPI_REL_P_ENUMS} ) {
+		my $pp_node = $node->{$NPROP_PP_NREF}; # earlier assert would fail if not set
+		my $pp_node_type = $pp_node->{$NPROP_NODE_TYPE};
+		my $pp_type_info = $NODE_TYPES{$pp_node_type};
+		foreach my $child_atnm (keys %{$rel_p_enums}) {
+			my $child_attp = $type_info->{$TPI_AT_ENUMS}->{$child_atnm};
+			my $child_atvl = $node->{$NPROP_AT_ENUMS}->{$child_atnm} or next; # no violations possible here if child not set
+			# If we get here, the child attribute is known to be valued.
+			my $parent_atnm = $rel_p_enums->{$child_atnm}->{$pp_node_type};
+			unless( $parent_atnm ) {
+				# Violation: child valued but parent Node is wrong Node type to ever have a related value.
+				$node->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_BAD_P_NTYPE', 
+					{ 'CATNM' => $child_atnm, 'PNTYPE' => $pp_node_type, 
+					'PALLOWED' => [keys %{$rel_p_enums->{$child_atnm}}], } );
+			}
+			my $parent_attp = $pp_type_info->{$TPI_AT_ENUMS}->{$parent_atnm};
+			my $parent_atvl = $pp_node->{$NPROP_AT_ENUMS}->{$parent_atnm};
+			unless( $parent_atvl ) {
+				# Violation: child valued but parent not valued.
+				$node->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_NO_P', 
+					{ 'CATNM' => $child_atnm, 'PATNM' => $parent_atnm, } );
+			}
+			# If we get here, both related attributes are valued, so they must match; 
+			# that is, assuming the given parent attribute type has any possible 
+			# children at all of the given child attribute type.
+			my $allowed_c_for_p = $P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl};
+			unless( $allowed_c_for_p ) {
+				# Violation: no child value at all of the current type may be used with parent value.
+				$node->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_NEVER_P', 
+					{ 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl, 
+					'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, } );
+			}
+			# If we get here, the given parent may have children of the child's type; check if ours match.
+			unless( $allowed_c_for_p->{$child_atvl} ) {
+				# Violation: the given child value may not be used with parent value.
+				$node->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_C_NOT_REL', 
+					{ 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl, 
+					'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, 
+					'CALLOWED' => [keys %{$allowed_c_for_p}], } );
+			}
+		}
+	}
 }
 
 sub _assert_child_comp_deferrable_constraints {
@@ -3376,7 +3831,8 @@ sub _assert_child_comp_deferrable_constraints {
 		@child_nodes = @{$container->{$CPROP_PSEUDONODES}->{$pseudonode_name}};
 	}
 
-	# 1: Now assert that the surrogate id (SI) of each child Node is distinct.
+	# 1: Now assert that the surrogate id (SI) of each child Node is distinct;
+	# this concerns the "Attribute List" section of NodeTypes.pod.
 
 	my %type_child_si = map { (%{$TYPE_CHILD_SI_ATNMS{$_}||{}}) } @parent_node_types;
 	# Note: $TYPE_CHILD_SI_ATNMS only contains keys for [pseudo-|]Node types that can have primary-child Nodes.
@@ -3417,7 +3873,7 @@ sub _assert_child_comp_deferrable_constraints {
 	}
 
 	# 2: Now assert constraints associated with Node-type details given in each 
-	# "Child Quantity List" section of Language.pod.
+	# "Child Quantity List" section of NodeTypes.pod.
 
 	if( my $child_quants = $type_info->{$TPI_CHILD_QUANTS} ) {
 		foreach my $child_quant (@{$child_quants}) {
@@ -3447,7 +3903,7 @@ sub _assert_child_comp_deferrable_constraints {
 	}
 
 	# 3: Now assert constraints associated with Node-type details given in each 
-	# "Distinct Child Groups List" section of Language.pod.
+	# "Distinct Child Groups List" section of NodeTypes.pod.
 
 	if( my $mudi_atgps = $type_info->{$TPI_MUDI_ATGPS} ) {
 		foreach my $mudi_atgp (@{$mudi_atgps}) {
@@ -3490,6 +3946,63 @@ sub _assert_child_comp_deferrable_constraints {
 					}
 					$examined_children{$hash_key} = $child_node;
 				}
+			}
+		}
+	}
+
+	# 4. Now assert constraints associated with Node-type details given in each 
+	# "Mandatory Related Child Enumerated Attributes List" section of NodeTypes.pod.
+
+	if( my $ma_rel_c_enums = $type_info->{$TPI_MA_REL_C_ENUMS} ) {
+		foreach my $parent_atnm (keys %{$ma_rel_c_enums}) {
+			my $parent_attp = $type_info->{$TPI_AT_ENUMS}->{$parent_atnm};
+			my $parent_atvl = $node_or_class->{$NPROP_AT_ENUMS}->{$parent_atnm} or next; # no violations possible here if parent not set
+			# If we get here, the parent attribute is known to be valued.
+			# Now build a list of what child attribute values are mandatory, which we test against.
+			my %exp_ma_c_values = (); # keys are child enumerated type names, values are hash-lists of their enum values.
+			foreach my $child_attp (keys %{$P_C_REL_ENUMS{$parent_attp}}) {
+				my $allowed_c_for_p = $P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl} or next;
+				$exp_ma_c_values{$child_attp} = {%{$allowed_c_for_p}}; # copy values so originals not destroyed next
+				my $opt_c_for_p = $OPT_P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl} or next;
+				foreach my $opt_c_value (keys %{$opt_c_for_p}) {
+					delete( $exp_ma_c_values{$child_attp}->{$opt_c_value} ); # remove opt from list, leaving mand only
+				}
+			}
+			# Now examine each child Node and remove %exp_ma_c_values list items 
+			# as they are matched, leaving behind only un-matched items.
+			foreach my $c_node (@child_nodes) {
+				my $c_node_type = $c_node->{$NPROP_NODE_TYPE};
+				my $c_type_info = $NODE_TYPES{$c_node_type};
+				my $child_atnms = $ma_rel_c_enums->{$parent_atnm}->{$c_node_type} or next; # current Node type not applicable
+				# If we get here, the child Node we're sitting on is of the correct 
+				# type for this constraint to apply to.
+				my @valued_candidates = ();
+				foreach my $child_atnm (@{$child_atnms}) {
+					my $child_attp = $c_type_info->{$TPI_AT_ENUMS}->{$child_atnm};
+					my $child_atvl = $c_node->{$NPROP_AT_ENUMS}->{$child_atnm};
+					if( defined( $child_atvl ) ) {
+						push( @valued_candidates, $child_atnm );
+						delete( $exp_ma_c_values{$child_attp}->{$child_atvl} ); # this mand attr is populated as constraint requires
+					}
+				}
+				# Now assert that the related attr in child Node is set, and only one is set if multiple candidates.
+				if( scalar( @valued_candidates ) > 1 ) {
+					$c_node->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_TOO_MANY_SET', 
+						{ 'PATNM' => $parent_atnm, 'CATNMS' => $child_atnms, 
+						'NUMVALS' => scalar( @valued_candidates ) } );
+				}
+				if( scalar( @valued_candidates ) == 0 ) {
+					$c_node->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_ZERO_SET', 
+						{ 'PATNM' => $parent_atnm, 'CATNMS' => $child_atnms } );
+				}
+			}
+			# If we get here, then all applicable child Nodes each have their related enum attr set.
+			# Now check if any mandatory child enum values are not set.
+			if( my @missing_c_values = map { (keys %{$_}) } values %exp_ma_c_values ) {
+				# Violation: the given parent value requires child values that are missing.
+				$node_or_class->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES', 
+					{ 'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, 
+					'CATVLS' => \@missing_c_values } );
 			}
 		}
 	}
@@ -3763,8 +4276,8 @@ of, since more advanced features are not shown for brevity.
 					[ 'view_src_field', 'person_id', ],
 				], ],
 				[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
-					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
-					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
+					[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
+					[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
 				], ],
 			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
@@ -3994,8 +4507,8 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 							<view_src_field id="93" si_match_field="person_id" />
 						</view_src>
 						<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-							<view_expr id="95" cont_type="SCALAR" valf_src_field="[person_id,s]" />
-							<view_expr id="96" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+							<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+							<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 						</view_expr>
 					</view>
 					<routine_stmt id="97" call_sroutine="SELECT">
@@ -4227,6 +4740,7 @@ CONTAINER OBJECT METHODS:
 	auto_assert_deferrable_constraints([ NEW_VALUE ])
 	auto_set_node_ids([ NEW_VALUE ])
 	may_match_surrogate_node_ids([ NEW_VALUE ])
+	delete_node_tree()
 	get_child_nodes([ NODE_TYPE ])
 	find_node_by_id( NODE_ID )
 	find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
@@ -4241,6 +4755,7 @@ NODE CONSTRUCTOR FUNCTIONS AND METHODS:
 NODE OBJECT METHODS:
 
 	delete_node()
+	delete_node_tree()
 	get_container()
 	get_node_type()
 	get_node_id()

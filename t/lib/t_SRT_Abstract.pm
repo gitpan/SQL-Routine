@@ -267,8 +267,7 @@ sub populate_model {
 			{ 'si_row_field' => 'plan'         , 'src_field' => 'plan'         , },
 			{ 'si_row_field' => 'comments'     , 'src_field' => 'comments'     , },
 		) ),
-		[ 'view_join', { 'lhs_src' => 'user_auth', 
-				'rhs_src' => 'user_profile', 'join_op' => 'LEFT', }, [ 
+		[ 'view_join', { 'lhs_src' => 'user_auth', 'rhs_src' => 'user_profile', 'join_op' => 'LEFT', }, [ 
 			[ 'view_join_field', { 'lhs_src_field' => 'user_id', 'rhs_src_field' => 'user_id',  } ],
 		] ],
 	] );
@@ -291,120 +290,97 @@ sub populate_model {
 
 	##### NEXT SET APPLICATION BLUEPRINT-TYPE DETAILS #####
 
-	my $application = $model->build_child_node_tree( 'application', 
-		{ 'si_name' => 'My App', } ); 
+	my $application = $model->build_child_node_tree( 'application', { 'si_name' => 'My App', } ); 
 
 	$application->build_child_node_tree( 'view', 
 			{ 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 'user_theme', }, [ 
-		[ 'view_src', { 'si_name' => 'user_pref', 'match' => 'user_pref', }, 
-			[ map { [ 'view_src_field', $_ ] } qw( pref_name pref_value ) ] 
-		],
+		[ 'view_src', { 'si_name' => 'user_pref', 'match' => 'user_pref', }, [ 
+			map { [ 'view_src_field', $_ ] } qw( pref_name pref_value ) 
+		] ],
 		[ 'view_field', { 'si_row_field' => 'theme_name', 'src_field' => 'pref_value', }, ],
-		[ 'view_expr', { 'view_part' => 'RESULT', 
-				'set_result_field' => 'theme_count', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, [ 
-			[ 'view_expr', { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, ],
+		[ 'view_expr', { 'view_part' => 'RESULT', 'set_result_field' => 'theme_count', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
+		[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+			[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_name', }, ],
+			[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', 'valf_literal' => 'theme', }, ],
 		] ],
-		[ 'view_expr', { 'view_part' => 'WHERE', 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
-			[ 'view_expr', { 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_name', }, ],
-			[ 'view_expr', { 
-				'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', 'valf_literal' => 'theme', }, ],
+		[ 'view_expr', { 'view_part' => 'GROUP', 'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, ],
+		[ 'view_expr', { 'view_part' => 'HAVING', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, [ 
+			[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
+			[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', 'valf_literal' => '1', }, ],
 		] ],
-		[ 'view_expr', { 'view_part' => 'GROUP', 
-			'cont_type' => 'SCALAR', 'valf_src_field' => 'pref_value', }, ],
-		[ 'view_expr', { 'view_part' => 'HAVING', 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, [ 
-			[ 'view_expr', { 
-				'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
-			[ 'view_expr', { 
-				'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', 'valf_literal' => '1', }, ],
-		] ],
-		[ 'view_expr', { 'view_part' => 'ORDER', 
-			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_count', }, ],
-		[ 'view_expr', { 'view_part' => 'ORDER', 
-			'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_name', }, ],
+		[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_count', }, ],
+		[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_result_field' => 'theme_name', }, ],
 	] );
 
 	$application->build_child_node_tree( 'routine', 
-			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 
-			'return_cont_type' => 'CURSOR', }, [ 
-		[ 'routine_arg', { 'si_name' => 'curr_uid', 
-			'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', }, ],
-		[ 'view', { 'si_name' => 'get_user', 
-				'view_type' => 'JOINED', 'row_data_type' => 'user', }, [ 
-			[ 'view_src', { 'si_name' => 'm', 'match' => 'user', }, 
-				[ map { [ 'view_src_field', $_ ] } qw( user_id login_name ) ] 
-			],
-			[ 'view_expr', { 'view_part' => 'WHERE', 
-					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
-				[ 'view_expr', { 
-					'cont_type' => 'SCALAR', 'valf_src_field' => 'user_id', }, ],
-				[ 'view_expr', { 
-					'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'curr_uid', }, ],
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 'return_cont_type' => 'CURSOR', }, [ 
+		[ 'routine_arg', { 'si_name' => 'curr_uid', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'int', }, ],
+		[ 'view', { 'si_name' => 'get_user', 'view_type' => 'JOINED', 'row_data_type' => 'user', }, [ 
+			[ 'view_src', { 'si_name' => 'm', 'match' => 'user', }, [ 
+				map { [ 'view_src_field', $_ ] } qw( user_id login_name ) 
 			] ],
-			[ 'view_expr', { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'login_name', }, ],
+			[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+				[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'user_id', }, ],
+				[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'curr_uid', }, ],
+			] ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_src_field' => 'login_name', }, ],
 		] ],
-		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+		[ 'routine_var', { 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_view' => 'get_user', }, ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, [
+			[ 'routine_expr', { 'call_sroutine_cxt' => 'CURSOR_CX', 'cont_type' => 'CURSOR', 'valf_p_routine_item' => 'cursor_cx', }, ],
+		] ],
 	] );
 
 	$application->build_child_node_tree( 'routine', 
-			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 
-			'return_cont_type' => 'CURSOR', }, [ 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 'return_cont_type' => 'CURSOR', }, [ 
 		[ 'routine_arg', { 'si_name' => 'srchw_fa', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, ],
 		[ 'routine_arg', { 'si_name' => 'srchw_mo', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'str30', }, ],
-		[ 'view', { 'si_name' => 'get_pwp', 
-				'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [ 
-			[ 'view_src', { 'si_name' => 'm', 'match' => 'person_with_parents', }, 
-				[ map { [ 'view_src_field', $_ ] } qw( self_name father_name mother_name ) ] 
-			],
-			[ 'view_expr', { 'view_part' => 'WHERE', 
-					'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, [ 
-				[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
-					[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
-					[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_fa', }, ],
-				] ],
-				[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
-					[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
-					[ 'view_expr', { 
-						'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_mo', }, ],
+		[ 'view', { 'si_name' => 'get_pwp', 'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [ 
+			[ 'view_src', { 'si_name' => 'm', 'match' => 'person_with_parents', }, [ 
+				map { [ 'view_src_field', $_ ] } qw( self_name father_name mother_name ) 
+			] ],
+			[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, [ 
+				[ 'view_expr', { 'call_sroutine_arg' => 'FACTORS', 'cont_type' => 'LIST', }, [ 
+					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+						[ 'view_expr', { 'call_sroutine_arg' => 'LOOK_IN', 'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
+						[ 'view_expr', { 'call_sroutine_arg' => 'LOOK_FOR', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_fa', }, ],
+					] ],
+					[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+						[ 'view_expr', { 'call_sroutine_arg' => 'LOOK_IN', 'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
+						[ 'view_expr', { 'call_sroutine_arg' => 'LOOK_FOR', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'srchw_mo', }, ],
+					] ],
 				] ],
 			] ],
-			[ 'view_expr', { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'self_name', }, ],
-			[ 'view_expr', { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
-			[ 'view_expr', { 'view_part' => 'ORDER', 
-				'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_src_field' => 'self_name', }, ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_src_field' => 'father_name', }, ],
+			[ 'view_expr', { 'view_part' => 'ORDER', 'cont_type' => 'SCALAR', 'valf_src_field' => 'mother_name', }, ],
 		] ],
-		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+		[ 'routine_var', { 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_view' => 'get_pwp', }, ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, [
+			[ 'routine_expr', { 'call_sroutine_cxt' => 'CURSOR_CX', 'cont_type' => 'CURSOR', 'valf_p_routine_item' => 'cursor_cx', }, ],
+		] ],
 	] );
 
 	$application->build_child_node_tree( 'routine', 
-			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 
-			'return_cont_type' => 'CURSOR', }, [ 
-		[ 'view', { 'si_name' => 'get_theme', 
-				'view_type' => 'ALIAS', 'row_data_type' => 'user_theme', }, [ 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 'return_cont_type' => 'CURSOR', }, [ 
+		[ 'view', { 'si_name' => 'get_theme', 'view_type' => 'ALIAS', 'row_data_type' => 'user_theme', }, [ 
 			[ 'view_src', { 'si_name' => 'm', 'match' => 'user_theme', }, ],
 		] ],
-		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+		[ 'routine_var', { 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_view' => 'get_theme', }, ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, [
+			[ 'routine_expr', { 'call_sroutine_cxt' => 'CURSOR_CX', 'cont_type' => 'CURSOR', 'valf_p_routine_item' => 'cursor_cx', }, ],
+		] ],
 	] );
 
 	$application->build_child_node_tree( 'routine', 
-			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 
-			'return_cont_type' => 'CURSOR', }, [ 
-		[ 'view', { 'si_name' => 'get_person', 
-				'view_type' => 'ALIAS', 'row_data_type' => 'person', }, [ 
+			{ 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 'return_cont_type' => 'CURSOR', }, [ 
+		[ 'view', { 'si_name' => 'get_person', 'view_type' => 'ALIAS', 'row_data_type' => 'person', }, [ 
 			[ 'view_src', { 'si_name' => 'person', 'match' => 'person', }, ],
 		] ],
-		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, ],
+		[ 'routine_var', { 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_view' => 'get_person', }, ],
+		[ 'routine_stmt', { 'call_sroutine' => 'CURSOR_OPEN' }, [
+			[ 'routine_expr', { 'call_sroutine_cxt' => 'CURSOR_CX', 'cont_type' => 'CURSOR', 'valf_p_routine_item' => 'cursor_cx', }, ],
+		] ],
 	] );
 
 	##### NEXT SET PRODUCT-TYPE DETAILS #####
@@ -658,78 +634,90 @@ sub expected_model_nid_xml_output {
 					<view_src_field id="192" si_match_field="81" />
 				</view_src>
 				<view_field id="193" si_row_field="83" src_field="192" />
-				<view_expr id="194" view_part="RESULT" set_result_field="84" cont_type="SCALAR" valf_call_sroutine="COUNT">
-					<view_expr id="195" cont_type="SCALAR" valf_src_field="192" />
+				<view_expr id="194" view_part="RESULT" set_result_field="84" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+				<view_expr id="195" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+					<view_expr id="196" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="191" />
+					<view_expr id="197" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="theme" scalar_data_type="5" />
 				</view_expr>
-				<view_expr id="196" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-					<view_expr id="197" cont_type="SCALAR" valf_src_field="191" />
-					<view_expr id="198" cont_type="SCALAR" valf_literal="theme" scalar_data_type="5" />
+				<view_expr id="198" view_part="GROUP" cont_type="SCALAR" valf_src_field="192" />
+				<view_expr id="199" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
+					<view_expr id="200" call_sroutine_arg="LHS" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+					<view_expr id="201" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="1" scalar_data_type="9" />
 				</view_expr>
-				<view_expr id="199" view_part="GROUP" cont_type="SCALAR" valf_src_field="192" />
-				<view_expr id="200" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
-					<view_expr id="201" cont_type="SCALAR" valf_call_sroutine="COUNT" />
-					<view_expr id="202" cont_type="SCALAR" valf_literal="1" scalar_data_type="9" />
-				</view_expr>
-				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="84" />
-				<view_expr id="204" view_part="ORDER" cont_type="SCALAR" valf_result_field="83" />
+				<view_expr id="202" view_part="ORDER" cont_type="SCALAR" valf_result_field="84" />
+				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="83" />
 			</view>
-			<routine id="205" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="206" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="9" />
-				<view id="207" si_name="get_user" view_type="JOINED" row_data_type="62">
-					<view_src id="208" si_name="m" match="144">
-						<view_src_field id="209" si_match_field="63" />
-						<view_src_field id="210" si_match_field="64" />
+			<routine id="204" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="205" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="9" />
+				<view id="206" si_name="get_user" view_type="JOINED" row_data_type="62">
+					<view_src id="207" si_name="m" match="144">
+						<view_src_field id="208" si_match_field="63" />
+						<view_src_field id="209" si_match_field="64" />
 					</view_src>
-					<view_expr id="211" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="212" cont_type="SCALAR" valf_src_field="209" />
-						<view_expr id="213" cont_type="SCALAR" valf_p_routine_item="206" />
+					<view_expr id="210" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="211" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="208" />
+						<view_expr id="212" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="205" />
 					</view_expr>
-					<view_expr id="214" view_part="ORDER" cont_type="SCALAR" valf_src_field="210" />
+					<view_expr id="213" view_part="ORDER" cont_type="SCALAR" valf_src_field="209" />
 				</view>
-				<routine_stmt id="215" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="214" si_name="cursor_cx" cont_type="CURSOR" curs_view="206" />
+				<routine_stmt id="215" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="216" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="214" />
+				</routine_stmt>
 			</routine>
-			<routine id="216" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="217" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="5" />
-				<routine_arg id="218" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="5" />
-				<view id="219" si_name="get_pwp" view_type="JOINED" row_data_type="37">
-					<view_src id="220" si_name="m" match="99">
-						<view_src_field id="221" si_match_field="39" />
-						<view_src_field id="222" si_match_field="41" />
-						<view_src_field id="223" si_match_field="43" />
+			<routine id="217" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="218" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="5" />
+				<routine_arg id="219" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="5" />
+				<view id="220" si_name="get_pwp" view_type="JOINED" row_data_type="37">
+					<view_src id="221" si_name="m" match="99">
+						<view_src_field id="222" si_match_field="39" />
+						<view_src_field id="223" si_match_field="41" />
+						<view_src_field id="224" si_match_field="43" />
 					</view_src>
-					<view_expr id="224" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
-						<view_expr id="225" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="226" cont_type="SCALAR" valf_src_field="222" />
-							<view_expr id="227" cont_type="SCALAR" valf_p_routine_item="217" />
-						</view_expr>
-						<view_expr id="228" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="229" cont_type="SCALAR" valf_src_field="223" />
-							<view_expr id="230" cont_type="SCALAR" valf_p_routine_item="218" />
+					<view_expr id="225" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
+						<view_expr id="226" call_sroutine_arg="FACTORS" cont_type="LIST">
+							<view_expr id="227" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="228" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="223" />
+								<view_expr id="229" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="218" />
+							</view_expr>
+							<view_expr id="230" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="231" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="224" />
+								<view_expr id="232" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="219" />
+							</view_expr>
 						</view_expr>
 					</view_expr>
-					<view_expr id="231" view_part="ORDER" cont_type="SCALAR" valf_src_field="221" />
-					<view_expr id="232" view_part="ORDER" cont_type="SCALAR" valf_src_field="222" />
-					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="223" />
+					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="222" />
+					<view_expr id="234" view_part="ORDER" cont_type="SCALAR" valf_src_field="223" />
+					<view_expr id="235" view_part="ORDER" cont_type="SCALAR" valf_src_field="224" />
 				</view>
-				<routine_stmt id="234" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="236" si_name="cursor_cx" cont_type="CURSOR" curs_view="220" />
+				<routine_stmt id="237" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="238" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="236" />
+				</routine_stmt>
 			</routine>
-			<routine id="235" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="236" si_name="get_theme" view_type="ALIAS" row_data_type="82">
-					<view_src id="237" si_name="m" match="189" />
+			<routine id="239" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="240" si_name="get_theme" view_type="ALIAS" row_data_type="82">
+					<view_src id="241" si_name="m" match="189" />
 				</view>
-				<routine_stmt id="238" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="242" si_name="cursor_cx" cont_type="CURSOR" curs_view="240" />
+				<routine_stmt id="243" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="244" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="242" />
+				</routine_stmt>
 			</routine>
-			<routine id="239" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="240" si_name="get_person" view_type="ALIAS" row_data_type="30">
-					<view_src id="241" si_name="person" match="88" />
+			<routine id="245" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="246" si_name="get_person" view_type="ALIAS" row_data_type="30">
+					<view_src id="247" si_name="person" match="88" />
 				</view>
-				<routine_stmt id="242" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="248" si_name="cursor_cx" cont_type="CURSOR" curs_view="246" />
+				<routine_stmt id="249" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="250" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="248" />
+				</routine_stmt>
 			</routine>
 		</application>
 	</blueprints>
 	<tools />
 	<sites>
-		<application_instance id="243" si_name="My App Instance" blueprint="188" />
+		<application_instance id="251" si_name="My App Instance" blueprint="188" />
 	</sites>
 	<circumventions />
 </root>
@@ -976,78 +964,90 @@ sub expected_model_sid_long_xml_output {
 					<view_src_field id="192" si_match_field="pref_value" />
 				</view_src>
 				<view_field id="193" si_row_field="theme_name" src_field="[pref_value,user_pref]" />
-				<view_expr id="194" view_part="RESULT" set_result_field="theme_count" cont_type="SCALAR" valf_call_sroutine="COUNT">
-					<view_expr id="195" cont_type="SCALAR" valf_src_field="[pref_value,user_pref]" />
+				<view_expr id="194" view_part="RESULT" set_result_field="theme_count" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+				<view_expr id="195" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+					<view_expr id="196" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[pref_name,user_pref]" />
+					<view_expr id="197" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="theme" scalar_data_type="str30" />
 				</view_expr>
-				<view_expr id="196" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-					<view_expr id="197" cont_type="SCALAR" valf_src_field="[pref_name,user_pref]" />
-					<view_expr id="198" cont_type="SCALAR" valf_literal="theme" scalar_data_type="str30" />
+				<view_expr id="198" view_part="GROUP" cont_type="SCALAR" valf_src_field="[pref_value,user_pref]" />
+				<view_expr id="199" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
+					<view_expr id="200" call_sroutine_arg="LHS" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+					<view_expr id="201" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="1" scalar_data_type="int" />
 				</view_expr>
-				<view_expr id="199" view_part="GROUP" cont_type="SCALAR" valf_src_field="[pref_value,user_pref]" />
-				<view_expr id="200" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
-					<view_expr id="201" cont_type="SCALAR" valf_call_sroutine="COUNT" />
-					<view_expr id="202" cont_type="SCALAR" valf_literal="1" scalar_data_type="int" />
-				</view_expr>
-				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_count" />
-				<view_expr id="204" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_name" />
+				<view_expr id="202" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_count" />
+				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_name" />
 			</view>
-			<routine id="205" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="206" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="int" />
-				<view id="207" si_name="get_user" view_type="JOINED" row_data_type="user">
-					<view_src id="208" si_name="m" match="[user,gene,The Catalog Blueprint]">
-						<view_src_field id="209" si_match_field="user_id" />
-						<view_src_field id="210" si_match_field="login_name" />
+			<routine id="204" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="205" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="int" />
+				<view id="206" si_name="get_user" view_type="JOINED" row_data_type="user">
+					<view_src id="207" si_name="m" match="[user,gene,The Catalog Blueprint]">
+						<view_src_field id="208" si_match_field="user_id" />
+						<view_src_field id="209" si_match_field="login_name" />
 					</view_src>
-					<view_expr id="211" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="212" cont_type="SCALAR" valf_src_field="[user_id,m]" />
-						<view_expr id="213" cont_type="SCALAR" valf_p_routine_item="curr_uid" />
+					<view_expr id="210" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="211" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[user_id,m]" />
+						<view_expr id="212" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="curr_uid" />
 					</view_expr>
-					<view_expr id="214" view_part="ORDER" cont_type="SCALAR" valf_src_field="[login_name,m]" />
+					<view_expr id="213" view_part="ORDER" cont_type="SCALAR" valf_src_field="[login_name,m]" />
 				</view>
-				<routine_stmt id="215" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="214" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_user" />
+				<routine_stmt id="215" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="216" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="216" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="217" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="str30" />
-				<routine_arg id="218" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="str30" />
-				<view id="219" si_name="get_pwp" view_type="JOINED" row_data_type="person_with_parents">
-					<view_src id="220" si_name="m" match="[person_with_parents,gene,The Catalog Blueprint]">
-						<view_src_field id="221" si_match_field="self_name" />
-						<view_src_field id="222" si_match_field="father_name" />
-						<view_src_field id="223" si_match_field="mother_name" />
+			<routine id="217" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="218" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="str30" />
+				<routine_arg id="219" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="str30" />
+				<view id="220" si_name="get_pwp" view_type="JOINED" row_data_type="person_with_parents">
+					<view_src id="221" si_name="m" match="[person_with_parents,gene,The Catalog Blueprint]">
+						<view_src_field id="222" si_match_field="self_name" />
+						<view_src_field id="223" si_match_field="father_name" />
+						<view_src_field id="224" si_match_field="mother_name" />
 					</view_src>
-					<view_expr id="224" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
-						<view_expr id="225" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="226" cont_type="SCALAR" valf_src_field="[father_name,m]" />
-							<view_expr id="227" cont_type="SCALAR" valf_p_routine_item="srchw_fa" />
-						</view_expr>
-						<view_expr id="228" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="229" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
-							<view_expr id="230" cont_type="SCALAR" valf_p_routine_item="srchw_mo" />
+					<view_expr id="225" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
+						<view_expr id="226" call_sroutine_arg="FACTORS" cont_type="LIST">
+							<view_expr id="227" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="228" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="[father_name,m]" />
+								<view_expr id="229" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="srchw_fa" />
+							</view_expr>
+							<view_expr id="230" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="231" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
+								<view_expr id="232" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="srchw_mo" />
+							</view_expr>
 						</view_expr>
 					</view_expr>
-					<view_expr id="231" view_part="ORDER" cont_type="SCALAR" valf_src_field="[self_name,m]" />
-					<view_expr id="232" view_part="ORDER" cont_type="SCALAR" valf_src_field="[father_name,m]" />
-					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
+					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="[self_name,m]" />
+					<view_expr id="234" view_part="ORDER" cont_type="SCALAR" valf_src_field="[father_name,m]" />
+					<view_expr id="235" view_part="ORDER" cont_type="SCALAR" valf_src_field="[mother_name,m]" />
 				</view>
-				<routine_stmt id="234" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="236" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_pwp" />
+				<routine_stmt id="237" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="238" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="235" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="236" si_name="get_theme" view_type="ALIAS" row_data_type="user_theme">
-					<view_src id="237" si_name="m" match="user_theme" />
+			<routine id="239" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="240" si_name="get_theme" view_type="ALIAS" row_data_type="user_theme">
+					<view_src id="241" si_name="m" match="user_theme" />
 				</view>
-				<routine_stmt id="238" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="242" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_theme" />
+				<routine_stmt id="243" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="244" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="239" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="240" si_name="get_person" view_type="ALIAS" row_data_type="person">
-					<view_src id="241" si_name="person" match="[person,gene,The Catalog Blueprint]" />
+			<routine id="245" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="246" si_name="get_person" view_type="ALIAS" row_data_type="person">
+					<view_src id="247" si_name="person" match="[person,gene,The Catalog Blueprint]" />
 				</view>
-				<routine_stmt id="242" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="248" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_person" />
+				<routine_stmt id="249" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="250" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
 		</application>
 	</blueprints>
 	<tools />
 	<sites>
-		<application_instance id="243" si_name="My App Instance" blueprint="My App" />
+		<application_instance id="251" si_name="My App Instance" blueprint="My App" />
 	</sites>
 	<circumventions />
 </root>
@@ -1294,78 +1294,90 @@ sub expected_model_sid_short_xml_output {
 					<view_src_field id="192" si_match_field="pref_value" />
 				</view_src>
 				<view_field id="193" si_row_field="theme_name" src_field="pref_value" />
-				<view_expr id="194" view_part="RESULT" set_result_field="theme_count" cont_type="SCALAR" valf_call_sroutine="COUNT">
-					<view_expr id="195" cont_type="SCALAR" valf_src_field="pref_value" />
+				<view_expr id="194" view_part="RESULT" set_result_field="theme_count" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+				<view_expr id="195" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+					<view_expr id="196" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="pref_name" />
+					<view_expr id="197" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="theme" scalar_data_type="str30" />
 				</view_expr>
-				<view_expr id="196" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-					<view_expr id="197" cont_type="SCALAR" valf_src_field="pref_name" />
-					<view_expr id="198" cont_type="SCALAR" valf_literal="theme" scalar_data_type="str30" />
+				<view_expr id="198" view_part="GROUP" cont_type="SCALAR" valf_src_field="pref_value" />
+				<view_expr id="199" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
+					<view_expr id="200" call_sroutine_arg="LHS" cont_type="SCALAR" valf_call_sroutine="COUNT" />
+					<view_expr id="201" call_sroutine_arg="RHS" cont_type="SCALAR" valf_literal="1" scalar_data_type="int" />
 				</view_expr>
-				<view_expr id="199" view_part="GROUP" cont_type="SCALAR" valf_src_field="pref_value" />
-				<view_expr id="200" view_part="HAVING" cont_type="SCALAR" valf_call_sroutine="GT">
-					<view_expr id="201" cont_type="SCALAR" valf_call_sroutine="COUNT" />
-					<view_expr id="202" cont_type="SCALAR" valf_literal="1" scalar_data_type="int" />
-				</view_expr>
-				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_count" />
-				<view_expr id="204" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_name" />
+				<view_expr id="202" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_count" />
+				<view_expr id="203" view_part="ORDER" cont_type="SCALAR" valf_result_field="theme_name" />
 			</view>
-			<routine id="205" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="206" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="int" />
-				<view id="207" si_name="get_user" view_type="JOINED" row_data_type="user">
-					<view_src id="208" si_name="m" match="user">
-						<view_src_field id="209" si_match_field="user_id" />
-						<view_src_field id="210" si_match_field="login_name" />
+			<routine id="204" si_name="get_user" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="205" si_name="curr_uid" cont_type="SCALAR" scalar_data_type="int" />
+				<view id="206" si_name="get_user" view_type="JOINED" row_data_type="user">
+					<view_src id="207" si_name="m" match="user">
+						<view_src_field id="208" si_match_field="user_id" />
+						<view_src_field id="209" si_match_field="login_name" />
 					</view_src>
-					<view_expr id="211" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="212" cont_type="SCALAR" valf_src_field="user_id" />
-						<view_expr id="213" cont_type="SCALAR" valf_p_routine_item="curr_uid" />
+					<view_expr id="210" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+						<view_expr id="211" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="user_id" />
+						<view_expr id="212" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="curr_uid" />
 					</view_expr>
-					<view_expr id="214" view_part="ORDER" cont_type="SCALAR" valf_src_field="login_name" />
+					<view_expr id="213" view_part="ORDER" cont_type="SCALAR" valf_src_field="login_name" />
 				</view>
-				<routine_stmt id="215" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="214" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_user" />
+				<routine_stmt id="215" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="216" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="216" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<routine_arg id="217" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="str30" />
-				<routine_arg id="218" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="str30" />
-				<view id="219" si_name="get_pwp" view_type="JOINED" row_data_type="person_with_parents">
-					<view_src id="220" si_name="m" match="person_with_parents">
-						<view_src_field id="221" si_match_field="self_name" />
-						<view_src_field id="222" si_match_field="father_name" />
-						<view_src_field id="223" si_match_field="mother_name" />
+			<routine id="217" si_name="get_pwp" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<routine_arg id="218" si_name="srchw_fa" cont_type="SCALAR" scalar_data_type="str30" />
+				<routine_arg id="219" si_name="srchw_mo" cont_type="SCALAR" scalar_data_type="str30" />
+				<view id="220" si_name="get_pwp" view_type="JOINED" row_data_type="person_with_parents">
+					<view_src id="221" si_name="m" match="person_with_parents">
+						<view_src_field id="222" si_match_field="self_name" />
+						<view_src_field id="223" si_match_field="father_name" />
+						<view_src_field id="224" si_match_field="mother_name" />
 					</view_src>
-					<view_expr id="224" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
-						<view_expr id="225" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="226" cont_type="SCALAR" valf_src_field="father_name" />
-							<view_expr id="227" cont_type="SCALAR" valf_p_routine_item="srchw_fa" />
-						</view_expr>
-						<view_expr id="228" cont_type="SCALAR" valf_call_sroutine="LIKE">
-							<view_expr id="229" cont_type="SCALAR" valf_src_field="mother_name" />
-							<view_expr id="230" cont_type="SCALAR" valf_p_routine_item="srchw_mo" />
+					<view_expr id="225" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="AND">
+						<view_expr id="226" call_sroutine_arg="FACTORS" cont_type="LIST">
+							<view_expr id="227" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="228" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="father_name" />
+								<view_expr id="229" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="srchw_fa" />
+							</view_expr>
+							<view_expr id="230" cont_type="SCALAR" valf_call_sroutine="LIKE">
+								<view_expr id="231" call_sroutine_arg="LOOK_IN" cont_type="SCALAR" valf_src_field="mother_name" />
+								<view_expr id="232" call_sroutine_arg="LOOK_FOR" cont_type="SCALAR" valf_p_routine_item="srchw_mo" />
+							</view_expr>
 						</view_expr>
 					</view_expr>
-					<view_expr id="231" view_part="ORDER" cont_type="SCALAR" valf_src_field="self_name" />
-					<view_expr id="232" view_part="ORDER" cont_type="SCALAR" valf_src_field="father_name" />
-					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="mother_name" />
+					<view_expr id="233" view_part="ORDER" cont_type="SCALAR" valf_src_field="self_name" />
+					<view_expr id="234" view_part="ORDER" cont_type="SCALAR" valf_src_field="father_name" />
+					<view_expr id="235" view_part="ORDER" cont_type="SCALAR" valf_src_field="mother_name" />
 				</view>
-				<routine_stmt id="234" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="236" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_pwp" />
+				<routine_stmt id="237" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="238" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="235" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="236" si_name="get_theme" view_type="ALIAS" row_data_type="user_theme">
-					<view_src id="237" si_name="m" match="user_theme" />
+			<routine id="239" si_name="get_theme" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="240" si_name="get_theme" view_type="ALIAS" row_data_type="user_theme">
+					<view_src id="241" si_name="m" match="user_theme" />
 				</view>
-				<routine_stmt id="238" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="242" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_theme" />
+				<routine_stmt id="243" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="244" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
-			<routine id="239" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
-				<view id="240" si_name="get_person" view_type="ALIAS" row_data_type="person">
-					<view_src id="241" si_name="person" match="person" />
+			<routine id="245" si_name="get_person" routine_type="FUNCTION" return_cont_type="CURSOR">
+				<view id="246" si_name="get_person" view_type="ALIAS" row_data_type="person">
+					<view_src id="247" si_name="person" match="person" />
 				</view>
-				<routine_stmt id="242" call_sroutine="CURSOR_OPEN" />
+				<routine_var id="248" si_name="cursor_cx" cont_type="CURSOR" curs_view="get_person" />
+				<routine_stmt id="249" call_sroutine="CURSOR_OPEN">
+					<routine_expr id="250" call_sroutine_cxt="CURSOR_CX" cont_type="CURSOR" valf_p_routine_item="cursor_cx" />
+				</routine_stmt>
 			</routine>
 		</application>
 	</blueprints>
 	<tools />
 	<sites>
-		<application_instance id="243" si_name="My App Instance" blueprint="My App" />
+		<application_instance id="251" si_name="My App Instance" blueprint="My App" />
 	</sites>
 	<circumventions />
 </root>

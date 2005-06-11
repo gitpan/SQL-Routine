@@ -166,8 +166,8 @@ sub populate_model {
 				[ 'view_src_field', 'person_id', ],
 			], ],
 			[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
-				[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
-				[ 'view_expr', { 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
+				[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
+				[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
 			], ],
 		], ],
 		[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
@@ -362,8 +362,8 @@ sub expected_model_nid_xml_output {
 						<view_src_field id="93" si_match_field="8" />
 					</view_src>
 					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" cont_type="SCALAR" valf_src_field="93" />
-						<view_expr id="96" cont_type="SCALAR" valf_p_routine_item="89" />
+						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="93" />
+						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="89" />
 					</view_expr>
 				</view>
 				<routine_stmt id="97" call_sroutine="SELECT">
@@ -543,8 +543,8 @@ sub expected_model_sid_long_xml_output {
 						<view_src_field id="93" si_match_field="person_id" />
 					</view_src>
 					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" cont_type="SCALAR" valf_src_field="[person_id,s]" />
-						<view_expr id="96" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="97" call_sroutine="SELECT">
@@ -724,8 +724,8 @@ sub expected_model_sid_short_xml_output {
 						<view_src_field id="93" si_match_field="person_id" />
 					</view_src>
 					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="96" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
 					</view_expr>
 				</view>
 				<routine_stmt id="97" call_sroutine="SELECT">

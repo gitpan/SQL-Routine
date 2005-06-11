@@ -1,3 +1,93 @@
+2005-06-10   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.64.
+
+	* New code file versions are: Routine.pm v0.64 and en.pm v0.33.
+
+	* Updated Routine.pm and Details.pod to change the semantics of a
+	Container's "deferrable constraints are tested" property such that it is
+	always set false by default on a new Container (rather than true) since a
+	Container completely devoid of Nodes may violate a deferrable constraint;
+	aside from the initial valuation change made in Container.new() and related
+	documentation updates by the property's declaration and the
+	deferrable_constraints_are_tested() method, there were no other changes
+	concerning this property.
+
+	* Updated Routine.pm, Details.pod, en.pm:  Added new Routine.pm Node public
+	method delete_node_tree(), which will remove a Node plus all of its direct
+	descendant Nodes.  This method is mainly intended for use by long-lived
+	applications that continuously generate database commands at run-time and
+	only use each one once, such as a naive interactive SQL shell (or a naive
+	DBI module emulator, which ties this function's use to a $sth destruction),
+	so to save on memory use.  Also added new en.pm user text message
+	'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD' which is used by it.  Also added new
+	private helper method _delete_node_tree__add_to_candidates().  Also added
+	new Container method delete_node_tree() which deletes all Nodes in a
+	Container.  Also made an execution speed optimization to delete_node(), and
+	updated its 'SRT_N_DEL_NODE_HAS_CHILD' message to give more details.
+
+	* Corresponding updates in NodeTypes.pm, Routine.pm to correct a small data
+	dictionary design flaw concerning the "Ancestor Attribute Correlation List",
+	which affects view_expr and routine_expr Nodes.  The flaw is summarized that
+	certain steps while navigating a Node tree are assumed to always result in
+	the observer sitting on a Node of a specific type, whereas they may
+	sometimes be sitting on a different type instead; any subsequent steps would
+	then be invalid.  The fix involves making such subsequent steps conditional
+	on the current Node's type.  Updated data dictionary entries for 5 view_expr
+	(3) and routine_expr (2) Node attributes to be conditional.  Added a few
+	code lines to the _find_node_by_surrogate_id_using_path() method which
+	implements the added conditional logic.
+
+	* Corresponding updates in NodeTypes.pm, Routine.pm, en.pm to add a new
+	"Related Parent Enumerated Attributes List" deferrable constraint.  Its main
+	purpose is to assert that any arguments given to invocations of standard
+	routines have correct names; previously, an argument name that was valid for
+	any single standard routine could be passed to any other standard routine
+	without being flagged; now, only argument names specifically for the routine
+	being invoked are allowed.  Updated the data dictionary entries for
+	view_expr and routine_expr Nodes to use this new constraint.  Added new
+	global constant hash %P_C_REL_ENUMS in Routine.pm, which specifies the valid
+	relations between pairs of enumerated type values.  Also added a new code
+	block to the _assert_parent_ref_scope_deferrable_constraints() method which
+	implements the new constraint assertion; also added 4 related new
+	'SRT_N_ASDC_REL_ENUM_[BAD_P_NTYPE|NO_P|P_NEVER_P|P_C_NOT_REL]' user text
+	messages to en.pm.
+
+	* Corresponding updates in NodeTypes.pm, Routine.pm, en.pm to add a new
+	"Mandatory Related Child Enumerated Attributes List" deferrable constraint.
+	Its main purpose is to assert that all invocations of standard routines have
+	with them a complete set of standard routine arguments (and context), and
+	that no extra child Nodes exist for the invocation Node that don't provide
+	args/context; previously, missing arguments were not flagged.  Updated the
+	data dictionary entries for view_expr and routine_stmt and routine_expr
+	Nodes to use this new constraint.  Added new global constant hash
+	%OPT_P_C_REL_ENUMS in Routine.pm, which specifies which arguments in
+	%P_C_REL_ENUMS are optional.  Also added a new code block to the
+	_assert_child_comp_deferrable_constraints() method which implements the new
+	constraint assertion; also added 3 related new
+	'SRT_N_ASDC_MA_REL_ENUM_[TOO_MANY_SET|ZERO_SET|MISSING_VALUES]' user text
+	messages to en.pm.  Also updated _build_node_is_child_or_not() to catch the
+	new 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES' exceptions when auto-asserting
+	deferrable constraints.
+
+	* Updated all 4 main t_SRT_*.pm files to perform bug fixes for input errors
+	that were flagged by the new "Mandatory ..." constraint (no fixes were made
+	concerning the other new or corrected constraints, as the tests already
+	obeyed them); also updated the corresponding expected XML strings.  In
+	t_SRT_Synopsis.pm, modified 2 Node definitions; also made identical
+	corrections in the SYNOPSIS of Routine.pm, which that test mirrors.  In
+	t_SRT_Verbose.pm, modified 4 Node definitions.  In each of t_SRT_Terse.pm
+	and t_SRT_Abstract.pm, added 9 Node definitions, deleted 1 other, and
+	modified 10 others; also did some code reformatting.
+
+	* A few trivial updates to a few Node.assert_deferrable_constraints()
+	methods in Routine.pm.  Changed any error message arguments that interpolate
+	arrays into strings so they pass an array ref instead (which is later
+	interpolated in a different way).  Corrected any code comments to refer to
+	NodeTypes.pod rather than Language.pod.  Updated some other code comments.
+
+	* Zero changes to these core files: Language.pod, EnumTypes.pod, API_C.pod.
+
 2005-06-01   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.63.

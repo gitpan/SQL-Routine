@@ -482,6 +482,12 @@ representing Node ids to look up; if other types of values are provided,
 SQL::Routine will try to look up Nodes based on other attributes than the Id,
 usually 'si_name', before giving up on finding a Node to link.
 
+=head2 delete_node_tree()
+
+This "setter" method will delete all of the Nodes in this Container.  The
+semantics are like invoking delete_node() on every Node in the appropriate
+order, except for being a lot faster.
+
 =head2 get_child_nodes([ NODE_TYPE ])
 
 	my $ra_node_list = $model->get_child_nodes();
@@ -532,20 +538,22 @@ than the highest Node ID for any Node that is already in the Container, or had
 been before.  You can use this method like a sequence generator to produce Node
 Ids for you rather than you producing them in some other way.  An example
 situation when this method might be useful is if you are building a
-SQL::Routine by scanning the schema of an existing database.
+SQL::Routine by scanning the schema of an existing database.  This property will 
+never decrease in value during the life of the Container.
 
 =head2 deferrable_constraints_are_tested()
 
 	my $is_all_ok = $model->deferrable_constraints_are_tested();
 
-This "getter" method will return the boolean "deferrable constraints are
-tested" property of this Container.  This property is true when all "Well
-Known" Nodes in this Container are known to be free of all data errors, both
-individually and collectively.  This property is initially set to true when a
-Container is new and empty; it is also set to true by
-Container.assert_deferrable_constraints() when all of its tests complete without
-finding any problems.  This property is set to false when any changes are made
-to a Node in this Container, which includes creating or deleting a Node.
+This "getter" method will return the boolean "deferrable constraints are tested"
+property of this Container.  This property is true when all Nodes in this
+Container are known to be free of all data errors, both individually and
+collectively.  This property is initially set to false when a Container is new
+and empty (since a Container completely devoid of Nodes may violate a deferrable
+constraint); it is also set to false when any changes are made to a Node in this
+Container, which includes creating or deleting a Node.  This property is set to
+true only by Container.assert_deferrable_constraints() when all of its tests
+complete without finding any problems.
 
 =head2 assert_deferrable_constraints()
 
@@ -601,6 +609,19 @@ allowed to delete Nodes that don't have child Nodes; failing this, you must
 unlink the children from it or delete them first.  After invoking this method
 you should let your external reference to the Node expire so the reminants are
 garbage collected.
+
+=head2 delete_node_tree()
+
+This "setter" method is like delete_node() except that it will also delete all
+of the invocant's primary descendant Nodes.  Prior to deleting any Nodes, this
+method will first assert that every deletion candidate does not have any child
+(referencing) Nodes which live outside the tree being deleted.  So this method
+will either succeed entirely or have no lasting effects.  Note that this method,
+as well as delete_node(), is mainly intended for use by long-lived applications
+that continuously generate database commands at run-time and only use each one
+once, such as a naive interactive SQL shell, so to save on memory use; by
+contrast, many other kinds of applications have a limited and pre-determined set
+of database commands that they use, and they may not need this method at all.
 
 =head2 get_container()
 
