@@ -123,10 +123,10 @@ sub populate_model {
 			[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_pass', }, ],
 		], ],
 		[ 'routine_var', { 'si_name' => 'pwp_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person_with_parents', }, ],
-		[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', }, [
-			[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
-		], ],
 		[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+			[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
+			], ],
 			[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 			[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_pwp', }, ],
 			[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'pwp_ary', 'cont_type' => 'RW_ARY', }, ],
@@ -145,10 +145,10 @@ sub populate_model {
 	my $rt_add_people = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'add_people', 'routine_type' => 'PROCEDURE', }, [
 		[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 		[ 'routine_arg', { 'si_name' => 'person_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person', }, ],
-		[ 'view', { 'si_name' => 'insert_people', 'view_type' => 'INSERT', 'row_data_type' => 'person', 'ins_p_routine_item' => 'person_ary', }, [
-			[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, ],
-		], ],
 		[ 'routine_stmt', { 'call_sroutine' => 'INSERT', }, [
+			[ 'view', { 'si_name' => 'insert_people', 'view_type' => 'INSERT', 'row_data_type' => 'person', 'ins_p_routine_item' => 'person_ary', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, ],
+			], ],
 			[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 			[ 'routine_expr', { 'call_sroutine_arg' => 'INSERT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'insert_people', }, ],
 		], ],
@@ -161,16 +161,16 @@ sub populate_model {
 		[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 		[ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
 		[ 'routine_var', { 'si_name' => 'person_row', 'cont_type' => 'ROW', 'row_data_type' => 'person', }, ],
-		[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', }, [
-			[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
-				[ 'view_src_field', 'person_id', ],
-			], ],
-			[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
-				[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
-				[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
-			], ],
-		], ],
 		[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+			[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', }, [
+				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
+					[ 'view_src_field', 'person_id', ],
+				], ],
+				[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
+					[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
+					[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
+				], ],
+			], ],
 			[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 			[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_person', }, ],
 			[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'person_row', 'cont_type' => 'RW_ARY', }, ],
@@ -327,12 +327,12 @@ sub expected_model_nid_xml_output {
 					<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="62" />
 				</routine_stmt>
 				<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="14" />
-				<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="14">
-					<view_src id="70" si_name="s" match="35" />
-				</view>
-				<routine_stmt id="71" call_sroutine="SELECT">
+				<routine_stmt id="69" call_sroutine="SELECT">
+					<view id="70" si_name="query_pwp" view_type="ALIAS" row_data_type="14">
+						<view_src id="71" si_name="s" match="35" />
+					</view>
 					<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="63" />
-					<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="69" />
+					<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="70" />
 					<routine_expr id="74" call_sroutine_arg="INTO" query_dest="68" cont_type="RW_ARY" />
 				</routine_stmt>
 				<routine_stmt id="75" call_sroutine="CATALOG_CLOSE">
@@ -345,30 +345,30 @@ sub expected_model_nid_xml_output {
 			<routine id="79" si_name="add_people" routine_type="PROCEDURE">
 				<routine_context id="80" si_name="conn_cx" cont_type="CONN" conn_link="58" />
 				<routine_arg id="81" si_name="person_ary" cont_type="RW_ARY" row_data_type="7" />
-				<view id="82" si_name="insert_people" view_type="INSERT" row_data_type="7" ins_p_routine_item="81">
-					<view_src id="83" si_name="s" match="24" />
-				</view>
-				<routine_stmt id="84" call_sroutine="INSERT">
+				<routine_stmt id="82" call_sroutine="INSERT">
+					<view id="83" si_name="insert_people" view_type="INSERT" row_data_type="7" ins_p_routine_item="81">
+						<view_src id="84" si_name="s" match="24" />
+					</view>
 					<routine_expr id="85" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="80" />
-					<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="82" />
+					<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="83" />
 				</routine_stmt>
 			</routine>
 			<routine id="87" si_name="get_person" routine_type="FUNCTION" return_cont_type="ROW" return_row_data_type="7">
 				<routine_context id="88" si_name="conn_cx" cont_type="CONN" conn_link="58" />
 				<routine_arg id="89" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="1" />
 				<routine_var id="90" si_name="person_row" cont_type="ROW" row_data_type="7" />
-				<view id="91" si_name="query_person" view_type="JOINED" row_data_type="7">
-					<view_src id="92" si_name="s" match="24">
-						<view_src_field id="93" si_match_field="8" />
-					</view_src>
-					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="93" />
-						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="89" />
-					</view_expr>
-				</view>
-				<routine_stmt id="97" call_sroutine="SELECT">
+				<routine_stmt id="91" call_sroutine="SELECT">
+					<view id="92" si_name="query_person" view_type="JOINED" row_data_type="7">
+						<view_src id="93" si_name="s" match="24">
+							<view_src_field id="94" si_match_field="8" />
+						</view_src>
+						<view_expr id="95" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="96" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="94" />
+							<view_expr id="97" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="89" />
+						</view_expr>
+					</view>
 					<routine_expr id="98" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="88" />
-					<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="91" />
+					<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="92" />
 					<routine_expr id="100" call_sroutine_arg="INTO" query_dest="90" cont_type="RW_ARY" />
 				</routine_stmt>
 				<routine_stmt id="101" call_sroutine="RETURN">
@@ -508,10 +508,10 @@ sub expected_model_sid_long_xml_output {
 					<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
 				</routine_stmt>
 				<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="person_with_parents" />
-				<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
-					<view_src id="70" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
-				</view>
-				<routine_stmt id="71" call_sroutine="SELECT">
+				<routine_stmt id="69" call_sroutine="SELECT">
+					<view id="70" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
+						<view_src id="71" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
+					</view>
 					<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_pwp" />
 					<routine_expr id="74" call_sroutine_arg="INTO" query_dest="pwp_ary" cont_type="RW_ARY" />
@@ -526,10 +526,10 @@ sub expected_model_sid_long_xml_output {
 			<routine id="79" si_name="add_people" routine_type="PROCEDURE">
 				<routine_context id="80" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="81" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
-				<view id="82" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
-					<view_src id="83" si_name="s" match="[person,Gene Schema,Gene Database]" />
-				</view>
-				<routine_stmt id="84" call_sroutine="INSERT">
+				<routine_stmt id="82" call_sroutine="INSERT">
+					<view id="83" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
+						<view_src id="84" si_name="s" match="[person,Gene Schema,Gene Database]" />
+					</view>
 					<routine_expr id="85" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
 				</routine_stmt>
@@ -538,16 +538,16 @@ sub expected_model_sid_long_xml_output {
 				<routine_context id="88" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="89" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
 				<routine_var id="90" si_name="person_row" cont_type="ROW" row_data_type="person" />
-				<view id="91" si_name="query_person" view_type="JOINED" row_data_type="person">
-					<view_src id="92" si_name="s" match="[person,Gene Schema,Gene Database]">
-						<view_src_field id="93" si_match_field="person_id" />
-					</view_src>
-					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
-						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="97" call_sroutine="SELECT">
+				<routine_stmt id="91" call_sroutine="SELECT">
+					<view id="92" si_name="query_person" view_type="JOINED" row_data_type="person">
+						<view_src id="93" si_name="s" match="[person,Gene Schema,Gene Database]">
+							<view_src_field id="94" si_match_field="person_id" />
+						</view_src>
+						<view_expr id="95" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="96" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+							<view_expr id="97" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="98" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
 					<routine_expr id="100" call_sroutine_arg="INTO" query_dest="person_row" cont_type="RW_ARY" />
@@ -689,10 +689,10 @@ sub expected_model_sid_short_xml_output {
 					<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
 				</routine_stmt>
 				<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="person_with_parents" />
-				<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
-					<view_src id="70" si_name="s" match="person_with_parents" />
-				</view>
-				<routine_stmt id="71" call_sroutine="SELECT">
+				<routine_stmt id="69" call_sroutine="SELECT">
+					<view id="70" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
+						<view_src id="71" si_name="s" match="person_with_parents" />
+					</view>
 					<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_pwp" />
 					<routine_expr id="74" call_sroutine_arg="INTO" query_dest="pwp_ary" cont_type="RW_ARY" />
@@ -707,10 +707,10 @@ sub expected_model_sid_short_xml_output {
 			<routine id="79" si_name="add_people" routine_type="PROCEDURE">
 				<routine_context id="80" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="81" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
-				<view id="82" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
-					<view_src id="83" si_name="s" match="person" />
-				</view>
-				<routine_stmt id="84" call_sroutine="INSERT">
+				<routine_stmt id="82" call_sroutine="INSERT">
+					<view id="83" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
+						<view_src id="84" si_name="s" match="person" />
+					</view>
 					<routine_expr id="85" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
 				</routine_stmt>
@@ -719,16 +719,16 @@ sub expected_model_sid_short_xml_output {
 				<routine_context id="88" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="89" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
 				<routine_var id="90" si_name="person_row" cont_type="ROW" row_data_type="person" />
-				<view id="91" si_name="query_person" view_type="JOINED" row_data_type="person">
-					<view_src id="92" si_name="s" match="person">
-						<view_src_field id="93" si_match_field="person_id" />
-					</view_src>
-					<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="97" call_sroutine="SELECT">
+				<routine_stmt id="91" call_sroutine="SELECT">
+					<view id="92" si_name="query_person" view_type="JOINED" row_data_type="person">
+						<view_src id="93" si_name="s" match="person">
+							<view_src_field id="94" si_match_field="person_id" />
+						</view_src>
+						<view_expr id="95" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="96" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+							<view_expr id="97" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="98" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
 					<routine_expr id="100" call_sroutine_arg="INTO" query_dest="person_row" cont_type="RW_ARY" />

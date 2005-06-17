@@ -196,6 +196,7 @@ sub populate_model {
 	$rt_declare->set_literal_attribute( 'si_name', 'declare_db_conn' );
 	$rt_declare->set_enumerated_attribute( 'routine_type', 'FUNCTION' );
 	$rt_declare->set_enumerated_attribute( 'return_cont_type', 'CONN' );
+	$rt_declare->set_node_ref_attribute( 'return_conn_link', $editor_app_cl );
 	my $rtv_declare_conn_cx = make_a_child_node( 'routine_var', $rt_declare );
 	$rtv_declare_conn_cx->set_literal_attribute( 'si_name', 'conn_cx' );
 	$rtv_declare_conn_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
@@ -267,15 +268,15 @@ sub populate_model {
 	$rtv_person_ary->set_literal_attribute( 'si_name', 'person_ary' );
 	$rtv_person_ary->set_enumerated_attribute( 'cont_type', 'RW_ARY' );
 	$rtv_person_ary->set_node_ref_attribute( 'row_data_type', $dom_person );
-	my $vw_fetchall = make_a_child_node( 'view', $rt_fetchall );
+	my $rts_select = make_a_child_node( 'routine_stmt', $rt_fetchall );
+	$rts_select->set_enumerated_attribute( 'call_sroutine', 'SELECT' );
+	my $vw_fetchall = make_a_child_node( 'view', $rts_select );
 	$vw_fetchall->set_literal_attribute( 'si_name', 'fetch_all_persons' );
 	$vw_fetchall->set_enumerated_attribute( 'view_type', 'ALIAS' );
 	$vw_fetchall->set_node_ref_attribute( 'row_data_type', $dom_person );
 	my $vws_fetchall = make_a_child_node( 'view_src', $vw_fetchall );
 	$vws_fetchall->set_literal_attribute( 'si_name', 'person' );
 	$vws_fetchall->set_node_ref_attribute( 'match', $tb_person );
-	my $rts_select = make_a_child_node( 'routine_stmt', $rt_fetchall );
-	$rts_select->set_enumerated_attribute( 'call_sroutine', 'SELECT' );
 	my $rte_select_cx = make_a_child_node( 'routine_expr', $rts_select );
 	$rte_select_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
 	$rte_select_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
@@ -307,7 +308,9 @@ sub populate_model {
 	$rta_person->set_literal_attribute( 'si_name', 'person' );
 	$rta_person->set_enumerated_attribute( 'cont_type', 'ROW' );
 	$rta_person->set_node_ref_attribute( 'row_data_type', $dom_person );
-	my $vw_insertone = make_a_child_node( 'view', $rt_insertone );
+	my $rts_insert = make_a_child_node( 'routine_stmt', $rt_insertone );
+	$rts_insert->set_enumerated_attribute( 'call_sroutine', 'INSERT' );
+	my $vw_insertone = make_a_child_node( 'view', $rts_insert );
 	$vw_insertone->set_literal_attribute( 'si_name', 'insert_a_person' );
 	$vw_insertone->set_enumerated_attribute( 'view_type', 'INSERT' );
 	$vw_insertone->set_node_ref_attribute( 'row_data_type', $dom_person );
@@ -315,8 +318,6 @@ sub populate_model {
 	my $vws_ins_pers = make_a_child_node( 'view_src', $vw_insertone );
 	$vws_ins_pers->set_literal_attribute( 'si_name', 'person' );
 	$vws_ins_pers->set_node_ref_attribute( 'match', $tb_person );
-	my $rts_insert = make_a_child_node( 'routine_stmt', $rt_insertone );
-	$rts_insert->set_enumerated_attribute( 'call_sroutine', 'INSERT' );
 	my $rte_insert_cx = make_a_child_node( 'routine_expr', $rts_insert );
 	$rte_insert_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
 	$rte_insert_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
@@ -351,7 +352,9 @@ sub populate_model {
 	$rta_upd_mid->set_literal_attribute( 'si_name', 'arg_mother_id' );
 	$rta_upd_mid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_upd_mid->set_node_ref_attribute( 'scalar_data_type', $sdt_entity_id );
-	my $vw_updateone = make_a_child_node( 'view', $rt_updateone );
+	my $rts_update = make_a_child_node( 'routine_stmt', $rt_updateone );
+	$rts_update->set_enumerated_attribute( 'call_sroutine', 'UPDATE' );
+	my $vw_updateone = make_a_child_node( 'view', $rts_update );
 	$vw_updateone->set_literal_attribute( 'si_name', 'update_a_person' );
 	$vw_updateone->set_enumerated_attribute( 'view_type', 'UPDATE' );
 	my $vws_upd_pers = make_a_child_node( 'view_src', $vw_updateone );
@@ -392,8 +395,6 @@ sub populate_model {
 	$vwe_upd_w3->set_enumerated_attribute( 'call_sroutine_arg', 'RHS' );
 	$vwe_upd_w3->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_upd_w3->set_node_ref_attribute( 'valf_p_routine_item', $rta_upd_pid );
-	my $rts_update = make_a_child_node( 'routine_stmt', $rt_updateone );
-	$rts_update->set_enumerated_attribute( 'call_sroutine', 'UPDATE' );
 	my $rte_update_cx = make_a_child_node( 'routine_expr', $rts_update );
 	$rte_update_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
 	$rte_update_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
@@ -416,7 +417,9 @@ sub populate_model {
 	$rta_del_pid->set_literal_attribute( 'si_name', 'arg_person_id' );
 	$rta_del_pid->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$rta_del_pid->set_node_ref_attribute( 'scalar_data_type', $sdt_entity_id );
-	my $vw_deleteone = make_a_child_node( 'view', $rt_deleteone );
+	my $rts_delete = make_a_child_node( 'routine_stmt', $rt_deleteone );
+	$rts_delete->set_enumerated_attribute( 'call_sroutine', 'DELETE' );
+	my $vw_deleteone = make_a_child_node( 'view', $rts_delete );
 	$vw_deleteone->set_literal_attribute( 'si_name', 'delete_a_person' );
 	$vw_deleteone->set_enumerated_attribute( 'view_type', 'DELETE' );
 	my $vws_del_pers = make_a_child_node( 'view_src', $vw_deleteone );
@@ -436,8 +439,6 @@ sub populate_model {
 	$vwe_del_w3->set_enumerated_attribute( 'call_sroutine_arg', 'RHS' );
 	$vwe_del_w3->set_enumerated_attribute( 'cont_type', 'SCALAR' );
 	$vwe_del_w3->set_node_ref_attribute( 'valf_p_routine_item', $rta_del_pid );
-	my $rts_delete = make_a_child_node( 'routine_stmt', $rt_deleteone );
-	$rts_delete->set_enumerated_attribute( 'call_sroutine', 'DELETE' );
 	my $rte_delete_cx = make_a_child_node( 'routine_expr', $rts_delete );
 	$rte_delete_cx->set_enumerated_attribute( 'call_sroutine_cxt', 'CONN_CX' );
 	$rte_delete_cx->set_enumerated_attribute( 'cont_type', 'CONN' );
@@ -610,7 +611,7 @@ sub expected_model_nid_xml_output {
 		</application>
 		<application id="32" si_name="People Watcher">
 			<catalog_link id="33" si_name="editor_link" target="10" />
-			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
+			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN" return_conn_link="33">
 				<routine_var id="35" si_name="conn_cx" cont_type="CONN" conn_link="33" />
 				<routine_stmt id="36" call_sroutine="RETURN">
 					<routine_expr id="37" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_item="35" />
@@ -635,12 +636,12 @@ sub expected_model_nid_xml_output {
 			<routine id="50" si_name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="RW_ARY" return_row_data_type="13">
 				<routine_context id="51" si_name="conn_cx" cont_type="CONN" conn_link="33" />
 				<routine_var id="52" si_name="person_ary" cont_type="RW_ARY" row_data_type="13" />
-				<view id="53" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="13">
-					<view_src id="54" si_name="person" match="14" />
-				</view>
-				<routine_stmt id="55" call_sroutine="SELECT">
+				<routine_stmt id="53" call_sroutine="SELECT">
+					<view id="54" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="13">
+						<view_src id="55" si_name="person" match="14" />
+					</view>
 					<routine_expr id="56" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="51" />
-					<routine_expr id="57" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="53" />
+					<routine_expr id="57" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="54" />
 					<routine_expr id="58" call_sroutine_arg="INTO" query_dest="52" cont_type="RW_ARY" />
 				</routine_stmt>
 				<routine_stmt id="59" call_sroutine="RETURN">
@@ -650,12 +651,12 @@ sub expected_model_nid_xml_output {
 			<routine id="61" si_name="insert_a_person" routine_type="PROCEDURE">
 				<routine_context id="62" si_name="conn_cx" cont_type="CONN" conn_link="33" />
 				<routine_arg id="63" si_name="person" cont_type="ROW" row_data_type="13" />
-				<view id="64" si_name="insert_a_person" view_type="INSERT" row_data_type="13" ins_p_routine_item="63">
-					<view_src id="65" si_name="person" match="14" />
-				</view>
-				<routine_stmt id="66" call_sroutine="INSERT">
+				<routine_stmt id="64" call_sroutine="INSERT">
+					<view id="65" si_name="insert_a_person" view_type="INSERT" row_data_type="13" ins_p_routine_item="63">
+						<view_src id="66" si_name="person" match="14" />
+					</view>
 					<routine_expr id="67" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="62" />
-					<routine_expr id="68" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="64" />
+					<routine_expr id="68" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="65" />
 				</routine_stmt>
 			</routine>
 			<routine id="69" si_name="update_a_person" routine_type="PROCEDURE">
@@ -664,41 +665,41 @@ sub expected_model_nid_xml_output {
 				<routine_arg id="72" si_name="arg_person_name" cont_type="SCALAR" scalar_data_type="2" />
 				<routine_arg id="73" si_name="arg_father_id" cont_type="SCALAR" scalar_data_type="1" />
 				<routine_arg id="74" si_name="arg_mother_id" cont_type="SCALAR" scalar_data_type="1" />
-				<view id="75" si_name="update_a_person" view_type="UPDATE">
-					<view_src id="76" si_name="person" match="14">
-						<view_src_field id="77" si_match_field="4" />
-						<view_src_field id="78" si_match_field="5" />
-						<view_src_field id="79" si_match_field="6" />
-						<view_src_field id="80" si_match_field="7" />
-					</view_src>
-					<view_expr id="81" view_part="SET" set_src_field="78" cont_type="SCALAR" valf_p_routine_item="72" />
-					<view_expr id="82" view_part="SET" set_src_field="79" cont_type="SCALAR" valf_p_routine_item="73" />
-					<view_expr id="83" view_part="SET" set_src_field="80" cont_type="SCALAR" valf_p_routine_item="74" />
-					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="77" />
-						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="71" />
-					</view_expr>
-				</view>
-				<routine_stmt id="87" call_sroutine="UPDATE">
+				<routine_stmt id="75" call_sroutine="UPDATE">
+					<view id="76" si_name="update_a_person" view_type="UPDATE">
+						<view_src id="77" si_name="person" match="14">
+							<view_src_field id="78" si_match_field="4" />
+							<view_src_field id="79" si_match_field="5" />
+							<view_src_field id="80" si_match_field="6" />
+							<view_src_field id="81" si_match_field="7" />
+						</view_src>
+						<view_expr id="82" view_part="SET" set_src_field="79" cont_type="SCALAR" valf_p_routine_item="72" />
+						<view_expr id="83" view_part="SET" set_src_field="80" cont_type="SCALAR" valf_p_routine_item="73" />
+						<view_expr id="84" view_part="SET" set_src_field="81" cont_type="SCALAR" valf_p_routine_item="74" />
+						<view_expr id="85" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="86" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="78" />
+							<view_expr id="87" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="71" />
+						</view_expr>
+					</view>
 					<routine_expr id="88" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="70" />
-					<routine_expr id="89" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" act_on="75" />
+					<routine_expr id="89" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" act_on="76" />
 				</routine_stmt>
 			</routine>
 			<routine id="90" si_name="delete_a_person" routine_type="PROCEDURE">
 				<routine_context id="91" si_name="conn_cx" cont_type="CONN" conn_link="33" />
 				<routine_arg id="92" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="1" />
-				<view id="93" si_name="delete_a_person" view_type="DELETE">
-					<view_src id="94" si_name="person" match="14">
-						<view_src_field id="95" si_match_field="4" />
-					</view_src>
-					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="95" />
-						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="92" />
-					</view_expr>
-				</view>
-				<routine_stmt id="99" call_sroutine="DELETE">
+				<routine_stmt id="93" call_sroutine="DELETE">
+					<view id="94" si_name="delete_a_person" view_type="DELETE">
+						<view_src id="95" si_name="person" match="14">
+							<view_src_field id="96" si_match_field="4" />
+						</view_src>
+						<view_expr id="97" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="98" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="96" />
+							<view_expr id="99" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="92" />
+						</view_expr>
+					</view>
 					<routine_expr id="100" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="91" />
-					<routine_expr id="101" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" act_on="93" />
+					<routine_expr id="101" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" act_on="94" />
 				</routine_stmt>
 			</routine>
 		</application>
@@ -790,7 +791,7 @@ sub expected_model_sid_long_xml_output {
 		</application>
 		<application id="32" si_name="People Watcher">
 			<catalog_link id="33" si_name="editor_link" target="The Catalog Blueprint" />
-			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
+			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN" return_conn_link="editor_link">
 				<routine_var id="35" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_stmt id="36" call_sroutine="RETURN">
 					<routine_expr id="37" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_item="conn_cx" />
@@ -815,10 +816,10 @@ sub expected_model_sid_long_xml_output {
 			<routine id="50" si_name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="RW_ARY" return_row_data_type="[person_type,gene,The Catalog Blueprint]">
 				<routine_context id="51" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_var id="52" si_name="person_ary" cont_type="RW_ARY" row_data_type="[person_type,gene,The Catalog Blueprint]" />
-				<view id="53" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="[person_type,gene,The Catalog Blueprint]">
-					<view_src id="54" si_name="person" match="[person,gene,The Catalog Blueprint]" />
-				</view>
-				<routine_stmt id="55" call_sroutine="SELECT">
+				<routine_stmt id="53" call_sroutine="SELECT">
+					<view id="54" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="[person_type,gene,The Catalog Blueprint]">
+						<view_src id="55" si_name="person" match="[person,gene,The Catalog Blueprint]" />
+					</view>
 					<routine_expr id="56" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="57" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="fetch_all_persons" />
 					<routine_expr id="58" call_sroutine_arg="INTO" query_dest="person_ary" cont_type="RW_ARY" />
@@ -830,10 +831,10 @@ sub expected_model_sid_long_xml_output {
 			<routine id="61" si_name="insert_a_person" routine_type="PROCEDURE">
 				<routine_context id="62" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="63" si_name="person" cont_type="ROW" row_data_type="[person_type,gene,The Catalog Blueprint]" />
-				<view id="64" si_name="insert_a_person" view_type="INSERT" row_data_type="[person_type,gene,The Catalog Blueprint]" ins_p_routine_item="person">
-					<view_src id="65" si_name="person" match="[person,gene,The Catalog Blueprint]" />
-				</view>
-				<routine_stmt id="66" call_sroutine="INSERT">
+				<routine_stmt id="64" call_sroutine="INSERT">
+					<view id="65" si_name="insert_a_person" view_type="INSERT" row_data_type="[person_type,gene,The Catalog Blueprint]" ins_p_routine_item="person">
+						<view_src id="66" si_name="person" match="[person,gene,The Catalog Blueprint]" />
+					</view>
 					<routine_expr id="67" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="68" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_a_person" />
 				</routine_stmt>
@@ -844,22 +845,22 @@ sub expected_model_sid_long_xml_output {
 				<routine_arg id="72" si_name="arg_person_name" cont_type="SCALAR" scalar_data_type="person_name" />
 				<routine_arg id="73" si_name="arg_father_id" cont_type="SCALAR" scalar_data_type="entity_id" />
 				<routine_arg id="74" si_name="arg_mother_id" cont_type="SCALAR" scalar_data_type="entity_id" />
-				<view id="75" si_name="update_a_person" view_type="UPDATE">
-					<view_src id="76" si_name="person" match="[person,gene,The Catalog Blueprint]">
-						<view_src_field id="77" si_match_field="person_id" />
-						<view_src_field id="78" si_match_field="name" />
-						<view_src_field id="79" si_match_field="father_id" />
-						<view_src_field id="80" si_match_field="mother_id" />
-					</view_src>
-					<view_expr id="81" view_part="SET" set_src_field="[name,person]" cont_type="SCALAR" valf_p_routine_item="arg_person_name" />
-					<view_expr id="82" view_part="SET" set_src_field="[father_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
-					<view_expr id="83" view_part="SET" set_src_field="[mother_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
-					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
-						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="87" call_sroutine="UPDATE">
+				<routine_stmt id="75" call_sroutine="UPDATE">
+					<view id="76" si_name="update_a_person" view_type="UPDATE">
+						<view_src id="77" si_name="person" match="[person,gene,The Catalog Blueprint]">
+							<view_src_field id="78" si_match_field="person_id" />
+							<view_src_field id="79" si_match_field="name" />
+							<view_src_field id="80" si_match_field="father_id" />
+							<view_src_field id="81" si_match_field="mother_id" />
+						</view_src>
+						<view_expr id="82" view_part="SET" set_src_field="[name,person]" cont_type="SCALAR" valf_p_routine_item="arg_person_name" />
+						<view_expr id="83" view_part="SET" set_src_field="[father_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
+						<view_expr id="84" view_part="SET" set_src_field="[mother_id,person]" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
+						<view_expr id="85" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="86" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
+							<view_expr id="87" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="88" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="89" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" act_on="update_a_person" />
 				</routine_stmt>
@@ -867,16 +868,16 @@ sub expected_model_sid_long_xml_output {
 			<routine id="90" si_name="delete_a_person" routine_type="PROCEDURE">
 				<routine_context id="91" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="92" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
-				<view id="93" si_name="delete_a_person" view_type="DELETE">
-					<view_src id="94" si_name="person" match="[person,gene,The Catalog Blueprint]">
-						<view_src_field id="95" si_match_field="person_id" />
-					</view_src>
-					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
-						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="99" call_sroutine="DELETE">
+				<routine_stmt id="93" call_sroutine="DELETE">
+					<view id="94" si_name="delete_a_person" view_type="DELETE">
+						<view_src id="95" si_name="person" match="[person,gene,The Catalog Blueprint]">
+							<view_src_field id="96" si_match_field="person_id" />
+						</view_src>
+						<view_expr id="97" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="98" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,person]" />
+							<view_expr id="99" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="100" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="101" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" act_on="delete_a_person" />
 				</routine_stmt>
@@ -970,7 +971,7 @@ sub expected_model_sid_short_xml_output {
 		</application>
 		<application id="32" si_name="People Watcher">
 			<catalog_link id="33" si_name="editor_link" target="The Catalog Blueprint" />
-			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN">
+			<routine id="34" si_name="declare_db_conn" routine_type="FUNCTION" return_cont_type="CONN" return_conn_link="editor_link">
 				<routine_var id="35" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_stmt id="36" call_sroutine="RETURN">
 					<routine_expr id="37" call_sroutine_arg="RETURN_VALUE" cont_type="CONN" valf_p_routine_item="conn_cx" />
@@ -995,10 +996,10 @@ sub expected_model_sid_short_xml_output {
 			<routine id="50" si_name="fetch_all_persons" routine_type="FUNCTION" return_cont_type="RW_ARY" return_row_data_type="person_type">
 				<routine_context id="51" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_var id="52" si_name="person_ary" cont_type="RW_ARY" row_data_type="person_type" />
-				<view id="53" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="person_type">
-					<view_src id="54" si_name="person" match="person" />
-				</view>
-				<routine_stmt id="55" call_sroutine="SELECT">
+				<routine_stmt id="53" call_sroutine="SELECT">
+					<view id="54" si_name="fetch_all_persons" view_type="ALIAS" row_data_type="person_type">
+						<view_src id="55" si_name="person" match="person" />
+					</view>
 					<routine_expr id="56" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="57" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="fetch_all_persons" />
 					<routine_expr id="58" call_sroutine_arg="INTO" query_dest="person_ary" cont_type="RW_ARY" />
@@ -1010,10 +1011,10 @@ sub expected_model_sid_short_xml_output {
 			<routine id="61" si_name="insert_a_person" routine_type="PROCEDURE">
 				<routine_context id="62" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="63" si_name="person" cont_type="ROW" row_data_type="person_type" />
-				<view id="64" si_name="insert_a_person" view_type="INSERT" row_data_type="person_type" ins_p_routine_item="person">
-					<view_src id="65" si_name="person" match="person" />
-				</view>
-				<routine_stmt id="66" call_sroutine="INSERT">
+				<routine_stmt id="64" call_sroutine="INSERT">
+					<view id="65" si_name="insert_a_person" view_type="INSERT" row_data_type="person_type" ins_p_routine_item="person">
+						<view_src id="66" si_name="person" match="person" />
+					</view>
 					<routine_expr id="67" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="68" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_a_person" />
 				</routine_stmt>
@@ -1024,22 +1025,22 @@ sub expected_model_sid_short_xml_output {
 				<routine_arg id="72" si_name="arg_person_name" cont_type="SCALAR" scalar_data_type="person_name" />
 				<routine_arg id="73" si_name="arg_father_id" cont_type="SCALAR" scalar_data_type="entity_id" />
 				<routine_arg id="74" si_name="arg_mother_id" cont_type="SCALAR" scalar_data_type="entity_id" />
-				<view id="75" si_name="update_a_person" view_type="UPDATE">
-					<view_src id="76" si_name="person" match="person">
-						<view_src_field id="77" si_match_field="person_id" />
-						<view_src_field id="78" si_match_field="name" />
-						<view_src_field id="79" si_match_field="father_id" />
-						<view_src_field id="80" si_match_field="mother_id" />
-					</view_src>
-					<view_expr id="81" view_part="SET" set_src_field="name" cont_type="SCALAR" valf_p_routine_item="arg_person_name" />
-					<view_expr id="82" view_part="SET" set_src_field="father_id" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
-					<view_expr id="83" view_part="SET" set_src_field="mother_id" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
-					<view_expr id="84" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="85" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="86" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="87" call_sroutine="UPDATE">
+				<routine_stmt id="75" call_sroutine="UPDATE">
+					<view id="76" si_name="update_a_person" view_type="UPDATE">
+						<view_src id="77" si_name="person" match="person">
+							<view_src_field id="78" si_match_field="person_id" />
+							<view_src_field id="79" si_match_field="name" />
+							<view_src_field id="80" si_match_field="father_id" />
+							<view_src_field id="81" si_match_field="mother_id" />
+						</view_src>
+						<view_expr id="82" view_part="SET" set_src_field="name" cont_type="SCALAR" valf_p_routine_item="arg_person_name" />
+						<view_expr id="83" view_part="SET" set_src_field="father_id" cont_type="SCALAR" valf_p_routine_item="arg_father_id" />
+						<view_expr id="84" view_part="SET" set_src_field="mother_id" cont_type="SCALAR" valf_p_routine_item="arg_mother_id" />
+						<view_expr id="85" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="86" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+							<view_expr id="87" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="88" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="89" call_sroutine_arg="UPDATE_DEFN" cont_type="SRT_NODE" act_on="update_a_person" />
 				</routine_stmt>
@@ -1047,16 +1048,16 @@ sub expected_model_sid_short_xml_output {
 			<routine id="90" si_name="delete_a_person" routine_type="PROCEDURE">
 				<routine_context id="91" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 				<routine_arg id="92" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
-				<view id="93" si_name="delete_a_person" view_type="DELETE">
-					<view_src id="94" si_name="person" match="person">
-						<view_src_field id="95" si_match_field="person_id" />
-					</view_src>
-					<view_expr id="96" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-						<view_expr id="97" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
-						<view_expr id="98" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-					</view_expr>
-				</view>
-				<routine_stmt id="99" call_sroutine="DELETE">
+				<routine_stmt id="93" call_sroutine="DELETE">
+					<view id="94" si_name="delete_a_person" view_type="DELETE">
+						<view_src id="95" si_name="person" match="person">
+							<view_src_field id="96" si_match_field="person_id" />
+						</view_src>
+						<view_expr id="97" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+							<view_expr id="98" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="person_id" />
+							<view_expr id="99" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+						</view_expr>
+					</view>
 					<routine_expr id="100" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 					<routine_expr id="101" call_sroutine_arg="DELETE_DEFN" cont_type="SRT_NODE" act_on="delete_a_person" />
 				</routine_stmt>

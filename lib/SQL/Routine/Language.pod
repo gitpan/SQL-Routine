@@ -16,9 +16,9 @@ SQL::Routine is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License (GPL) as published by the Free
 Software Foundation (http://www.fsf.org/); either version 2 of the License, or
 (at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not,
-write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-MA 02111-1307 USA.
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -309,6 +309,7 @@ another of the same type (eg: a sub-query or sub-routine).
 			<row_data_type c="M">
 				<row_data_type_field c="M" />
 			</row_data_type>
+			<external_cursor c="M" />
 		</elements>
 		<blueprints c="1">
 			<catalog c="M">
@@ -381,11 +382,13 @@ another of the same type (eg: a sub-query or sub-routine).
 	</view>
 
 	<routine r="Y">
-		<view c="M" />
 		<routine_context c="1" />
 		<routine_arg c="M" />
-		<routine_var c="M" />
+		<routine_var c="M">
+			<view c="1" />
+		</routine_var>
 		<routine_stmt c="M">
+			<view c="1" />
 			<routine_expr c="M" r="Y" />
 		</routine_stmt>
 	</routine>
@@ -596,6 +599,7 @@ ELEMENTS CATEGORY NODE TYPES:
 	scalar_data_type_opt
 	row_data_type
 	row_data_type_field
+	external_cursor
 
 BLUEPRINTS CATEGORY NODE TYPES:
 

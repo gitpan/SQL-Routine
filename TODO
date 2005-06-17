@@ -4,6 +4,12 @@ TODO
 
 * Add more deferred constraints to reduce erroneous models.
 
+* Add support for arguments to cursors that are shared between multiple routines
+and that are either opened more than once and/or opened in a different routine
+than where the cursor is declared (that holds the cursor-defining view).  In the 
+mean time, cursor definitions can only take arguments that are provided in the 
+same routine where they are declared, as part of the cursor-defining view.
+
 * Find some efficient way to maintain an index of surrogate ids for Nodes so
 that using them isn't as expensive.  Currently, the code is optimized for those
 people that don't use surrogate ids, and there is no overhead for index

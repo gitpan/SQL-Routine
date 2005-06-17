@@ -1,3 +1,92 @@
+2005-06-17   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.65.
+
+	* New code file versions are: Routine.pm v0.65 and en.pm v0.34.
+
+	* Updated external dependencies on Locale::KeyedText to v1.05.
+
+	* Updated all files in this distribution that display the physical address
+	of the Free Software Foundation, Inc. so it uses their current address of
+	"51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA" rather than their
+	previous address of "59 Temple Place, Suite 330, Boston, MA 02111-1307 USA";
+	this affects every COPYRIGHT AND LICENSE statement in the core files and the
+	'ReadMe' file, plus any 'GPL' or 'LGPL' license file.
+
+	* Updated the INSTALL file so that it is more generic, and all of my
+	distributions now use an identical copy of it.
+
+	* Updated the main heading in the ReadMe file to state the distribution's
+	name rather than a terse description of it.
+
+	* Updated Routine.pm and Details.pod to split the Container property
+	'def_con_tested' into itself and 'edit_count'; where the old property was a
+	boolean, the two new ones are both integers.  The new 'edit_count' property
+	exists to track that changes were made to a Container's Node set; it is
+	incremented each time a Node is edited, added, or deleted; its actual value
+	isn't important, only that two arbitrary samplings of it will be different
+	if an edit happened between them.  This feature is designed to assist
+	external code that caches information derived from a SQL::Routine model,
+	such as generated SQL strings or Perl closures, so that it can easily tell
+	when the cache may have become stale (leading to a cache flush).  The new
+	'def_con_tested' stores a sampled copy of 'edit_count'.  Within Routine.pm
+	itself, every line of code that used to set 'def_con_tested' to false now
+	increments 'edit_count' instead; the single code line that used to set
+	'def_con_tested' to true now copies the value of 'edit_count' to it instead;
+	the 2 lines of code that used to read the old 'def_con_tested' value now
+	compare its value to 'edit_count' instead.  Added new read-accessor method
+	for 'edit_count' named get_edit_count().  Updated the POD documentation for
+	deferrable_constraints_are_tested() and
+	Container.assert_deferrable_constraints(); but their behaviour is unchanged.
+
+	* In Details.pod, updated get_next_free_node_id() POD; no behaviour changes.
+
+	* Updated data dictionary in Routine.pm and NodeTypes.pod and Language.pod:
+	Now 'view' Nodes can no longer be primary-children of 'routine' Nodes;
+	instead, they can now be primary-children of either 'routine_var' or
+	'routine_stmt' Nodes; do the first with all cursor definitions (only where
+	the cursor is to be declared, not for any other routine_var that may hold it
+	later), and do the second usually with SELECT or DML statement definitions. 
+	A result of this change is that the Node tree for a routine now looks more
+	natural when compared to the routine string-SQL that would be generated from
+	it; moreover, one no longer has to concern themselves to ensure that the
+	relevant 'view' Node si_names are distinct relative to all variable etc
+	names in the routine, which was an artificial constraint to begin with.
+
+	* Updated data dictionary in Routine.pm and NodeTypes.pod and Language.pod
+	(with mention also in Details.pod):  Added new Node type 'external_cursor'
+	which lives under 'elements'; it contains no attributes of importance and
+	exists simply as a common point to be referred to by all routines that share
+	a cursor (one of those pointing to it will hold the cursor definition); also
+	renamed all 3 'curs_view' attributes (in 'routine_[context|arg|var]' Nodes)
+	to 'curs_ext', and they all point to an 'external_cursor' Node now instead
+	of a 'view' Node.
+
+	* Updated data dictionary in Routine.pm and NodeTypes.pod:  Added 2 new
+	'routine' Node attributes, 'return_conn_link' and 'return_curs_ext', plus
+	related constraints; these are used in the same way as the 'conn_link' and
+	'curs_ext' attributes of the 'routine_context' and 'routine_arg' Nodes.
+
+	* Updated the SYNOPSIS documentation of Routine.pm to adjust for all the
+	abovementioned data dictionary updates.  Likewise updated all 4 core
+	t_SRT_*.pm test files to remain compatible with the changes.  Mostly this
+	involved rearranging the order of Nodes; but in Terse|Abstract there were
+	also 4 new external_cursor Nodes added plus corresponding 'routine' attrs.
+
+	* The documentation file API_C.pod no longer exists as its own entity; all
+	of its distinct content was merged into the file Details.pod, occupying a
+	new main documentation section at its end named OLDER DOCUMENTATION.  Since
+	any possibility of making a C version won't be realized for a long time,
+	with a Parrot-based version more imminent, I've decided to de-emphasize (but
+	not discard) the C-specific details; the lack of their own file makes these
+	details a lot less visible.
+
+	* Added TODO file item about adding better support for arguments to cursors
+	that are shared between multiple routines.
+
+	* The core files en.pm and EnumTypes.pod had zero changes aside from the FSF
+	address update.
+
 2005-06-10   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.64.

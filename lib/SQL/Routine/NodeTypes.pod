@@ -16,9 +16,9 @@ SQL::Routine is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License (GPL) as published by the Free
 Software Foundation (http://www.fsf.org/); either version 2 of the License, or
 (at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not,
-write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-MA 02111-1307 USA.
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -350,7 +350,8 @@ other 5 pseudo-Nodes: elements, blueprints, tools, sites, circumventions.
 
 =head2 elements
 
-This pseudo-Node has two child Node-types: scalar_data_type, row_data_type.
+This pseudo-Node has three child Node-types: scalar_data_type, row_data_type,
+external_cursor.
 
 =head2 blueprints
 
@@ -501,6 +502,21 @@ Attribute List:
 	pp - N.row_data_type - what row this field is a part of
 	si_name - L.cstr - SI - unique identifier for this field within the row
 	scalar_data_type - N.scalar_data_type - MA - the user-customized scalar data type for this field
+
+=head2 external_cursor
+
+This type of Node is used as a common reference point for multiple routines that
+share the use of a single cursor handle and/or any routine which will return a
+cursor handle and/or any routine that will take one as an argument (context or
+normal).  Any of those routines can discover the main cursor-defining view
+definition by iterating this Node's link-child list until a routine_var Node is
+found that also links to the view in question; said Node would be in the routine
+that declares the cursor handle.  No useful details are stored inside this Node.
+
+Attribute List:
+
+	id - NODE_ID - unique identifier for each Node within this Node Type
+	si_name - L.cstr - SI - the name this row data type is identified by
 
 =head1 BLUEPRINTS CATEGORY NODE TYPES
 
@@ -878,7 +894,7 @@ You can "create temporary view" by storing the view in an application space.
 Attribute List:
 
 	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view,routine,schema,application - parent view|routine of this one, or the schema|app-space that this view is in
+	pp - N.view,routine_var,routine_stmt,schema,application - parent view|routine_[var|stmt] of this one, or the schema|app-space that this view is in
 	si_name - L.cstr - SI - the name this view is identified by, if any
 	view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
 	row_data_type - N.row_data_type,row_domain - WR - defines the names and types of this view's column set
@@ -887,6 +903,9 @@ Attribute List:
 	distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
 	may_write - L.bool - true when we should at least try allowing updates through the selecting view
 	ins_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are inserting into the table/view
+
+	Note: if pp is a routine_var, then that var declares a cursor defined by this view; 
+	if pp is a routine_stmt, then stmt is a SELECT or DML statement defined by this view.
 
 	Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
 	a false or undefined value results in "[SELECT|UNION|...] ALL".
@@ -901,8 +920,8 @@ Local Attribute Dependencies List:
 		may_write - ALIAS,JOINED,GROUPED,COMPOUND
 		ins_p_routine_item - INSERT - MA
  
-	Note: Not expressable yet; recursive can be set only when pp is a view.
- 	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine.
+	Note: Not expressable yet; recursive can be set only when pp is a view (unless main can be correlated).
+ 	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine_stmt.
 
 Remotely Addressable Types List:
 
@@ -923,10 +942,11 @@ Distinct Child Groups List:
 
 =head2 view_arg
 
-When this view is a correlated subquery, then it takes one or more arguments to
-define its operating context; each "view_arg" Node you attach to a "view" Node
-names an argument declaration.  This Node type is not used for anything else;
-it is not like a routine arg that doubles for an app host param.
+When this view is a correlated query (either a subquery of any view or a main
+query that is correlated, such as a cursor), then it takes one or more arguments
+to define its operating context; each "view_arg" Node you attach to a "view"
+Node names an argument declaration.  This Node type is not used for anything
+else; it is not like a routine arg that doubles for an app host param.
 
 The presence or absense of arguments in a view (assuming they are not
 'constant') determines whether the view is correlated or uncorrelated when used
@@ -1212,6 +1232,8 @@ Attribute List:
 	return_cont_type - E.container_type - container type of function's return value
 	return_scalar_data_type - N.scalar_data_type,scalar_domain - data type of a function's SCALAR/SC_ARY return value
 	return_row_data_type - N.row_data_type,row_domain - data type of a function's ROW/RW_ARY return value
+	return_conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+	return_curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
 	trigger_on - N.table,view - the table|view that the trigger watches
 	trigger_event - E.basic_trigger_event - when a trigger executes
 	trigger_per_stmt - L.bool - true, exec each stmt, false, each row
@@ -1226,6 +1248,8 @@ Local Attribute Dependencies List:
 	return_cont_type:
 		return_scalar_data_type - SCALAR,SC_ARY - MA
 		return_row_data_type - ROW,RW_ARY - MA
+		return_conn_link - CONN - MA
+		return_curs_ext - CURSOR - MA
 
 Remotely Addressable Types List:
 
@@ -1246,12 +1270,12 @@ Attribute List:
 	pp - N.routine - what routine this context argument is for
 	si_name - L.cstr - SI - unique identifier for variable within view
 	cont_type - E.container_type - MA - what basic container type the context is
-	conn_link - N.catalog_link - for CONN context type, ref to cat link def the conn handle
-	curs_view - N.view - for CURSOR context type, ref to view def the cursor
+	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+	curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
 
 Exclusive Attribute Groups List:
 
-	context - conn_link,curs_view - MA
+	context - conn_link,curs_ext - MA
 
 	Notes: This helps force cont_type to be one of [CONN, CURSOR].
 
@@ -1259,7 +1283,7 @@ Local Attribute Dependencies List:
 
 	cont_type:
 		conn_link - CONN - MA
-		curs_view - CURSOR - MA
+		curs_ext - CURSOR - MA
 
 =head2 routine_arg
 
@@ -1273,8 +1297,8 @@ Attribute List:
 	cont_type - E.container_type - MA - what basic container type the argument is
 	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
 	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
-	conn_link - N.catalog_link - put ref to catalog_link defining this db conn handle here
-	curs_view - N.view - put reference to the view defining this cursor here
+	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+	curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
 
 Local Attribute Dependencies List:
 
@@ -1282,13 +1306,16 @@ Local Attribute Dependencies List:
 		scalar_data_type - SCALAR,SC_ARY - MA
 		row_data_type - ROW,RW_ARY - MA
 		conn_link - CONN - MA
-		curs_view - CURSOR - MA
+		curs_ext - CURSOR - MA
 
 =head2 routine_var
 
 This type of Node describes a variable within the scope of a routine; it can be
 used by that routine and by any child routines, where applicable. If the
 current routine is a package, these are package-level variables.
+
+If this routine variable declares a cursor, then the cursor-defining view is a 
+child Node of the routine_var.
 
 Attribute List:
 
@@ -1300,8 +1327,8 @@ Attribute List:
 	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY variable
 	init_lit_val - L.misc - an initial value for a SCALAR var can go here
 	is_constant - L.bool - this says a SCALAR value may not be changed
-	conn_link - N.catalog_link - put the catalog_link defining db conn handle here
-	curs_view - N.view - put the view defining cursor here
+	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+	curs_ext - N.external_cursor - for CURSOR cont_type, indirect ref to view def shared cursor
 	curs_for_update - L.bool - true if CURSOR is select for update, false (def) if r/o
 
 Local Attribute Dependencies List:
@@ -1312,8 +1339,14 @@ Local Attribute Dependencies List:
 		init_lit_val - SCALAR
 		is_constant - SCALAR
 		conn_link - CONN - MA
-		curs_view - CURSOR - MA
+		curs_ext - CURSOR - MA
 		curs_for_update - CURSOR
+
+	Note: for simplicity we treat all cursors like they might be shared, even if they aren't.
+
+Child Quantity List:
+
+	view - 0 - 1
 
 =head2 routine_stmt
 
@@ -1321,6 +1354,9 @@ This type of Node describes a statement or logic control or line within a
 routine, which includes such operations as variable assignment or reading a
 cursor or executing a DML operation.  Often, most details for a statement are
 in child expression Nodes.
+
+If this routine statement is a SELECT or DML operation, the view defining that
+operation is a child Node of the routine_var.
 
 Attribute List:
 
@@ -1349,6 +1385,10 @@ Local Attribute Dependencies List:
 
 	call_uroutine:
 		catalog_link
+
+Child Quantity List:
+
+	view - 0 - 1
 
 Distinct Child Groups List:
 

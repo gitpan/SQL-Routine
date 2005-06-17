@@ -2,10 +2,10 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 use Scalar::Util 1.11;
-use Locale::KeyedText 1.04;
+use Locale::KeyedText 1.05;
 
 ######################################################################
 
@@ -25,7 +25,7 @@ Core Modules:
 
 Non-Core Modules: 
 
-	Locale::KeyedText 1.04 (for error messages)
+	Locale::KeyedText 1.05 (for error messages)
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -39,9 +39,9 @@ SQL::Routine is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License (GPL) as published by the Free
 Software Foundation (http://www.fsf.org/); either version 2 of the License, or
 (at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not,
-write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-MA 02111-1307 USA.
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
 
 Linking SQL::Routine statically or dynamically with other modules is making a
 combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
@@ -99,14 +99,21 @@ my $CPROP_PSEUDONODES = 'pseudonodes'; # hash of arrays of Node refs
 	# This property is for remembering the insert order of Nodes having hardwired pseudonode parents
 my $CPROP_NEXT_FREE_NID = 'next_free_nid'; # uint - next free node id
 	# Value is one higher than the highest Node ID that is or was in use by a Node in this Container.
-my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # boolean - true by def, false when changes made
-	# This property is a status flag which says there have been no changes to the Nodes 
+	# This value can never be decremented during a Container's life, or edited by external code.
+my $CPROP_EDIT_COUNT = 'edit_count'; # uint - count of distinct edits to this Container's Node set
+	# Value is zero for brand new Container, is inc by 1 for each time a Node is edited, added, deleted.
+	# Actual value isn't important; simply whether it has changed or not between two arbitrary 
+	# samplings is what's important; the sampler knows something changed since they last sampled.
+	# This value can never be decremented during a Container's life, or edited by external code.
+my $CPROP_DEF_CON_TESTED = 'def_con_tested'; # sint - what 'edit_count' was when def con last success
+	# When this property is equal to the 'edit_count' property, there have been no changes to the Nodes 
 	# in this Container since the last time assert_deferrable_constraints() passed its tests, 
 	# and so the current Nodes are still valid.  It is used internally by 
 	# assert_deferrable_constraints() to make code faster by avoiding un-necessary 
 	# repeated tests from multiple external Container.assert_deferrable_constraints() calls.
-	# It is set false on a new empty Container, and set false when of the Container's 
-	# Nodes are changed, or any Nodes are added to or deleted from the Container.
+	# It is set to negative-one (-1) on a new empty Container, and is only ever updated 
+	# by Container.assert_deferrable_constraints() following a pass of the full test suite.
+	# This value can never be edited by external code.
 #my $CPROP_CURR_NODE = 'curr_node'; # ref to a Node; used when "streaming" to or from XML
 	# I may instead make a new inner class for this, and there can be several of these 
 	# per container, such as if multiple streams are working in different areas at once; 
@@ -734,6 +741,16 @@ my %NODE_TYPES = (
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_MA_ATNMS => [[],[],['scalar_data_type']],
 	},
+	'external_cursor' => {
+		$TPI_AT_SEQUENCE => [qw( 
+			id si_name
+		)],
+		$TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
+		$TPI_AT_LITERALS => {
+			'si_name' => 'cstr',
+		},
+		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
+	},
 	'catalog' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id si_name single_schema
@@ -959,7 +976,7 @@ my %NODE_TYPES = (
 			id pp si_name view_type row_data_type recursive compound_op 
 			distinct_rows may_write ins_p_routine_item
 		)],
-		$TPI_PP_NREF => ['view','routine','schema','application'],
+		$TPI_PP_NREF => ['view','routine_var','routine_stmt','schema','application'],
 		$TPI_AT_LITERALS => {
 			'si_name' => 'cstr',
 			'recursive' => 'bool',
@@ -1232,6 +1249,7 @@ my %NODE_TYPES = (
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name routine_type return_cont_type 
 			return_scalar_data_type return_row_data_type 
+			return_conn_link return_curs_ext 
 			trigger_on trigger_event trigger_per_stmt
 		)],
 		$TPI_PP_NREF => ['routine','schema','application'],
@@ -1247,6 +1265,8 @@ my %NODE_TYPES = (
 		$TPI_AT_NREFS => {
 			'return_scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'return_row_data_type' => ['row_data_type','row_domain'],
+			'return_conn_link' => ['catalog_link'],
+			'return_curs_ext' => ['external_cursor'],
 			'trigger_on' => ['table','view'],
 		},
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
@@ -1261,6 +1281,8 @@ my %NODE_TYPES = (
 			[undef,'return_cont_type',undef,[
 				[[],[],['return_scalar_data_type'],['SCALAR','SC_ARY'],1],
 				[[],[],['return_row_data_type'],['ROW','RW_ARY'],1],
+				[[],[],['return_conn_link'],['CONN'],1],
+				[[],[],['return_curs_ext'],['CURSOR'],1],
 			]],
 		],
 		$TPI_REMOTE_ADDR => ['catalog'],
@@ -1271,7 +1293,7 @@ my %NODE_TYPES = (
 	},
 	'routine_context' => {
 		$TPI_AT_SEQUENCE => [qw( 
-			id pp si_name cont_type conn_link curs_view 
+			id pp si_name cont_type conn_link curs_ext 
 		)],
 		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
@@ -1282,24 +1304,24 @@ my %NODE_TYPES = (
 		},
 		$TPI_AT_NREFS => {
 			'conn_link' => ['catalog_link'],
-			'curs_view' => ['view'],
+			'curs_ext' => ['external_cursor'],
 		},
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_MA_ATNMS => [[],['cont_type'],[]],
 		$TPI_MUTEX_ATGPS => [
-			['context',[],[],['conn_link','curs_view'],1],
+			['context',[],[],['conn_link','curs_ext'],1],
 		],
 		$TPI_LOCAL_ATDPS => [
 			[undef,'cont_type',undef,[
 				[[],[],['conn_link'],['CONN'],1],
-				[[],[],['curs_view'],['CURSOR'],1],
+				[[],[],['curs_ext'],['CURSOR'],1],
 			]],
 		],
 	},
 	'routine_arg' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name cont_type scalar_data_type row_data_type
-			conn_link curs_view 
+			conn_link curs_ext 
 		)],
 		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
@@ -1312,7 +1334,7 @@ my %NODE_TYPES = (
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'row_data_type' => ['row_data_type','row_domain'],
 			'conn_link' => ['catalog_link'],
-			'curs_view' => ['view'],
+			'curs_ext' => ['external_cursor'],
 		},
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
@@ -1322,14 +1344,14 @@ my %NODE_TYPES = (
 				[[],[],['scalar_data_type'],['SCALAR','SC_ARY'],1],
 				[[],[],['row_data_type'],['ROW','RW_ARY'],1],
 				[[],[],['conn_link'],['CONN'],1],
-				[[],[],['curs_view'],['CURSOR'],1],
+				[[],[],['curs_ext'],['CURSOR'],1],
 			]],
 		],
 	},
 	'routine_var' => {
 		$TPI_AT_SEQUENCE => [qw( 
 			id pp si_name cont_type scalar_data_type row_data_type
-			init_lit_val is_constant conn_link curs_view curs_for_update 
+			init_lit_val is_constant conn_link curs_ext curs_for_update 
 		)],
 		$TPI_PP_NREF => ['routine'],
 		$TPI_AT_LITERALS => {
@@ -1345,7 +1367,7 @@ my %NODE_TYPES = (
 			'scalar_data_type' => ['scalar_data_type','scalar_domain'],
 			'row_data_type' => ['row_data_type','row_domain'],
 			'conn_link' => ['catalog_link'],
-			'curs_view' => ['view'],
+			'curs_ext' => ['external_cursor'],
 		},
 		$TPI_SI_ATNM => [undef,'si_name',undef,undef],
 		$TPI_WR_ATNM => 'row_data_type',
@@ -1357,7 +1379,7 @@ my %NODE_TYPES = (
 				[['init_lit_val'],[],[],['SCALAR'],0],
 				[['is_constant'],[],[],['SCALAR'],0],
 				[[],[],['conn_link'],['CONN'],1],
-				[[],[],['curs_view'],['CURSOR'],1],
+				[[],[],['curs_ext'],['CURSOR'],1],
 				[['curs_for_update'],[],[],['CURSOR'],0],
 			]],
 		],
@@ -1904,7 +1926,8 @@ sub new {
 	$container->{$CPROP_ALL_NODES} = {};
 	$container->{$CPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
 	$container->{$CPROP_NEXT_FREE_NID} = 1;
-	$container->{$CPROP_DEF_CON_TESTED} = 0;
+	$container->{$CPROP_EDIT_COUNT} = 0;
+	$container->{$CPROP_DEF_CON_TESTED} = -1;
 	return $container;
 }
 
@@ -1965,7 +1988,7 @@ sub delete_node_tree {
 	foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
 		@{$pseudonodes->{$_}} = ();
 	}
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # All Nodes are gone.
+	$container->{$CPROP_EDIT_COUNT} ++; # All Nodes are gone.
 		# Turn on tests because a tree having zero Nodes may violate deferrable constraints.
 }
 
@@ -2037,14 +2060,21 @@ sub get_next_free_node_id {
 
 ######################################################################
 
+sub get_edit_count {
+	my ($container) = @_;
+	return $container->{$CPROP_EDIT_COUNT};
+}
+
+######################################################################
+
 sub deferrable_constraints_are_tested {
 	my ($container) = @_;
-	return $container->{$CPROP_DEF_CON_TESTED};
+	return $container->{$CPROP_DEF_CON_TESTED} == $container->{$CPROP_EDIT_COUNT} ? 1 : 0;
 }
 
 sub assert_deferrable_constraints {
 	my ($container) = @_;
-	if( $container->{$CPROP_DEF_CON_TESTED} ) {
+	if( $container->{$CPROP_DEF_CON_TESTED} == $container->{$CPROP_EDIT_COUNT} ) {
 		return;
 	}
 	# Test nodes in the same order that they appear in the Node tree.
@@ -2054,7 +2084,7 @@ sub assert_deferrable_constraints {
 			$container->_assert_deferrable_constraints( $child_node );
 		}
 	}
-	$container->{$CPROP_DEF_CON_TESTED} = 1;
+	$container->{$CPROP_DEF_CON_TESTED} = $container->{$CPROP_EDIT_COUNT};
 }
 
 sub _assert_deferrable_constraints {
@@ -2283,7 +2313,7 @@ sub new {
 		$container->{$CPROP_NEXT_FREE_NID} = 1 + $node_id;
 	}
 
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node has arrived.
+	$container->{$CPROP_EDIT_COUNT} ++; # A Node has arrived.
 		# Turn on tests because this Node's presence affects *other* Nodes.
 
 	return $node;
@@ -2324,7 +2354,7 @@ sub delete_node {
 	# collected along with the invocant Node once the invocant reference held by 
 	# the external invoker code goes out of scope.
 
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node is gone.
+	$container->{$CPROP_EDIT_COUNT} ++; # A Node is gone.
 		# Turn on tests because this Node's absence affects *other* Nodes.
 }
 
@@ -2385,7 +2415,7 @@ sub delete_node_tree {
 	# collected along with the invocant Node once the invocant reference held by 
 	# the external invoker code goes out of scope.
 
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # Several Nodes are gone.
+	$container->{$CPROP_EDIT_COUNT} ++; # Several Nodes are gone.
 		# Turn on tests because this Node's absence affects *other* Nodes.
 }
 
@@ -2445,7 +2475,7 @@ sub set_node_id {
 	$rh_cal->{$new_id} = $node; # temp reserve new+old
 	$node->{$NPROP_NODE_ID} = $new_id; # change self from old to new
 	delete( $rh_cal->{$old_id} ); # now only new reserved
-	$container->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$container->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 
 	# Now adjust our "next free node id" counter if appropriate
 	if( $new_id >= $container->{$CPROP_NEXT_FREE_NID} ) {
@@ -2483,7 +2513,7 @@ sub _clear_primary_parent_attribute {
 	my $siblings = $pp_node->{$NPROP_PRIM_CHILD_NREFS};
 	@{$siblings} = grep { $_ ne $node } @{$siblings}; # remove the occurance
 	$node->{$NPROP_PP_NREF} = undef; # removes link to primary-parent, if any
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_primary_parent_attribute {
@@ -2521,7 +2551,7 @@ sub _set_primary_parent_attribute {
 	Scalar::Util::weaken( $node->{$NPROP_PP_NREF} ); # avoid strong circular references
 	# The attribute value is a Node object, so that Node should link back now.
 	push( @{$attr_value->{$NPROP_PRIM_CHILD_NREFS}}, $node );
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 ######################################################################
@@ -2563,7 +2593,7 @@ sub clear_literal_attribute {
 sub _clear_literal_attribute {
 	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_LITERALS}->{$attr_name} );
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub clear_literal_attributes {
@@ -2571,7 +2601,7 @@ sub clear_literal_attributes {
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attributes' } );
 	$node->{$NPROP_AT_LITERALS} = {};
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_literal_attribute {
@@ -2619,7 +2649,7 @@ sub _set_literal_attribute {
 	} else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
 
 	$node->{$NPROP_AT_LITERALS}->{$attr_name} = $attr_value;
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_literal_attributes {
@@ -2674,7 +2704,7 @@ sub clear_enumerated_attribute {
 sub _clear_enumerated_attribute {
 	my ($node, $attr_name) = @_;
 	delete( $node->{$NPROP_AT_ENUMS}->{$attr_name} );
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub clear_enumerated_attributes {
@@ -2682,7 +2712,7 @@ sub clear_enumerated_attributes {
 	$node->{$NPROP_CONTAINER}->{$CPROP_IS_READ_ONLY} and $node->_throw_error_message( 
 		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attributes' } );
 	$node->{$NPROP_AT_ENUMS} = {};
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_enumerated_attribute {
@@ -2708,7 +2738,7 @@ sub _set_enumerated_attribute {
 	}
 
 	$node->{$NPROP_AT_ENUMS}->{$attr_name} = $attr_value;
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_enumerated_attributes {
@@ -2785,7 +2815,7 @@ sub _clear_node_ref_attribute {
 		}
 	}
 	delete( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # removes link to link-parent, if any
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub clear_node_ref_attributes {
@@ -2795,7 +2825,7 @@ sub clear_node_ref_attributes {
 	foreach my $attr_name (keys %{$node->{$NPROP_AT_NREFS}}) {
 		$node->_clear_node_ref_attribute( $attr_name );
 	}
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub set_node_ref_attribute {
@@ -2826,7 +2856,7 @@ sub _set_node_ref_attribute {
 	Scalar::Util::weaken( $node->{$NPROP_AT_NREFS}->{$attr_name} ); # avoid strong circular references
 	# The attribute value is a Node object, so that Node should link back now.
 	push( @{$attr_value->{$NPROP_LINK_CHILD_NREFS}}, $node );
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # A Node was changed.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _normalize_primary_parent_or_node_ref_attribute_value {
@@ -3116,7 +3146,7 @@ sub move_before_sibling {
 	# Everything checks out, so now we perform the reordering.
 
 	@{$ra_search_list} = (@refs_before_both, @curr_node_refs, @sib_node_refs, @refs_after_both);
-	$node->{$NPROP_CONTAINER}->{$CPROP_DEF_CON_TESTED} = 0; # Node relation chg.
+	$node->{$NPROP_CONTAINER}->{$CPROP_EDIT_COUNT} ++; # Node relation chg.
 }
 
 ######################################################################
@@ -4233,10 +4263,10 @@ of, since more advanced features are not shown for brevity.
 				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_pass', }, ],
 			], ],
 			[ 'routine_var', { 'si_name' => 'pwp_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person_with_parents', }, ],
-			[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', }, [
-				[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
-			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+				[ 'view', { 'si_name' => 'query_pwp', 'view_type' => 'ALIAS', 'row_data_type' => 'person_with_parents', }, [
+					[ 'view_src', { 'si_name' => 's', 'match' => $vw_pwp, }, ],
+				], ],
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_pwp', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'pwp_ary', 'cont_type' => 'RW_ARY', }, ],
@@ -4255,10 +4285,10 @@ of, since more advanced features are not shown for brevity.
 		my $rt_add_people = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'add_people', 'routine_type' => 'PROCEDURE', }, [
 			[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 			[ 'routine_arg', { 'si_name' => 'person_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person', }, ],
-			[ 'view', { 'si_name' => 'insert_people', 'view_type' => 'INSERT', 'row_data_type' => 'person', 'ins_p_routine_item' => 'person_ary', }, [
-				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, ],
-			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'INSERT', }, [
+				[ 'view', { 'si_name' => 'insert_people', 'view_type' => 'INSERT', 'row_data_type' => 'person', 'ins_p_routine_item' => 'person_ary', }, [
+					[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, ],
+				], ],
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'INSERT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'insert_people', }, ],
 			], ],
@@ -4271,16 +4301,16 @@ of, since more advanced features are not shown for brevity.
 			[ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 			[ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
 			[ 'routine_var', { 'si_name' => 'person_row', 'cont_type' => 'ROW', 'row_data_type' => 'person', }, ],
-			[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', }, [
-				[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
-					[ 'view_src_field', 'person_id', ],
-				], ],
-				[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
-					[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
-					[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
-				], ],
-			], ],
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
+				[ 'view', { 'si_name' => 'query_person', 'view_type' => 'JOINED', 'row_data_type' => 'person', }, [
+					[ 'view_src', { 'si_name' => 's', 'match' => $tb_person, }, [
+						[ 'view_src_field', 'person_id', ],
+					], ],
+					[ 'view_expr', { 'view_part' => 'WHERE', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
+						[ 'view_expr', { 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 'person_id', }, ],
+						[ 'view_expr', { 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'arg_person_id', }, ],
+					], ],
+				], ],
 				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'SELECT_DEFN', 'cont_type' => 'SRT_NODE', 'act_on' => 'query_person', }, ],
 				[ 'routine_expr', { 'call_sroutine_arg' => 'INTO', 'query_dest' => 'person_row', 'cont_type' => 'RW_ARY', }, ],
@@ -4321,7 +4351,6 @@ of, since more advanced features are not shown for brevity.
 				[ 'catalog_link_instance', { 'blueprint' => 'editor_link', 'product' => 'Microsoft ODBC v3', 'target' => 'test', 'local_dsn' => 'keep_it', }, ],
 			], ],
 		] );
-
 
 		# This defines another concrete instance each of the database catalog and an application using it.
 		$model->build_child_node_trees( [
@@ -4472,10 +4501,10 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 						<routine_expr id="67" call_sroutine_arg="LOGIN_PASS" cont_type="SCALAR" valf_p_routine_item="login_pass" />
 					</routine_stmt>
 					<routine_var id="68" si_name="pwp_ary" cont_type="RW_ARY" row_data_type="person_with_parents" />
-					<view id="69" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
-						<view_src id="70" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
-					</view>
-					<routine_stmt id="71" call_sroutine="SELECT">
+					<routine_stmt id="69" call_sroutine="SELECT">
+						<view id="70" si_name="query_pwp" view_type="ALIAS" row_data_type="person_with_parents">
+							<view_src id="71" si_name="s" match="[person_with_parents,Gene Schema,Gene Database]" />
+						</view>
 						<routine_expr id="72" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 						<routine_expr id="73" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_pwp" />
 						<routine_expr id="74" call_sroutine_arg="INTO" query_dest="pwp_ary" cont_type="RW_ARY" />
@@ -4490,10 +4519,10 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 				<routine id="79" si_name="add_people" routine_type="PROCEDURE">
 					<routine_context id="80" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 					<routine_arg id="81" si_name="person_ary" cont_type="RW_ARY" row_data_type="person" />
-					<view id="82" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
-						<view_src id="83" si_name="s" match="[person,Gene Schema,Gene Database]" />
-					</view>
-					<routine_stmt id="84" call_sroutine="INSERT">
+					<routine_stmt id="82" call_sroutine="INSERT">
+						<view id="83" si_name="insert_people" view_type="INSERT" row_data_type="person" ins_p_routine_item="person_ary">
+							<view_src id="84" si_name="s" match="[person,Gene Schema,Gene Database]" />
+						</view>
 						<routine_expr id="85" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 						<routine_expr id="86" call_sroutine_arg="INSERT_DEFN" cont_type="SRT_NODE" act_on="insert_people" />
 					</routine_stmt>
@@ -4502,16 +4531,16 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 					<routine_context id="88" si_name="conn_cx" cont_type="CONN" conn_link="editor_link" />
 					<routine_arg id="89" si_name="arg_person_id" cont_type="SCALAR" scalar_data_type="entity_id" />
 					<routine_var id="90" si_name="person_row" cont_type="ROW" row_data_type="person" />
-					<view id="91" si_name="query_person" view_type="JOINED" row_data_type="person">
-						<view_src id="92" si_name="s" match="[person,Gene Schema,Gene Database]">
-							<view_src_field id="93" si_match_field="person_id" />
-						</view_src>
-						<view_expr id="94" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
-							<view_expr id="95" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
-							<view_expr id="96" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
-						</view_expr>
-					</view>
-					<routine_stmt id="97" call_sroutine="SELECT">
+					<routine_stmt id="91" call_sroutine="SELECT">
+						<view id="92" si_name="query_person" view_type="JOINED" row_data_type="person">
+							<view_src id="93" si_name="s" match="[person,Gene Schema,Gene Database]">
+								<view_src_field id="94" si_match_field="person_id" />
+							</view_src>
+							<view_expr id="95" view_part="WHERE" cont_type="SCALAR" valf_call_sroutine="EQ">
+								<view_expr id="96" call_sroutine_arg="LHS" cont_type="SCALAR" valf_src_field="[person_id,s]" />
+								<view_expr id="97" call_sroutine_arg="RHS" cont_type="SCALAR" valf_p_routine_item="arg_person_id" />
+							</view_expr>
+						</view>
 						<routine_expr id="98" call_sroutine_cxt="CONN_CX" cont_type="CONN" valf_p_routine_item="conn_cx" />
 						<routine_expr id="99" call_sroutine_arg="SELECT_DEFN" cont_type="SRT_NODE" act_on="query_person" />
 						<routine_expr id="100" call_sroutine_arg="INTO" query_dest="person_row" cont_type="RW_ARY" />
@@ -4745,6 +4774,7 @@ CONTAINER OBJECT METHODS:
 	find_node_by_id( NODE_ID )
 	find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 	get_next_free_node_id()
+	get_edit_count()
 	deferrable_constraints_are_tested()
 	assert_deferrable_constraints()
 
@@ -4874,8 +4904,8 @@ circular references, and users no longer need to invoke destructor methods.
 
 L<perl(1)>, L<SQL::Routine::L::en>, L<SQL::Routine::Details>,
 L<SQL::Routine::Language>, L<SQL::Routine::EnumTypes>,
-L<SQL::Routine::NodeTypes>, L<SQL::Routine::API_C>, L<Locale::KeyedText>,
-L<Rosetta>, L<Rosetta::Engine::Generic>, L<SQL::Routine::SQLBuilder>,
+L<SQL::Routine::NodeTypes>, L<Locale::KeyedText>, L<Rosetta>,
+L<Rosetta::Engine::Generic>, L<SQL::Routine::SQLBuilder>,
 L<SQL::Routine::SQLParser>, L<DBI>, L<SQL::Statement>, L<SQL::Parser>,
 L<SQL::Translator>, L<SQL::YASP>, L<SQL::Generator>, L<SQL::Schema>,
 L<SQL::Abstract>, L<SQL::Snippet>, L<SQL::Catalog>, L<DB::Ent>,
