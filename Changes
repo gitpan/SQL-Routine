@@ -1,3 +1,62 @@
+2005-07-12   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.66.
+
+	* New code file versions are: Routine.pm v0.66 and en.pm v0.35.
+
+	* Corresponding data dictionary update in NodeTypes.pod, Routine.pm, en.pm:
+	Added "Distinct Child Groups List" constraint on the 'tools' pseudo-Node
+	that constrains the 'product_code' attribute of
+	'data_[storage|link]_product' Nodes.  This means that external code can be
+	confident that every one of those Nodes represents a distinct product
+	without having to compare their 'product_code' attributes.  Also updated
+	Routine.pm's _assert_child_comp_deferrable_constraints() method to split up
+	a couple assertions into variants for Node vs pseudo-Node parents (the
+	pseudo-Node version was omitted before as it was known to not be in use);
+	correspondingly, these 2 en.pm user text messages were each split in 2:
+	'SRT_N_ASDC_CH_N_TOO_MANY_SET' and 'SRT_N_ASDC_MUDI_NON_DISTINCT' became 
+	themselves plus '*_PSN' variants.
+
+	* Minor Details.pod and Routine.pm update so that any Perl subs which were
+	referred to as "function/method" etc are now simply "function".
+
+	* The private method _normalize_primary_parent_or_node_ref_attribute_value()
+	was removed; its functionality was added to _set_primary_parent_attribute()
+	and _set_node_ref_attribute(), which were its only invokers before.  While
+	the change introduces a small amount of duplicated functionality, the system
+	should be more maintainable overall.  No corresponding en.pm changes.
+
+	* This release primarily serves to split up the two SQL::Routine::* classes
+	into 2 tightly bound classes each, ::Container into itself and
+	::ContainerStorage, and ::Node into itself and ::NodeStorage.  With of this
+	release, the 2 'Storage' classes contain all of the old properties and the 2
+	suffix-less (interface) classes contain all of the old methods.  Each
+	'Storage' class is an inner class of its corresponding interface class, and
+	external code can only access the former by way of the latter.  Each
+	interface object has a single Storage object as its sole (almost) property.
+	For all intents and purposes, the 2 'Storage' classes are the same as the
+	old 2 classes, in that their own properties only refer to each other and not
+	to any interface classes.  The interface objects are loosely bound, and
+	multiples of them can now exist for the same Storage objects.  The result of
+	this change is fully backwards compatible but for one thing; you can no
+	longer reliably do a straight comparison between 2 Container or Node
+	interface objects to test that they are the same object (eg, like "$foo_node
+	eq $bar_node").  Instead, you must now invoke the newly added get_self_id()
+	method on both interface objects you wish to compare; its character string
+	return value is reliable for this purpose of determing that 2 objects are
+	the same aka have a Storage object in common.  Also added new private method
+	_ns_to_ni() to each interface class, and they are invoked in 45 places; the
+	list of other methods and functions is unchanged from before.  Except for
+	adding new_interface() and get_self_id() to the method documentation in
+	Details.pod and adding a new RELATING INTERFACE AND STORAGE CLASSES section
+	there, the entirety of changes for this release item are in Rosetta.pm
+	itself, and almost entirely in the code.  A side benefit of this update is
+	you can once again keep a SQL::Routine model in existence by holding a
+	reference to a Container or a Node, but this time no strong circular
+	references are in use.
+
+	* Added some TODO file items.
+
 2005-06-17   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.65.

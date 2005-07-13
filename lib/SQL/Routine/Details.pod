@@ -304,6 +304,90 @@ unlock() methods on it, Perl's thread-E<gt>lock() mechanism is purely context
 based; the moment lock_to_...() returns, the object has unlocked again.  Of
 course, if you know a clean way around this, I would be happy to hear it.>
 
+=head1 RELATING INTERFACE AND STORAGE CLASSES
+
+The outwardly visible structure of SQL::Routine models has them composed of just
+2 classes, called Container and Node; all Nodes meant to be used together are
+arranged in the same tree and that tree lives in a single Container.  It is
+possible and normal for external code such as other modules or applications to
+hold references to any Container or Node object at any given time, and query or
+manipulate the Node tree by way of that held object; these references are always
+one-way; no Container or Node will hold a reciprocal reference to something
+external at any time.  When one or more strong external direct reference to just
+a Container or just one of its Nodes exists, both the Container and all of its
+Nodes are stable and survive; when the last such external reference goes away,
+both the Container and all Nodes within are garbage collected.  It is as if
+there are circular strong references between a Container and its Nodes, though
+in reality that isn't the case, so no explicit model destructor is provided.
+
+In order for SQL::Routine to provide some features in the most elegant fashion
+possible, the conceptual Container and Node objects are each composed of 2
+actual objects, 1 being visible and 1 being hidden.  The visible portion is
+referred to as the conceptual object's "interface", and the hidden portion its
+"Storage".  
+
+The implementation of the ContainerStorage and NodeStorage objects exactly
+matches the outwardly visible and conceptual structure insofar as its purpose,
+function, and arrangement, but differs by survivability requirements.  The
+destiny of a NodeStorage is tied to its ContainerStorage.  The Perl references
+from ContainerStorages to their NodeStorages are strong, but those from
+NodeStorages to their ContainerStorages are weak; when the last Container
+interface's reference to a ContainerStorage goes away, both the Container and
+all Nodes within are garbage collected.
+
+The Container interface and Node interface objects are implemented as wrappers
+over their Storage counterparts; each 'interface' object primarily has a single
+'storage' property that is a Storage object reference. It is mandatory that
+external code can only hold references to interface objects, and not to Storage
+objects.  
+
+A Container interface object's reference to its Storage is a strong Perl
+reference, and any reciprocal references are weak; hence, the survivability of a
+ContainerStorage, and its NodeStorage tree, is wholly dependent on the Container
+interface that references it; similarly, the survivability of said Container
+interface depends on strong external references to either it or one of its Node
+interfaces.  There can be any number of Container interface objects that share
+the same ContainerStorage object; certain SQL::Routine features apply to
+individual Container interface objects in isolation from each other.  Each such
+Container interface is blind to the individuals among its sharing peers, and you
+can not use a method on one to obtain any of its peers.  You create the first
+Container interface in tandem with its ContainerStorage using the
+new_container() function; additional peer interfaces can be created by invoking
+the new_interface() method on an existing Container interface that is to be
+shared with.  Any Container interface will disappear when external refs go away,
+but the ContainerStorage persists as long as the last interface.
+
+Paralleling the Storage side, every Node interface belongs to just a single
+Container interface.  Node interfaces are the most transient of the 4 object
+types; all Perl references between them and the other 3 object types are weak,
+except that the Perl reference from a Node interface to a Container interface is
+strong, so they last only as long as external strong references to them.  Node
+interfaces do not necessarily exist for every NodeStorage (a Container interface
+first comes into existence with zero of them), and are created only on demand
+when external code wishes to hold on to a Node; moreover, new ones are created
+every time a public SQL::Routine method returns Nodes, even when Node interfaces
+had already been created under the same Container interface for the same
+NodeStorages.  An alternate way to create a new Container interface is to invoke
+the new_interface() method on a Node interface; when you do that, a peer to the
+invocant Node interface's Container interface is created, as well as a single
+Node interface within it that references the same NodeStorage as the invocant
+Node interface.
+
+To repeat, while the strong Perl references on the Storage side point only from
+the Container to each Node, it is the exact opposite on the interface side,
+where they point only from each Node to their Container.  However, the net
+effect is that an entire conceptual Container plus Node tree will survive
+regardless of whether external code holds on to just a conceptual Container or a
+conceptual Node.
+
+Due to the fact that a single conceptual Container or Node is represented by
+SQL::Routine's public API as a multitude of Container and Node objects, it is
+invalid for you to do a straight compare of the objects you hold to test for
+their equality, eg, "$foo_node eq $bar_node".  Instead, you will need to use the
+get_self_id() method on any Container or Node objects you wish to compare in
+order for the comparison to be reliable.  The same rule applies any time you use
+a Container or Node object as a Hash key.
+
 =head1 NODE IDENTITY ATTRIBUTES
 
 Every Node has a positive integer 'id' attribute whose value is distinct among
@@ -425,9 +509,9 @@ This function wraps SQL::Routine::Container->new().
 
 This function wraps SQL::Routine::Node->new( CONTAINER, NODE_TYPE, NODE_ID ).
 
-=head1 CONTAINER CONSTRUCTOR FUNCTIONS AND METHODS
+=head1 CONTAINER CONSTRUCTOR FUNCTIONS
 
-This function/method is stateless and can be invoked off of either the Container
+This function is stateless and can be invoked off of either the Container
 class name or an existing Container object, with the same result.
 
 =head2 new()
@@ -435,12 +519,24 @@ class name or an existing Container object, with the same result.
 	my $model = SQL::Routine::Container->new();
 	my $model2 = $model->new();
 
-This "getter" function/method will create and return a single
-SQL::Routine::Container (or subclass) object.
+This "getter" function will create and return a single Container object.
 
 =head1 CONTAINER OBJECT METHODS
 
 These methods are stateful and may only be invoked off of Container objects.
+
+=head2 new_interface()
+
+This method creates and returns a new Container interface object that is a
+ContainerStorage sharing peer of the invocant Container interface object.
+
+=head2 get_self_id()
+
+This method returns a character string value that distinctly represents this
+Container interface object's inner ContainerStorage object; you can use it to
+see if 2 Container interface objects have the same ContainerStorage object
+common to them, which conceptually means that the two Container interface
+objects are in fact one and the same.
 
 =head2 is_read_only([ NEW_VALUE ])
 
@@ -589,9 +685,9 @@ checks for safety everywhere in your program while avoiding a corresponding
 performance hit.  This method will update "deferrable constraints are tested" to 
 match "edit count" when all tests pass; it isn't updated at any other time.
 
-=head1 NODE CONSTRUCTOR FUNCTIONS AND METHODS
+=head1 NODE CONSTRUCTOR FUNCTIONS
 
-This function/method is stateless and can be invoked off of either the Node
+This function is stateless and can be invoked off of either the Node
 class name or an existing Node object, with the same result.
 
 =head2 new( CONTAINER, NODE_TYPE[, NODE_ID] )
@@ -601,22 +697,35 @@ class name or an existing Node object, with the same result.
 	my $node3 = $node->new( $model, 'table' );
 	my $node4 = $node->new( $model, 'table', 42 );
 
-This "getter" function/method will create and return a single SQL::Routine::Node
-(or subclass) object that lives in the Container object given in the CONTAINER
-argument; the new Node will live in that Container for its whole life; if you
-want to conceptually move it to a different Container, you must clone the Node
-and then delete the old one.  The Node Type of the new Node is given in the
-NODE_TYPE (enum) argument, and it can not be changed for this Node later; only
-specific values are allowed, which you can see in the SQL::Routine::Language
-documentation file.  The Node Id can be explicitly given in the NODE_ID (uint)
-argument, which is a mandatory argument unless the host Container has a true
-"auto set node ids" property, in which case a Node Id will be generated from a
-sequence if the argument is not given.  All of the Node's other properties are
-defaulted to an "empty" state.
+This "getter" function will create and return a single Node object that lives in
+the Container object given in the CONTAINER argument; the new Node will live in
+that Container for its whole life; if you want to conceptually move it to a
+different Container, you must clone the Node and then delete the old one. The
+Node Type of the new Node is given in the NODE_TYPE (enum) argument, and it can
+not be changed for this Node later; only specific values are allowed, which you
+can see in the SQL::Routine::Language documentation file.  The Node Id can be
+explicitly given in the NODE_ID (uint) argument, which is a mandatory argument
+unless the host Container has a true "auto set node ids" property, in which case
+a Node Id will be generated from a sequence if the argument is not given.  All
+of the Node's other properties are defaulted to an "empty" state.
 
 =head1 NODE OBJECT METHODS
 
 These methods are stateful and may only be invoked off of Node objects.
+
+=head2 new_interface()
+
+This method creates and returns a new Node interface object that is a
+NodeStorage sharing peer of the invocant Node interface object, and it also
+lives in a new Container interface object.
+
+=head2 get_self_id()
+
+This method returns a character string value that distinctly represents this
+Node interface object's inner NodeStorage object; you can use it to see if 2
+Node interface objects have the same NodeStorage object common to them, which
+conceptually means that the two Node interface objects are in fact one and the
+same.
 
 =head2 delete_node()
 
@@ -1131,9 +1240,9 @@ to take the Array-ref output of Container.get_all_properties(), wrap that in
 another Array-ref (to produce a single-element list of Array-refs), give it to
 build_container(), and end up with a clone of the original Container.
 
-=head1 INFORMATION FUNCTIONS AND METHODS
+=head1 INFORMATION FUNCTIONS
 
-These "getter" functions/methods are all intended for use by programs that want
+These "getter" functions are all intended for use by programs that want
 to dynamically interface with SQL::Routine, especially those programs that
 will generate a user interface for manual editing of data stored in or accessed
 through SQL::Routine constructs.  It will allow such programs to continue

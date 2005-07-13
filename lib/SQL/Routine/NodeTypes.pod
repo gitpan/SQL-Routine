@@ -366,6 +366,13 @@ Child Quantity List:
 This pseudo-Node has two child Node-types: data_storage_product,
 data_link_product.
 
+Distinct Child Groups List:
+
+	ak_storage_product_code:
+		data_storage_product - product_code
+	ak_link_product_code:
+		data_link_product - product_code
+
 =head2 sites
 
 This pseudo-Node has two child Node-types: catalog_instance,

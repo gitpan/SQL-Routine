@@ -4,6 +4,10 @@ TODO
 
 * Add more deferred constraints to reduce erroneous models.
 
+* Add another container_type that is analagous to a cursor except it represents
+a handle for a large scalar value (LOB); external code can then define that they
+won't try to hold them entirely in RAM at once like ordinary scalars.
+
 * Add support for arguments to cursors that are shared between multiple routines
 and that are either opened more than once and/or opened in a different routine
 than where the cursor is declared (that holds the cursor-defining view).  In the 
