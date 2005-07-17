@@ -94,7 +94,7 @@ eval {
 	};
 	if( my $exception = $@ ) {
 		if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-			if( $exception->get_message_key() eq 'SRT_N_METH_ASS_READ_ONLY' ) {
+			if( $exception->get_message_key() eq 'SRT_C_METH_ASS_READ_ONLY' ) {
 				$test5_passed = 1;
 			}
 		}

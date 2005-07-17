@@ -1,3 +1,73 @@
+2005-07-16   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.67.
+
+	* New code file versions are: Routine.pm v0.67.
+
+	* This release is entirely dedicated to refactoring the functions and
+	methods of Routine.pm (there were zero changes to the property lists and
+	object lists); all other distribution core files had zero changes, and there
+	was only a single non-version-check line changed in the test suite.  The
+	public API is exactly the same, save that some thrown exceptions are now
+	declared to be thrown by different methods than before.  The total function
+	+ method count (public and private) is now 144, up from 121 of the previous
+	release.  All *Storage functions/methods are private, and most * interface 
+	methods are public.
+
+	* Split the wrapper functions new_[container|node]() into themselves and
+	_new_[con|nod]stor(); all 4 belong to the 'Rosetta' superclass.  Split both
+	[Container|Node].new() constructors into themselves and
+	[Container|Node]Storage._new().  Split each [Container|Node]._ns_to_ni()
+	private method into itself and [Container|Node]._ns_to_ni_item().
+
+	* Renamed Container private method _assert_deferrable_constraints() to 
+	_assert_child_deferrable_constraints().
+
+	* Moved these 1 private methods from Container to ContainerStorage: 
+	_assert_child_deferrable_constraints().
+
+	* Split these 3 public Container methods each 2-ways into themselves and
+	_*() private methods, which live in ContainerStorage:
+	find_child_node_by_surrogate_id(), assert_deferrable_constraints(),
+	get_all_properties().
+
+	* Moved these 20 private methods from Node to NodeStorage:
+	_delete_node_tree__add_to_candidates(), _get_primary_parent_attribute(),
+	_clear_primary_parent_attribute(), _set_primary_parent_attribute(),
+	_get_literal_attribute(), _clear_literal_attribute(),
+	_set_literal_attribute(), _get_enumerated_attribute(),
+	_clear_enumerated_attribute(), _set_enumerated_attribute(),
+	_get_node_ref_attribute(), _clear_node_ref_attribute(),
+	_set_node_ref_attribute(), _find_node_by_surrogate_id_remotely(),
+	_find_node_by_surrogate_id_remotely_below_here(),
+	_find_node_by_surrogate_id_within_layers(),
+	_find_node_by_surrogate_id_using_path(),
+	_assert_in_node_deferrable_constraints(),
+	_assert_parent_ref_scope_deferrable_constraints(),
+	_assert_child_comp_deferrable_constraints().
+
+	* Split these 14 public Node methods each 2-ways into themselves and _*()
+	private methods, which live in NodeStorage: delete_node(),
+	delete_node_tree(), get_node_id(), set_node_id(),
+	clear_literal_attributes(), clear_enumerated_attributes(),
+	clear_node_ref_attributes(), get_surrogate_id_attribute(),
+	get_surrogate_id_chain(), find_node_by_surrogate_id(),
+	find_child_node_by_surrogate_id(), get_relative_surrogate_id(),
+	assert_deferrable_constraints(), get_all_properties().
+
+	* A 'SRT_[C|N]_METH_ASS_READ_ONLY' exception is now only thrown in about
+	half of the places it used to be (the count was 41 and is now 20); the
+	removed ones were higher-level functions that always (sans other exceptions)
+	invoked lower level functions that threw those same exceptions.  The effect
+	of this change is that some of these exceptions will claim to be thrown by
+	different methods than they used to, under the same user invocation.  With 
+	the remaining exception instances, they are also now thrown by the private 
+	part of a method pair, rather than the public part.
+
+	* Updated the last test in SRT_10_ReadOnly.t to expect a
+	'SRT_C_METH_ASS_READ_ONLY' exception rather than a
+	'SRT_N_METH_ASS_READ_ONLY' exception; this was an exactly 1 letter change.
+
 2005-07-12   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.66.
