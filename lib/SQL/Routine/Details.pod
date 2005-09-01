@@ -230,80 +230,6 @@ nitty gritty details.  You should also look at the tutorial or example files
 which will be in the distribution when ready.  You could also learn something
 from the code in or with other modules which sub-class or use this one.
 
-=head1 FAULT TOLERANCE AND MULTI-THREADING SUPPORT
-
-I<Disclaimer: The following claims assume that only this module's published API
-is used, and that you do not set object properties directly or call private
-methods, which Perl 5 does not prevent.  It also assumes that the module is bug
-free, and that any errors or warnings which appear while the code is running
-are thrown explicitly by this module as part of its normal functioning.>
-
-SQL::Routine is designed to ensure that the objects it produces are always
-internally consistent, and that the data they contain is always well-formed,
-regardless of the circumstances in which it is used.  You should be able to 
-fetch data from the objects at any time and that data will be self-consistent 
-and well-formed.  
-
-This will not change regardless of what kind of bad input data you provide to
-object methods or module functions.  Providing bad input data will cause the
-module to throw an exception; if you catch this and the program continues
-running (such as to chide the user and have them try entering correct input),
-then the objects will remain un-corrupted and able to accept new input or give
-proper output.  In most cases, the object will be in the same state as it was 
-before the public method was called with the bad input.
-
-Note that, while SQL::Routine objects are always internally consistent, that
-doesn't mean that the data they store is always correct.  Only the most critical
-kinds of input validation, constantly applied constraints, are done prior to
-storing or altering the data.  Many kinds of data validation, deferrable
-constraints, are only done as a separate stage following its input; you apply
-those explicitly by invoking assert_deferrable_constraints().  One reason for
-the separation is to avoid spurious exceptions such as 'mandatory attribute not
-set' while a Node is in the middle of being created piecemeal, such as when it
-is storing details gathered one at a time from the user; another reason is
-performance efficiency, to save on a lot of redundant computation.
-
-This module does not use package variables at all, besides constants like
-$VERSION, and all symbols ($@%) declared at file level are strictly constant
-value declarations.  No object should ever step on another.
-
-SQL::Routine is explicitly not thread-aware (thread-safe); it contains no
-code to synchronize access to its objects' properties, such as semaphores or
-locks or mutexes.  To internalize such things in an effective manner would have
-made the code a lot more complex than it is now, without any clear benefits.  
-However, this module can (and should) be used in multi-threaded environments 
-where the application/caller code takes care of synchronizing access to its 
-objects, especially if the application uses coarse-grained read or write locks.
-
-The author's expectation is that this module will be mainly used in
-circumstances where the majority of actions are reads, and there are very few
-writes, such as with a data dictionary; perhaps all the writes on an object may
-be when it is first created.  An application thread would obtain a read
-lock/semaphore on a Container object during the period for which it needs to
-ensure read consistency; it would block write lock attempts but not other read
-locks.  It would obtain a write lock during the (usually short) period it needs
-to change something, which blocks all other lock attempts (for read or write).
-
-An example of this is a web server environment where each page request is being
-handled by a distinct thread, and all the threads share one SQL::Routine
-object; normally the object is instantiated when the server starts, and the
-worker threads then read from it for guidance in using a common database.
-Occasionally a thread will want to change the object, such as to correspond to
-a simultaneous change to the database schema, or to the web application's data
-dictionary that maps the database to application screens.  Under this
-situation, the application's definitive data dictionary (stored partly or
-wholly in a SQL::Routine) can occupy one place in RAM visible to all
-threads, and each thread won't have to keep looking somewhere else such as in
-the database or a file to keep up with the definitive copy.  (Of course, any
-*changes* to the in-memory data dictionary should see a corresponding update to
-a non-volatile copy, like in an on-disk database or file.)
-
-I<Note that, while a nice thing to do may be to manage a course-grained lock in
-SQL::Routine, with the caller invoking lock_to_read() or lock_to_write() or
-unlock() methods on it, Perl's thread-E<gt>lock() mechanism is purely context
-based; the moment lock_to_...() returns, the object has unlocked again.  Of
-course, if you know a clean way around this, I would be happy to hear it.>
-
 =head1 RELATING INTERFACE AND STORAGE CLASSES
 
 The outwardly visible structure of SQL::Routine models has them composed of just
@@ -388,6 +314,289 @@ get_self_id() method on any Container or Node objects you wish to compare in
 order for the comparison to be reliable.  The same rule applies any time you use
 a Container or Node object as a Hash key.
 
+=head1 ABOUT NODE GROUPS
+
+I<CAVEAT: THE FEATURES DESCRIBED IN THIS SECTION ARE ONLY PARTLY IMPLEMENTED.>
+
+SQL::Routine also has the concept of Node Groups (Groups), which are user
+defined arbitrary collections of Nodes, all in the same Container, on which
+certain batch activities can be performed.  You access this concept using
+SQL::Routine::Group (Group) objects, each of which is attached to a single
+Container interface (there is no GroupStorage class).  Currently, the main use
+of a group is to associate the same access sanction with a group of Nodes, such
+as to declare that they are all in a read-only state.  Any Node can belong to
+multiple Groups, both held by the same Container interface or different
+Container interfaces.  Adding sanctions to or removing them from a Group will
+affect all Nodes in it simultaneously; also, if it is invalid to apply a
+sanction to any particular Node (usually due to competing sanctions), then
+applying it to the entire Group will fail with an exception.  Adding a Node to a
+Group that already carries sanctions will try to apply those sanctions to the
+Node; the addition will fail if this isn't possible; likewise, the reverse for
+removing a Node from a Group.  A Group's defined sanctions will persist until
+either they are explicitly removed by that Group or the Group object is garbage
+collected.  See also the "Access Controls" documentation section below.
+
+=head1 FAULT TOLERANCE, DATA INTEGRITY, AND CONCURRENCY
+
+I<Disclaimer: The following claims assume that only this module's published API
+is used, and that you do not set object properties directly or call private
+methods, such as is possible using XS code or a debugger.  It also assumes that
+the module is bug free, and that any errors or warnings which appear while the
+code is running are thrown explicitly by this module as part of its normal
+functioning.>
+
+SQL::Routine is designed to ensure that the objects it produces are always
+internally consistent, and that the data they contain is always well-formed,
+regardless of the circumstances in which it is used.  You should be able to 
+fetch data from the objects at any time and that data will be self-consistent 
+and well-formed.  
+
+SQL::Routine also has several features to improve the reliability of its data
+models when those models are used concurrently (in a non-threaded fashion) by
+multiple program components and modules that may not be considerate of each
+other, or that may run into trouble part way through a multi-part model update.
+By using these features, you can save yourself from the substantial hassle of
+implementing the same checks and balances externally; you can program more
+lazily without some of the consequences.  These features are intended primarily
+to stop accidental interference between program components, usually the result
+of programmer oversights or short cuts.  To a lesser extent, the features are
+also designed to prevent intentional disruption, by giving an exclusive
+capability key of sorts to the program component that added a protection, which
+is required for removing it.
+
+=head2 Structural Matters
+
+This module does not use package variables at all, besides Perl 5 constants like
+$VERSION, and all symbols ($@%) declared at file level are strictly constant
+value declarations.  No object should ever step on another.
+
+Also, the separation of conceptual objects into Storage and interface components 
+helps to prevent certain accidents resulting from bad code.
+
+=head2 Function or Method Types and Exceptions
+
+All SQL::Routine functions and methods, except a handful of Container object
+boolean property accessors, are either "getters" (which read and return or
+generate values but do not change the state of anything) or "setters" (which
+change the state of something but do not return anything on success); none do
+getting or setting conditionally based on their arguments.  While this means
+there are more methods in total, I see this arrangement as being more stable and
+reliable, plus each method is simpler and easier to understand or use; argument
+lists and possible return values are also less variable and more predictable.
+
+All "setter" functions or methods which are supposed to change the state of
+something will throw an exception on failure (usually from being given bad
+arguments); on success, they officially have no return values.  A thrown
+exception will always include details of what went wrong (and where and how) in
+a machine-readable (and generally human readable) format, so that calling code
+which catches them can recover gracefully.  The methods are all structured so
+that, at least per individual Node attribute, they check all preconditions prior
+to changing any state information.  So one can assume that upon throwing an
+exception, the Node and Container objects are in a consistent or recoverable
+state at worst, and are completely unchanged at best.
+
+All "getter" functions or methods will officially return the value or construct
+that was asked for; if said value doesn't (yet or ever) exist, then this means
+the Perl "undefined" value.  When given bad arguments, generally this module's
+"information" functions will return the undefined value, and all the other
+functions/methods will throw an exception like the "setter" functions do.
+
+=head2 Input Validation
+
+Generally speaking, if SQL::Routine throws an exception, it means one of
+two things: 1. Your own code is not invoking it correctly, meaning you have
+something to fix; 2. You have decided to let it validate some of your input
+data for you (which is quite appropriate).  
+
+SQL::Routine objects will not lose their well-formedness regardless of what kind
+of bad input data you provide to object methods or module functions.  Providing
+bad input data will cause the module to throw an exception; if you catch this
+and the program continues running (such as to chide the user and have them try
+entering correct input), then the objects will remain un-corrupted and able to
+accept new input or give proper output.  In all cases, the object will be in the
+same state as it was before the public method was called with the bad input.
+
+Note that, while SQL::Routine objects are always internally consistent, that
+doesn't mean that the data they store is always correct.  Only the most critical
+kinds of input validation, constantly applied constraints, are done prior to
+storing or altering the data.  Many kinds of data validation, deferrable
+constraints, are only done as a separate stage following its input; you apply
+those explicitly by invoking assert_deferrable_constraints().  One reason for
+the separation is to avoid spurious exceptions such as 'mandatory attribute not
+set' while a Node is in the middle of being created piecemeal, such as when it
+is storing details gathered one at a time from the user; another reason is
+performance efficiency, to save on a lot of redundant computation.
+
+Note also that SQL::Routine is quite strict in its own argument checking,
+both for internal simplicity and robustness, and so that code which *reads* 
+data from it can be simpler.  If you want your own program to be more liberal
+in what input it accepts, then you will have to bear the burden of cleaning up
+or interpreting that input, or delegating such work elsewhere.  (Or perhaps 
+someone may want to make a wrapper module to do this?)
+
+=head2 ACID Compliance and Transactions
+
+I<CAVEAT: THE FEATURES DESCRIBED IN THIS SECTION ARE ONLY PARTLY IMPLEMENTED.>
+
+SQL::Routine objects natively have all aspects of ACID (Atomicity, Consistency,
+Isolation, Durability) compliance that are possible for something that exists
+soley in volatile RAM; that is, nothing aside from a power outage, or violation
+of its API (by employing XS code or a debugger), or non externally synchronized
+access from multiple threads, should nullify its being ACID compliant.
+
+SQL::Routine has a transactional interface, with a by-the-Node locking
+granularity.  Multiple transactions can be active concurrently, and they all
+have serializable isolation from each other; no one transaction will see the
+changes made to a model by another until they are committed.
+
+Each SQL::Routine Container interface represents one distinct, concurrent
+transaction against a Container and its Nodes.  To start a new transaction,
+which happens to be nested, invoke new_interface().  Note that this will only
+succeed if invoked on a Container object or on a Node that is committed;
+invoking it on an un-committed Node will throw an exception, since the new
+transaction won't be allowed to see the Node interface it is supposed to return.
+
+Invoking commit_transaction() on a Container or Node will preserve any yet
+un-committed changes made by it, so they become visible to all transactions;
+invoking rollback_transaction() on the same will undo all un-committed changes;
+invoking set_transaction_savepoint() will divide the previous and subsequent
+un-committed changes so that the latter can be rolled back independently of the
+former.  Note that, if any Container interface is garbage collected while it has 
+un-committed changes, those changes will all be implicitly rolled back.
+
+Every externally invoked function and method is implicitly atomic; it will
+either succeed completely, or leave no changes behind when it throws an error
+exception, regardless of the complexity of the task.  For simpler cases, such as
+single-attribute changes, this is implemented by simply validating all
+preconditions before making any changes.  For more complex cases, such as
+multiple-attribute changes, this is implemented by setting a new savepoint prior
+to attempting any of the component changes, and rolling back to it if any of the
+component changes failed.
+
+Note that, if you only ever have a single Container interface for a given
+ContainerStorage, then you don't have to issue commits for visibility,
+because all Nodes will be visible and editable to you anyway.
+
+=head2 Access Controls and Reentrancy
+
+I<CAVEAT: THE FEATURES DESCRIBED IN THIS SECTION ARE ONLY PARTLY IMPLEMENTED.>
+
+By default, all Nodes in a Container are visible and editable through all
+Container interfaces, which works well when your program is simple and/or well
+implemented so that no part of it or modules that it uses step on each other.
+
+For other situations, SQL::Routine provides several types of access controls
+that permit user programs and modules to get some protection against
+interference from each other, whether due to accident of lazy programming or bad
+policies; they can force arbitrarily large parts of a SQL::Routine model to be
+reentrant for as long as needed.  These access control features are provided by
+Group objects, and apply to member Nodes of those Groups.
+
+You use the write-prevention access controls when you want to guarantee read
+consistency for yourself, or have made other assumptions based on a Node that
+you expect to stay true for awhile, such as when you have cached some derived
+data from a Node group that you don't want to go stale.  In other words, this 
+feature lets you avoid "dirty reads" of the model with the least trouble.
+
+Invoking impose_write_block() on a Group will prevent anyone from editing or
+deleting its member Nodes, whether by way of the Group's own Container interface
+or any other Container interface.  This block will not prevent the editing or
+deletion of any member Nodes' non-member ancestor or descendent Nodes; if you
+need that protection, such as because most Nodes are partly defined by their
+relatives, add them to this group too, or to another write-blocked group.  As a
+complement to this first block type, invoking impose_child_addition_block() or
+impose_reference_addition_block() on a Group will prevent anyone from adding,
+respectively, new primary-child Nodes or new link-child Nodes, to its member
+Nodes, whether by way of the Group's own Container interface or any other
+Container interface.  Between the 3 block types, you can block additions, edits,
+and deletes by anyone.  A Node can belong to any number of Groups at the same
+time which impose any combination of these 3 block types, and the Node can be
+read by all Container interfaces.  You can remove blocks by invoking the
+respective Group methods remove_write_block(), remove_child_addition_block(), or
+remove_reference_addition_block().
+
+The Node method move_before_sibling() is different in nature than any of the
+above circumstances; for now it will be blocked if the SELF or SIBLING Node has
+a 'write block', or if the PARENT has a 'child/reference addition block'
+(whichever is appropriate for the type of PARENT given).  This is because that
+method is conceptually used just after a parent-child connection is made.
+
+The mutex access control is for when you are editing some Nodes and you don't
+want others to either read them in an inconsistent state or to attempt editing
+them at the same time.
+
+Invoking impose_mutex() on a Group will prevent all Container interfaces except
+for the Group's own from seeing its member Nodes, or editing or deleting them,
+or adding child Nodes to them.  This access control can not be used in concert
+with the previous 3 write-prevention access controls; a Group must disable any
+of those 3 controls that it holds before it can enable the mutex.  A Node can
+also only belong to a single Group when that group is imposing a mutex.  You can
+remove the mutex by invoking the Group method remove_mutex().
+
+Mutex controls are used implicitly by transactions.  Any Node that you create or
+edit or delete must be held by a mutex-imposing Group belonging to the same
+Container interface as the transaction.  If the Node is held by any other Group,
+the write action will fail with an exception.  If the Node is held by no Group
+at all, it will automatically be added to a default mutex-imposing Group that is
+held by the Container interface.  Any Node that has un-committed changes may not
+be removed from its Group, nor may the Group have its mutex-imposition disabled;
+you must either commit or rollback those changes first.  Note that, following a
+commit or rollback, all Nodes in a Container interface's default mutex-imposing
+Group will be removed from it, so they are visible to anyone.  By contrast, any
+other mutex-imposing Groups will retain their members following a commit or
+rollback, so they remain hidden from everyone else.  Note that any transaction 
+commit/rollback/savepoint activity will affect all Groups under it.
+
+=head2 Multiple Thread Concurrency
+
+SQL::Routine is explicitly not thread-aware (thread-safe); it contains no code
+to synchronize access to its objects' properties, such as semaphores or locks or
+mutexes.  To internalize the details of such things in an effective manner would
+have made the code a lot more complex than it is now, with few clear benefits.
+However, this module can be used in multi-threaded environments where the
+application/caller code takes care of synchronizing access to its objects,
+especially if the application uses coarse-grained read or write locks, by
+locking an entire Container at once.
+
+But be aware that the current structure of SQL::Routine objects, where the
+ContainerStorage you actually want to synchronize on isn't accessible to you,
+prevents you from using the SQL::Routine object itself as the semaphore. 
+Therefore, you have to maintain a separate single variable of your own, used in
+conjunction with all related Container interfaces, which you use as a semaphore
+or monitor or some such.  Even then, you may encouter problems, such as that 
+Perl doesn't actually share all Nodes in a Container with multiple threads when 
+their Container is shared; or maybe this problem won't happen.  Still, the author 
+has never actually tried to use multiple threads.
+
+The author's expectation is that this module will be mainly used in
+circumstances where the majority of actions are reads, and there are very few
+writes, such as with a data dictionary; perhaps all the writes on an object may
+be when it is first created.  An application thread would obtain a read
+lock/semaphore on a Container object during the period for which it needs to
+ensure read consistency; it would block write lock attempts but not other read
+locks.  It would obtain a write lock during the (usually short) period it needs
+to change something, which blocks all other lock attempts (for read or write).
+
+An example of this is a web server environment where each page request is being
+handled by a distinct thread, and all the threads share one SQL::Routine
+object; normally the object is instantiated when the server starts, and the
+worker threads then read from it for guidance in using a common database.
+Occasionally a thread will want to change the object, such as to correspond to
+a simultaneous change to the database schema, or to the web application's data
+dictionary that maps the database to application screens.  Under this
+situation, the application's definitive data dictionary (stored partly or
+wholly in a SQL::Routine) can occupy one place in RAM visible to all
+threads, and each thread won't have to keep looking somewhere else such as in
+the database or a file to keep up with the definitive copy.  (Of course, any
+*changes* to the in-memory data dictionary should see a corresponding update to
+a non-volatile copy, like in an on-disk database or file.)
+
+I<Note that, while a nice thing to do may be to manage a course-grained lock in
+SQL::Routine, with the caller invoking lock_to_read() or lock_to_write() or
+unlock() methods on it, Perl's thread-E<gt>lock() mechanism is purely context
+based; the moment lock_to_...() returns, the object has unlocked again.  Of
+course, if you know a clean way around this, I would be happy to hear it.>
+
 =head1 NODE IDENTITY ATTRIBUTES
 
 Every Node has a positive integer 'id' attribute whose value is distinct among
@@ -445,44 +654,6 @@ using object notation.  This means using B<Class-E<gt>function()> for functions
 and B<$object-E<gt>method()> for methods.  If you are inheriting this class for
 your own modules, then that often means something like B<$self-E<gt>method()>.  
 
-All SQL::Routine functions and methods are either "getters" (which read and
-return or generate values but do not change the state of anything) or "setters"
-(which change the state of something but do not return anything on success);
-none do getting or setting conditionally based on their arguments.  While this
-means there are more methods in total, I see this arrangement as being more
-stable and reliable, plus each method is simpler and easier to understand or
-use; argument lists and possible return values are also less variable and more
-predictable.
-
-All "setter" functions or methods which are supposed to change the state of
-something will throw an exception on failure (usually from being given bad
-arguments); on success, they officially have no return values.  A thrown
-exception will always include details of what went wrong (and where and how) in
-a machine-readable (and generally human readable) format, so that calling code
-which catches them can recover gracefully.  The methods are all structured so
-that they check all preconditions prior to changing any state information, and
-so one can assume that upon throwing an exception, the Node and Container
-objects are in a consistent or recoverable state at worst, and are completely
-unchanged at best.
-
-All "getter" functions or methods will officially return the value or construct
-that was asked for; if said value doesn't (yet or ever) exist, then this means
-the Perl "undefined" value.  When given bad arguments, generally this module's
-"information" functions will return the undefined value, and all the other
-functions/methods will throw an exception like the "setter" functions do.
-
-Generally speaking, if SQL::Routine throws an exception, it means one of
-two things: 1. Your own code is not invoking it correctly, meaning you have
-something to fix; 2. You have decided to let it validate some of your input
-data for you (which is quite appropriate).  
-
-Note also that SQL::Routine is quite strict in its own argument checking,
-both for internal simplicity and robustness, and so that code which *reads* 
-data from it can be simpler.  If you want your own program to be more liberal
-in what input it accepts, then you will have to bear the burden of cleaning up
-or interpreting that input, or delegating such work elsewhere.  (Or perhaps 
-someone may want to make a wrapper module to do this?)
-
 =head1 CONSTRUCTOR WRAPPER FUNCTIONS
 
 These functions are stateless and can be invoked off of either the module name,
@@ -494,8 +665,10 @@ are thin wrappers over other methods and exist strictly for convenience.
 	my $model = SQL::Routine->new_container();
 	my $model2 = SQL::Routine::Container->new_container();
 	my $model3 = SQL::Routine::Node->new_container();
-	my $model4 = $model->new_container();
-	my $model5 = $node->new_container();
+	my $model4 = SQL::Routine::Group->new_container();
+	my $model5 = $model->new_container();
+	my $model6 = $node->new_container();
+	my $model7 = $group->new_container();
 
 This function wraps SQL::Routine::Container->new().
 
@@ -504,10 +677,24 @@ This function wraps SQL::Routine::Container->new().
 	my $node = SQL::Routine->new_node( $model, 'table' );
 	my $node2 = SQL::Routine::Container->new_node( $model, 'table' );
 	my $node3 = SQL::Routine::Node->new_node( $model, 'table', 32 );
-	my $node4 = $model->new_node( $model, 'table', 45 );
-	my $node5 = $node->new_node( $model, 'table' );
+	my $node4 = SQL::Routine::Group->new_node( $model, 'table_field', 6 );
+	my $node5 = $model->new_node( $model, 'table', 45 );
+	my $node6 = $node->new_node( $model, 'table' );
+	my $node7 = $group->new_node( $model, 'view' );
 
 This function wraps SQL::Routine::Node->new( CONTAINER, NODE_TYPE, NODE_ID ).
+
+=head2 new_group()
+
+	my $group = SQL::Routine->new_group();
+	my $group2 = SQL::Routine::Container->new_group();
+	my $group3 = SQL::Routine::Node->new_group();
+	my $group4 = SQL::Routine::Group->new_group();
+	my $group5 = $model->new_group();
+	my $group6 = $node->new_group();
+	my $group7 = $group->new_group();
+
+This function wraps SQL::Routine::Group->new().
 
 =head1 CONTAINER CONSTRUCTOR FUNCTIONS
 
@@ -538,45 +725,35 @@ see if 2 Container interface objects have the same ContainerStorage object
 common to them, which conceptually means that the two Container interface
 objects are in fact one and the same.
 
-=head2 is_read_only([ NEW_VALUE ])
-
-This method returns this Container's "is read only" boolean property; if
-NEW_VALUE is defined, it will first set that property to it.  When this flag is
-true, any attempt to modify this Container's Nodes (or most other Container
-properties) and/or add/remove Nodes will throw an exception.  Only 2 properties
-of a read-only Container may validly be changed, which are "is read only" itself
-(setting to false) and "deferrable constraints are tested" (setting to true). 
-The use of this feature helps to detect and prevent changes that are occurring
-after the time you expect model population to be completed.
-
 =head2 auto_assert_deferrable_constraints([ NEW_VALUE ])
 
-This method returns this Container's "auto assert deferrable constraints"
-boolean property; if NEW_VALUE is defined, it will first set that property to
-it.  When this flag is true, SQL::Routine's build_*() methods will
-automatically invoke assert_deferrable_constraints() on the newly created Node,
-if it is in this Container, prior to returning it.  The use of this method
-helps isolate bad input bugs faster by flagging them closer to when they were
-created; it is especially useful with the build*tree() methods.
+This method returns this Container interface's "auto assert deferrable
+constraints" boolean property; if NEW_VALUE is defined, it will first set that
+property to it.  When this flag is true, SQL::Routine's build_*() methods will
+automatically invoke assert_deferrable_constraints() on each Node newly created
+by way of this Container interface (or child Node interfaces), prior to
+returning it.  The use of this method helps isolate bad input bugs faster by
+flagging them closer to when they were created; it is especially useful with the
+build*tree() methods.
 
 =head2 auto_set_node_ids([ NEW_VALUE ])
 
-This method returns this Container's "auto set node ids" boolean property; if
-NEW_VALUE is defined, it will first set that property to it.  When this flag is
-true, SQL::Routine will automatically generate and set a Node Id for a Node
-that lacks one as soon as there is an attempt to put that Node in this
-Container.  When this flag is false, a missing Node Id will cause an exception
-to be raised instead.
+This method returns this Container interface's "auto set node ids" boolean
+property; if NEW_VALUE is defined, it will first set that property to it.  When
+this flag is true, SQL::Routine will automatically generate and set a Node Id
+for a Node being created for this Container interface when there is no explicit
+Id given as a Node.new() argument.  When this flag is false, a missing Node Id
+argument will cause an exception to be raised instead.
 
 =head2 may_match_surrogate_node_ids([ NEW_VALUE ])
 
-This method returns this Container's "may match surrogate node ids" boolean
-property; if NEW_VALUE is defined, it will first set that property to it.  When
-this flag is true, SQL::Routine will accept a wider range of input values when
-setting Node ref attribute values, beyond Node object references and integers
-representing Node ids to look up; if other types of values are provided,
-SQL::Routine will try to look up Nodes based on other attributes than the Id,
-usually 'si_name', before giving up on finding a Node to link.
+This method returns this Container interface's "may match surrogate node ids"
+boolean property; if NEW_VALUE is defined, it will first set that property to
+it.  When this flag is true, SQL::Routine will accept a wider range of input
+values when setting Node ref attribute values, beyond Node object references and
+integers representing Node ids to look up; if other types of values are
+provided, SQL::Routine will try to look up Nodes based on their Surrogate Id
+attribute, usually 'si_name', before giving up on finding a Node to link.
 
 =head2 delete_node_tree()
 
@@ -1088,6 +1265,26 @@ large fraction of Node refs whose fully qualified name is a single element.
 This "getter" method implements several types of deferrable data validation, to
 make sure that this Node is ready to be used; it throws an exception if it can
 find anything wrong.
+
+=head1 GROUP CONSTRUCTOR FUNCTIONS
+
+This function is stateless and can be invoked off of either the Group
+class name or an existing Group object, with the same result.
+
+=head2 new( CONTAINER )
+
+	my $group = SQL::Routine::Group->new( $model );
+	my $group2 = $group->new( $model );
+
+This "getter" function will create and return a single Group object that is
+associated with the Container interface object given in the CONTAINER argument.
+The new Group has no member Nodes, and does not impose any sanctions.
+
+=head1 GROUP OBJECT METHODS
+
+These methods are stateful and may only be invoked off of Node objects.
+
+I<TODO: ADD THESE METHODS.>
 
 =head1 CONTAINER OR NODE METHODS FOR DEBUGGING
 

@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.05;
@@ -76,28 +76,30 @@ way of suggesting improvements to the standard version.
 # Names of properties for objects of the SQL::Routine::Container (interface) class are declared here:
 my $CPROP_STORAGE = 'storage'; # the SQL::Routine::ContainerStorage object that we shelter
 	# This is a strong Perl ref so a ContainerStorage will persist as long as any Container interface of it.
-
-# Names of properties for objects of the SQL::Routine::ContainerStorage class are declared here:
-my $CSPROP_IS_READ_ONLY = 'is_read_only'; # boolean - false by def
-	# When this flag is true, any attempt to modify this ContainerStorage's Nodes (or most other props) 
-	# and/or add/remove Nodes will throw an exception; useful to detect or prevent changes 
-	# that are occurring after the time you expect model population to be completed.
-	# Only the "is read only" and "def con tested" props are permitted to change when read-only.
-my $CSPROP_AUTO_ASS_DEF_CON = 'auto_ass_def_con'; # boolean - false by def
+my $CPROP_AUTO_ASS_DEF_CON = 'auto_ass_def_con'; # boolean - false by def
 	# When this flag is true, SQL::Routine's build_*() methods will
-	# automatically invoke assert_deferrable_constraints() on the newly created NodeStorage,
-	# if it is in this ContainerStorage, prior to returning it.  The use of this method
+	# automatically invoke assert_deferrable_constraints() on each Node newly created 
+	# by way of this Container interface (or child Node interfaces), prior to returning it.  The use of this method
 	# helps isolate bad input bugs faster by flagging them closer to when they were
 	# created; it is especially useful with the build*tree() methods.
-my $CSPROP_AUTO_SET_NIDS = 'auto_set_nids'; # boolean - false by def
-	# When this flag is true, SQL::Routine will automatically generate and set a NodeStorage Id for 
-	# a NodeStorage that lacks one as soon as there is an attempt to put that NodeStorage in this ContainerStorage.
-	# When this flag is false, a missing NodeStorage Id will cause an exception to be raised instead.
-my $CSPROP_MAY_MATCH_SNIDS = 'may_match_snids'; # boolean - false by def
+my $CPROP_AUTO_SET_NIDS = 'auto_set_nids'; # boolean - false by def
+	# When this flag is true, SQL::Routine will automatically generate and set a Node Id for 
+	# a Node being created for this Container interface when there is no explicit Id given as a Node.new() argument.
+	# When this flag is false, a missing Node Id argument will cause an exception to be raised instead.
+my $CPROP_MAY_MATCH_SNIDS = 'may_match_snids'; # boolean - false by def
 	# When this flag is true, SQL::Routine will accept a wider range of input values when setting 
-	# NodeStorage ref attribute values, beyond NodeStorage object references and integers representing NodeStorage ids to 
+	# Node ref attribute values, beyond Node object references and integers representing Node ids to 
 	# look up; if other types of values are provided, SQL::Routine will try to look up Nodes based 
-	# on other attributes than the Id, usually 'si_name', before giving up on finding a NodeStorage to link.
+	# on their Surrogate Id attribute, usually 'si_name', before giving up on finding a Node to link.
+my $CPROP_EXPLICIT_GROUPS = 'explicit_groups'; # hash ("Group",Group) - 
+	# A list of refs to any Groups associated with this Container interface that were explicitly defined by users.
+	# These Perl refs are weak-refs so an explicit Group disappears when all external refs go away.
+my $CPROP_DEFAULT_GROUP = 'default_group'; # the SQL::Routine::Group object imposing default mutex for edited Nodes
+	# This is a strong Perl ref so a Container's default Group lasts for as long as the Container does; 
+	# only the default Group has a weak Perl ref to its Container, to avoid circular refs; other groups have strong refs back.
+	# Note that this Group may never be exposed to the public like the explicit Groups, or they may mess with it.
+
+# Names of properties for objects of the SQL::Routine::ContainerStorage class are declared here:
 my $CSPROP_ALL_NODES = 'all_nodes'; # hash of NodeStorage refs - find any NodeStorage by its node_id quickly
 my $CSPROP_PSEUDONODES = 'pseudonodes'; # hash of arrays of NodeStorage refs
 	# This property is for remembering the insert order of Nodes having hardwired pseudonode parents
@@ -133,19 +135,19 @@ my $CSPROP_DEF_CON_TESTED = 'def_con_tested'; # sint - what 'edit_count' was whe
 my $NPROP_STORAGE = 'storage'; # the SQL::Routine::NodeStorage object that we interface for
 	# This Perl ref is a weak-ref so wrapper doesn't prevent auto-destruct of a NodeStorage by its existence
 my $NPROP_CONTAINER = 'container'; # ref to Container interface this Node interface lives in
-	# This is a strong Perl ref so a model will last as long as any external ref to a Container or Node interface.
+	# This is a strong Perl ref so a model will last as long as any external ref to a Container or Node or Group interface.
 
 # Names of properties for objects of the SQL::Routine::NodeStorage class are declared here:
 	# The C version will have the following comprise fields in a NodeStorage struct;
 	# all fields will be integers or memory references or enums; none will be strings.
-my $NSPROP_CONSTOR   = 'constor'; # ref to ContainerStorage this NodeStorage lives in
+my $NSPROP_CONSTOR = 'constor'; # ref to ContainerStorage this NodeStorage lives in
 	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
 	# C version of this would be a pointer to a ContainerStorage struct
-my $NSPROP_NODE_TYPE   = 'node_type'; # str (enum) - what type of NodeStorage this is, can not change once set
+my $NSPROP_NODE_TYPE = 'node_type'; # str (enum) - what type of NodeStorage this is, can not change once set
 	# The NodeStorage type is the only property which absolutely can not change, and is set when object created.
 	# (All other NodeStorage properties start out undefined or false, and are set separately from object creation.)
 	# C version of this will be an enumerated value.
-my $NSPROP_NODE_ID     = 'node_id'; # uint - unique identifier attribute for this node within container+type
+my $NSPROP_NODE_ID = 'node_id'; # uint - unique identifier attribute for this node within container+type
 	# C version of this will be an unsigned integer.
 	# This property corresponds to a NodeStorage attribute named 'id'.
 my $NSPROP_PP_NSREF = 'pp_nsref'; # NodeStorage - special NodeStorage attr which points to primary-parent NodeStorage in the same ContainerStorage
@@ -159,9 +161,9 @@ my $NSPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of NodeStorage
 	# will be fixed and known in advance, allowing it to be all allocated with one malloc() call.
 	# Each attribute struct would be at a specific array index; 
 	# C macros/constants will give names to the indices, like with the hash keys for the above.
-my $NSPROP_AT_ENUMS    = 'at_enums'; # hash (enum,enum) - attrs of NodeStorage which are enumerated values
+my $NSPROP_AT_ENUMS = 'at_enums'; # hash (enum,enum) - attrs of NodeStorage which are enumerated values
 	# C version of this will be an array (pointer) of enumerated values.
-my $NSPROP_AT_NSREFS    = 'at_nsrefs'; # hash (enum,NodeStorage) - attrs of NodeStorage which point to other Nodes in the same ContainerStorage
+my $NSPROP_AT_NSREFS = 'at_nsrefs'; # hash (enum,NodeStorage) - attrs of NodeStorage which point to other Nodes in the same ContainerStorage
 	# These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
 	# C version of this will be an array (pointer) of NodeStorage pointers.
 my $NSPROP_PRIM_CHILD_NSREFS = 'prim_child_nsrefs'; # array - list of refs to other Nodes having actual refs to this one
@@ -181,6 +183,37 @@ my $NSPROP_LINK_CHILD_NSREFS = 'link_child_nsrefs'; # array - list of refs to ot
 	# adjacent to each other; however, calls to set_node_ref_attribute() won't do this, but rather 
 	# append new links to the end of the list.  In the interest of simplicity, any method that wants to 
 	# change the order of a child list should also normalize any multiple same-child occurrances.
+my $NSPROP_ATT_WRITE_BLOCKS = 'att_write_blocks'; # hash ("Group",Group) - 
+	# A list of refs to any Groups imposing a 'write block' on us.
+	# These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
+	# Note that 0..3 of this and the following properties may link to the same Group, if its corresponding IS...BLOCK prop is true.
+my $NSPROP_ATT_PC_ADD_BLOCKS = 'att_pc_add_blocks'; # hash ("Group",Group) - 
+	# A list of refs to any Groups imposing a 'child addition block' on us.
+	# These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
+my $NSPROP_ATT_LC_ADD_BLOCKS = 'att_lc_add_blocks'; # hash ("Group",Group) - 
+	# A list of refs to any Groups imposing a 'reference addition block' on us.
+	# These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
+my $NSPROP_ATT_MUTEX = 'att_mutex'; # Group - 
+	# Ref to a Group imposing a 'mutex' on us.
+	# This Perl ref is a weak-ref; a Group's impositions disappear when all external refs to it go away.
+
+# Names of properties for objects of the SQL::Routine::Group (interface) class are declared here:
+	# Note that there is no SQL::Routine::GroupStorage class; a Group is always specific to a Container interface.
+my $GPROP_CONTAINER = 'container'; # ref to Container interface this Group interface lives in
+	# This is a strong Perl ref so a model will last as long as any external ref to a Container or Node or Group interface; 
+	# the sole exception to this is when the Group is used as a Container interface's "default mutex"; then this is a 
+	# weak ref because the Container's link to us is a strong ref only in that case; the default mutex has no external refs.
+my $GPROP_MEMBER_NSREFS = 'member_nsrefs'; # hash ("NodeStorage", NodeStorage) - explicit member Nodes of this Group
+	# These are the actual Nodes that belong to this Group, which the Container interface wants to work with as a whole for awhile.
+	# These Perl refs are weak-refs to not prevent auto-destruct of the NodeStorages.
+my $GPROP_IS_WRITE_BLOCK = 'is_write_block'; # boolean - 
+	# When this is true, no Container interface (not even ours) may edit or delete our member Nodes.  
+my $GPROP_IS_PC_ADD_BLOCK = 'is_pc_add_block'; # boolean -
+	# When this is true, no Container interface (not even ours) may add primary-child Nodes to our member Nodes.  
+my $GPROP_IS_LC_ADD_BLOCK = 'is_lc_add_block'; # boolean -
+	# When this is true, no Container interface (not even ours) may add link-child Nodes to our member Nodes.  
+my $GPROP_IS_MUTEX = 'is_mutex'; # boolean -
+	# When this is true, no Container interface besides may see our member Nodes.  
 
 # These are programmatically recognized enumerations of values that 
 # particular Node attributes are allowed to have.  They are given names 
@@ -566,12 +599,12 @@ my %OPT_P_C_REL_ENUMS = (
 # Names of hash keys in %NODE_TYPES elements:
 my $TPI_AT_SEQUENCE = 'at_sequence'; # Array of all 'attribute' names in canon order
 my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
-my $TPI_PP_NSREF     = 'pp_nsref'; # An array ref whose values are enums and each matches a single %NODE_TYPES key.
+my $TPI_PP_NSREF    = 'pp_nsref'; # An array ref whose values are enums and each matches a single %NODE_TYPES key.
 my $TPI_AT_LITERALS = 'at_literals'; # Hash - Keys are attr names a Node can have which have literal values
 	# Values are enums and say what literal data type the attribute has, like int or bool or str
 my $TPI_AT_ENUMS    = 'at_enums'; # Hash - Keys are attr names a Node can have which are enumerated values
 	# Values are enums and match a %ENUMERATED_TYPES key
-my $TPI_AT_NSREFS    = 'at_nsrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
+my $TPI_AT_NSREFS   = 'at_nsrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
 	# Values are array refs whose values are enums and each matches a single %NODE_TYPES key, 
 	# but an empty array matches all Node types.
 my $TPI_SI_ATNM     = 'si_atnm'; # The surrogate identifier, distinct under primary parent and always-mandatory
@@ -1924,6 +1957,11 @@ sub _new_nodstor {
 	return SQL::Routine::NodeStorage->_new( $constor, $node_type, $node_id );
 }
 
+sub new_group {
+	my (undef, $container) = @_;
+	return SQL::Routine::Group->new( $container );
+}
+
 ######################################################################
 
 sub build_container {
@@ -1949,6 +1987,11 @@ sub new {
 	my $container = bless( {}, ref($class) || $class );
 	my $constor = $class->_new_constor();
 	$container->{$CPROP_STORAGE} = $constor;
+	$container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
+	$container->{$CPROP_AUTO_SET_NIDS} = 0;
+	$container->{$CPROP_MAY_MATCH_SNIDS} = 0;
+	$container->{$CPROP_EXPLICIT_GROUPS} = {};
+	$class->new_group( $container ); # SQL::Routine::Group.new() will initialize our CPROP_DEFAULT_GROUP
 	return $container;
 }
 
@@ -1958,6 +2001,11 @@ sub new_interface {
 	my ($container) = @_;
 	my $new_container = bless( {}, ref($container) );
 	$new_container->{$CPROP_STORAGE} = $container->{$CPROP_STORAGE};
+	$new_container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
+	$new_container->{$CPROP_AUTO_SET_NIDS} = 0;
+	$new_container->{$CPROP_MAY_MATCH_SNIDS} = 0;
+	$new_container->{$CPROP_EXPLICIT_GROUPS} = {};
+	$container->new_group( $new_container ); # SQL::Routine::Group.new() will initialize our CPROP_DEFAULT_GROUP
 	return $new_container;
 }
 
@@ -1996,52 +2044,32 @@ sub _ns_to_ni_item {
 
 ######################################################################
 
-sub is_read_only {
-	my ($container, $new_value) = @_;
-	my $constor = $container->{$CPROP_STORAGE};
-	if( defined( $new_value ) ) {
-		$constor->{$CSPROP_IS_READ_ONLY} = $new_value;
-	}
-	return $constor->{$CSPROP_IS_READ_ONLY};
-}
-
-######################################################################
-
 sub auto_assert_deferrable_constraints {
 	my ($container, $new_value) = @_;
-	my $constor = $container->{$CPROP_STORAGE};
 	if( defined( $new_value ) ) {
-		$constor->{$CSPROP_IS_READ_ONLY} and $container->_throw_error_message( 
-			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'auto_assert_deferrable_constraints' } );
-		$constor->{$CSPROP_AUTO_ASS_DEF_CON} = $new_value;
+		$container->{$CPROP_AUTO_ASS_DEF_CON} = $new_value;
 	}
-	return $constor->{$CSPROP_AUTO_ASS_DEF_CON};
+	return $container->{$CPROP_AUTO_ASS_DEF_CON};
 }
 
 ######################################################################
 
 sub auto_set_node_ids {
 	my ($container, $new_value) = @_;
-	my $constor = $container->{$CPROP_STORAGE};
 	if( defined( $new_value ) ) {
-		$constor->{$CSPROP_IS_READ_ONLY} and $container->_throw_error_message( 
-			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'auto_set_node_ids' } );
-		$constor->{$CSPROP_AUTO_SET_NIDS} = $new_value;
+		$container->{$CPROP_AUTO_SET_NIDS} = $new_value;
 	}
-	return $constor->{$CSPROP_AUTO_SET_NIDS};
+	return $container->{$CPROP_AUTO_SET_NIDS};
 }
 
 ######################################################################
 
 sub may_match_surrogate_node_ids {
 	my ($container, $new_value) = @_;
-	my $constor = $container->{$CPROP_STORAGE};
 	if( defined( $new_value ) ) {
-		$constor->{$CSPROP_IS_READ_ONLY} and $container->_throw_error_message( 
-			'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'may_match_surrogate_node_ids' } );
-		$constor->{$CSPROP_MAY_MATCH_SNIDS} = $new_value;
+		$container->{$CPROP_MAY_MATCH_SNIDS} = $new_value;
 	}
-	return $constor->{$CSPROP_MAY_MATCH_SNIDS};
+	return $container->{$CPROP_MAY_MATCH_SNIDS};
 }
 
 ######################################################################
@@ -2049,8 +2077,14 @@ sub may_match_surrogate_node_ids {
 sub delete_node_tree {
 	my ($container) = @_;
 	my $constor = $container->{$CPROP_STORAGE};
-	$constor->{$CSPROP_IS_READ_ONLY} and $container->_throw_error_message( 
-		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'delete_node_tree' } );
+	# First check that all NodeStorages have no locks on them.
+	foreach my $nodstor (values %{$constor->{$CSPROP_ALL_NODES}}) {
+		(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+			$container->_throw_error_message( 'SRT_C_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node_tree', 
+				'NTYPE' => $nodstor->{$NSPROP_NODE_TYPE}, 'NID' => $nodstor->{$NSPROP_NODE_ID}, 
+				'SIDCH' => $nodstor->_get_surrogate_id_chain() } );
+	}
+	# If we get here, we may delete all the Nodes.
 	%{$constor->{$CSPROP_ALL_NODES}} = ();
 	my $pseudonodes = $constor->{$CSPROP_PSEUDONODES};
 	foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
@@ -2186,7 +2220,7 @@ sub _build_node_is_child_or_not {
 	$node->set_attributes( $attrs );
 
 	# Apply auto-asserted deferrable constraints.
-	if( $container->{$CPROP_STORAGE}->{$CSPROP_AUTO_ASS_DEF_CON} ) {
+	if( $container->{$CPROP_AUTO_ASS_DEF_CON} ) {
 		eval {
 			$node->assert_deferrable_constraints(); # check that this Node's own attrs are correct
 		};
@@ -2271,14 +2305,9 @@ use base qw( SQL::Routine );
 
 ######################################################################
 
-
 sub _new {
 	my ($class) = @_;
 	my $constor = bless( {}, ref($class) || $class );
-	$constor->{$CSPROP_IS_READ_ONLY} = 0;
-	$constor->{$CSPROP_AUTO_ASS_DEF_CON} = 0;
-	$constor->{$CSPROP_AUTO_SET_NIDS} = 0;
-	$constor->{$CSPROP_MAY_MATCH_SNIDS} = 0;
 	$constor->{$CSPROP_ALL_NODES} = {};
 	$constor->{$CSPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
 	$constor->{$CSPROP_NEXT_FREE_NID} = 1;
@@ -2386,7 +2415,7 @@ sub new {
 		if( $constor->{$CSPROP_ALL_NODES}->{$node_id} ) {
 			$node->_throw_error_message( 'SRT_N_NEW_NODE_DUPL_ID', { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } );
 		}
-	} elsif( $constor->{$CSPROP_AUTO_SET_NIDS} ) {
+	} elsif( $container->{$CPROP_AUTO_SET_NIDS} ) {
 		$node_id = $constor->{$CSPROP_NEXT_FREE_NID};
 	} else {
 		$node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_ID', { 'ARGNTYPE' => $node_type } );
@@ -2859,8 +2888,6 @@ sub move_before_sibling {
 	my ($node, $sibling, $parent) = @_;
 	my $nodstor = $node->{$NPROP_STORAGE};
 	my $constor = $nodstor->{$NSPROP_CONSTOR};
-	$constor->{$CSPROP_IS_READ_ONLY} and $node->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'move_before_sibling' } );
 	my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE};
 
 	# First make sure we have 3 actual Nodes that are all in the same Container.
@@ -2920,6 +2947,22 @@ sub move_before_sibling {
 
 	scalar( @curr_node_refs ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_NOT_P' );
 	scalar( @sib_node_refs ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_NOT_S' );
+
+	# Now confirm there are no blocks imposed against this action.
+
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'move_before_sibling' } );
+	(keys %{$sibling_nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$sibling_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'move_before_sibling' } );
+	if( $parent_nodstor ) {
+		if( $parent_nodstor eq $nodstor->{$NSPROP_PP_NSREF} ) {
+			(keys %{$parent_nodstor->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
+				$parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS', { 'METH' => 'move_before_sibling' } );
+		} else {
+			(keys %{$parent_nodstor->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
+				$parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'move_before_sibling' } );
+		}
+	}
 
 	# Everything checks out, so now we perform the reordering.
 
@@ -3133,9 +3176,10 @@ sub _new {
 	$nodstor->{$NSPROP_AT_NSREFS} = {};
 	$nodstor->{$NSPROP_PRIM_CHILD_NSREFS} = [];
 	$nodstor->{$NSPROP_LINK_CHILD_NSREFS} = [];
-
-	$constor->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_C_METH_ASS_READ_ONLY', { 'METH' => 'new' } );
+	$nodstor->{$NSPROP_ATT_WRITE_BLOCKS} = {};
+	$nodstor->{$NSPROP_ATT_PC_ADD_BLOCKS} = {};
+	$nodstor->{$NSPROP_ATT_LC_ADD_BLOCKS} = {};
+	$nodstor->{$NSPROP_ATT_MUTEX} = undef;
 
 	$constor->{$CSPROP_ALL_NODES}->{$node_id} = $nodstor;
 
@@ -3161,14 +3205,15 @@ sub _new {
 sub _delete_node {
 	my ($nodstor, $container) = @_;
 	my $constor = $container->{$CPROP_STORAGE};
-	$constor->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'delete_node' } );
 
 	if( @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} > 0 or @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} > 0 ) {
 		$nodstor->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD', 
 			{ 'PRIM_COUNT' => scalar( @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} ), 
 			'LINK_COUNT' => scalar( @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} ) } );
 	}
+
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node' } );
 
 	# Remove our parent Nodes' links back to us.
 	if( my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
@@ -3201,8 +3246,6 @@ sub _delete_node {
 sub _delete_node_tree {
 	my ($nodstor, $container) = @_;
 	my $constor = $container->{$CPROP_STORAGE};
-	$constor->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'delete_node' } );
 
 	# Now build a list of all primary-descendant NodeStorages (includes self), 
 	# which are the deletion candidates.
@@ -3211,7 +3254,7 @@ sub _delete_node_tree {
 
 	# Now assert that all primary-descendant NodeStorages (includes self) may be deleted, 
 	# and lack children outside the candidates.
-	foreach my $candidate (keys %candidates) {
+	foreach my $candidate (values %candidates) {
 		foreach my $link_child_nodstor (@{$candidate->{$NSPROP_LINK_CHILD_NSREFS}}) {
 			unless( $candidates{$link_child_nodstor} ) {
 				$nodstor->_throw_error_message( 'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD', 
@@ -3223,6 +3266,12 @@ sub _delete_node_tree {
 					'CSIDCH' => $link_child_nodstor->_get_surrogate_id_chain( $container ) } );
 			}
 		}
+	}
+
+	# Now assert that no Nodes have blocks imposed on them.
+	foreach my $candidate (values %candidates) {
+		(keys %{$candidate->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+			$candidate->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node' } );
 	}
 
 	# If we get here, then all of the candidate NodeStorages may be deleted.
@@ -3239,7 +3288,7 @@ sub _delete_node_tree {
 	# Now remove all of the link-child refs to the candidates that are in non-candidate NodeStorages.
 	# Also remove all candidates from their Container's all-nodes list.
 	my $cont_all_nodes = $constor->{$CSPROP_ALL_NODES};
-	foreach my $candidate (keys %candidates) {
+	foreach my $candidate (values %candidates) {
 		foreach my $attr_value (values %{$candidate->{$NSPROP_AT_NSREFS}}) {
 			$candidates{$attr_value} and next; # just do this slower unlinking process if parent not being deleted
 			my $siblings = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
@@ -3260,7 +3309,7 @@ sub _delete_node_tree {
 
 sub _delete_node_tree__add_to_candidates {
 	my ($nodstor, $candidates) = @_;
-	$candidates->{$nodstor} = 1;
+	$candidates->{$nodstor} = $nodstor; # key is stringified version of Node ref, value is actual Node ref
 	foreach my $prim_child_nodstor (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
 		$prim_child_nodstor->_delete_node_tree__add_to_candidates( $candidates );
 	}
@@ -3276,8 +3325,6 @@ sub _get_node_id {
 sub _set_node_id {
 	my ($nodstor, $container, $new_id) = @_;
 	my $constor = $container->{$CPROP_STORAGE};
-	$constor->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_id' } );
 
 	unless( $new_id =~ m/^\d+$/ and $new_id > 0 ) {
 		$nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG', { 'ARG' => $new_id } );
@@ -3293,6 +3340,9 @@ sub _set_node_id {
 	if( $rh_cal->{$new_id} ) {
 		$nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID', { 'ARG' => $new_id } );
 	}
+
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_node_id' } );
 
 	# The following seq should leave state consistent or recoverable if the thread dies
 	$rh_cal->{$new_id} = $nodstor; # temp reserve new+old
@@ -3315,9 +3365,9 @@ sub _get_primary_parent_attribute {
 
 sub _clear_primary_parent_attribute {
 	my ($nodstor, $container) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_primary_parent_attribute' } );
 	my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF} or return; # no-op; attr not set
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_primary_parent_attribute' } );
 	# The attribute value is a Node object, so clear its link back.
 	my $siblings = $pp_nodstor->{$NSPROP_PRIM_CHILD_NSREFS};
 	@{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
@@ -3327,8 +3377,6 @@ sub _clear_primary_parent_attribute {
 
 sub _set_primary_parent_attribute {
 	my ($nodstor, $container, $exp_node_types, $attr_value) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_primary_parent_attribute' } );
 
 	if( ref($attr_value) eq ref($nodstor) ) {
 		# We were given a Node object for a new attribute value.
@@ -3367,6 +3415,11 @@ sub _set_primary_parent_attribute {
 	} while( $pp_nodstor = $pp_nodstor->{$NSPROP_PP_NSREF} );
 	# For simplicity, we assume circular refs via Node-ref attrs other than 'pp' are impossible.
 
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_primary_parent_attribute' } );
+	(keys %{$attr_value->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
+		$attr_value->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS', { 'METH' => 'set_primary_parent_attribute' } );
+
 	$nodstor->_clear_primary_parent_attribute( $container ); # clears any existing link through this attribute
 	$nodstor->{$NSPROP_PP_NSREF} = $attr_value;
 	Scalar::Util::weaken( $nodstor->{$NSPROP_PP_NSREF} ); # avoid strong circular references
@@ -3384,24 +3437,22 @@ sub _get_literal_attribute {
 
 sub _clear_literal_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attribute' } );
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_literal_attribute' } );
 	delete( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} );
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _clear_literal_attributes {
 	my ($nodstor, $container) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_literal_attributes' } );
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_literal_attributes' } );
 	$nodstor->{$NSPROP_AT_LITERALS} = {};
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _set_literal_attribute {
 	my ($nodstor, $container, $attr_name, $exp_lit_type, $attr_value) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_literal_attribute' } );
 
 	if( ref($attr_value) ) {
 		$nodstor->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_IS_REF', 
@@ -3430,6 +3481,9 @@ sub _set_literal_attribute {
 
 	} else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
 
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_literal_attribute' } );
+
 	$nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} = $attr_value;
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3443,29 +3497,30 @@ sub _get_enumerated_attribute {
 
 sub _clear_enumerated_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attribute' } );
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_enumerated_attribute' } );
 	delete( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} );
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _clear_enumerated_attributes {
 	my ($nodstor, $container) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_enumerated_attributes' } );
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_enumerated_attributes' } );
 	$nodstor->{$NSPROP_AT_ENUMS} = {};
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _set_enumerated_attribute {
 	my ($nodstor, $container, $attr_name, $exp_enum_type, $attr_value) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_enumerated_attribute' } );
 
 	unless( $ENUMERATED_TYPES{$exp_enum_type}->{$attr_value} ) {
 		$nodstor->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_V', { 'ATNM' => $attr_name, 
 			'ENUMTYPE' => $exp_enum_type, 'ARG' => $attr_value } );
 	}
+
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_enumerated_attribute' } );
 
 	$nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} = $attr_value;
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3485,9 +3540,9 @@ sub _get_node_ref_attribute {
 
 sub _clear_node_ref_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_node_ref_attribute' } );
 	my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} or return; # no-op; attr not set
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_node_ref_attribute' } );
 	# The attribute value is a Node object, so clear its link back.
 	my $ra_children_of_parent = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
 	foreach my $i (0..$#{$ra_children_of_parent}) {
@@ -3503,8 +3558,8 @@ sub _clear_node_ref_attribute {
 
 sub _clear_node_ref_attributes {
 	my ($nodstor, $container) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'clear_node_ref_attributes' } );
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_node_ref_attributes' } );
 	foreach my $attr_name (keys %{$nodstor->{$NSPROP_AT_NSREFS}}) {
 		$nodstor->_clear_node_ref_attribute( $container, $attr_name );
 	}
@@ -3513,8 +3568,6 @@ sub _clear_node_ref_attributes {
 
 sub _set_node_ref_attribute {
 	my ($nodstor, $container, $attr_name, $exp_node_types, $attr_value) = @_;
-	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_IS_READ_ONLY} and $nodstor->_throw_error_message( 
-		'SRT_N_METH_ASS_READ_ONLY', { 'METH' => 'set_node_ref_attribute' } );
 
 	if( ref($attr_value) eq ref($nodstor) ) {
 		# We were given a Node object for a new attribute value.
@@ -3536,7 +3589,7 @@ sub _set_node_ref_attribute {
 		$attr_value = $searched_attr_value;
 	} else {
 		# We were given a Surrogate Node Id for a new attribute value.
-		unless( $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_MAY_MATCH_SNIDS} ) {
+		unless( $container->{$CPROP_MAY_MATCH_SNIDS} ) {
 			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 		my $searched_attr_values = $nodstor->_find_node_by_surrogate_id( $container, $attr_name, 
@@ -3556,6 +3609,11 @@ sub _set_node_ref_attribute {
 	if( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} and $attr_value eq $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ) {
 		return; # no-op; new attribute value same as old
 	}
+
+	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_node_ref_attribute' } );
+	(keys %{$attr_value->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
+		$attr_value->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'set_node_ref_attribute' } );
 
 	$nodstor->_clear_node_ref_attribute( $container, $attr_name ); # clears any existing link through this attribute
 	$nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} = $attr_value;
@@ -4427,6 +4485,196 @@ sub _get_all_properties {
 ######################################################################
 ######################################################################
 
+package SQL::Routine::Group;
+use base qw( SQL::Routine );
+
+######################################################################
+
+sub new {
+	my ($class, $container) = @_;
+	my $group = bless( {}, ref($class) || $class );
+
+	defined( $container ) or $group->_throw_error_message( 'SRT_G_NEW_GROUP_NO_ARG_CONT' );
+	unless( ref($container) and UNIVERSAL::isa( $container, 'SQL::Routine::Container' ) ) {
+		$group->_throw_error_message( 'SRT_G_NEW_GROUP_BAD_CONT', { 'ARGGCONT' => $container } );
+	}
+
+	$group->{$GPROP_CONTAINER} = $container;
+	$group->{$GPROP_MEMBER_NSREFS} = {};
+	$group->{$GPROP_IS_WRITE_BLOCK} = 0;
+	$group->{$GPROP_IS_PC_ADD_BLOCK} = 0;
+	$group->{$GPROP_IS_LC_ADD_BLOCK} = 0;
+	$group->{$GPROP_IS_MUTEX} = 0;
+
+	if( !$container->{$CPROP_DEFAULT_GROUP} ) {
+		# We were invoked by SQL::Routine::Container.new() and are its default mutex Group.
+		# Group's ref to Container is weak, Container's ref to Group is strong.
+		Scalar::Util::weaken( $group->{$GPROP_CONTAINER} );
+		$container->{$CPROP_DEFAULT_GROUP} = $group;
+	} else {
+		# We were invoked by external code and are an explicit Group in the Container.
+		# Group's ref to Container is strong, Container's ref to Group is weak.
+		$container->{$CPROP_EXPLICIT_GROUPS}->{$group} = $group;
+		Scalar::Util::weaken( $container->{$CPROP_EXPLICIT_GROUPS}->{$group} );
+	}
+
+	return $group;
+}
+
+######################################################################
+
+#sub impose_write_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_WRITE_BLOCK} and return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_MUTEX} and 
+#			$group->_throw_error_message( 'SRT_G_IMP_WR_BL_MUTEX_ATT' );
+#	}
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} = $group;
+#		Scalar::Util::weaken( $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_WRITE_BLOCK} = 1;
+#}
+
+#sub remove_write_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_WRITE_BLOCK} or return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		delete( $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_WRITE_BLOCK} = 0;
+#}
+
+######################################################################
+
+#sub impose_child_addition_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_PC_ADD_BLOCK} and return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_MUTEX} and 
+#			$group->_throw_error_message( 'SRT_G_IMP_CA_BL_MUTEX_ATT' );
+#	}
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} = $group;
+#		Scalar::Util::weaken( $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_PC_ADD_BLOCK} = 1;
+#}
+
+#sub remove_child_addition_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_PC_ADD_BLOCK} or return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		delete( $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_PC_ADD_BLOCK} = 0;
+#}
+
+######################################################################
+
+#sub impose_reference_addition_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_LC_ADD_BLOCK} and return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_MUTEX} and 
+#			$group->_throw_error_message( 'SRT_G_IMP_RA_BL_MUTEX_ATT' );
+#	}
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} = $group;
+#		Scalar::Util::weaken( $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_LC_ADD_BLOCK} = 1;
+#}
+
+#sub remove_reference_addition_block {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_LC_ADD_BLOCK} or return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		delete( $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} );
+#	}
+#	$group->{$GPROP_IS_LC_ADD_BLOCK} = 0;
+#}
+
+######################################################################
+
+#sub impose_mutex {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_MUTEX} and return; # no-op
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		(keys %{$node->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
+#			$group->_throw_error_message( 'SRT_G_IMP_MUTEX_WR_BL_ATT' );
+#		(keys %{$node->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
+#			$group->_throw_error_message( 'SRT_G_IMP_MUTEX_CA_BL_ATT' );
+#		(keys %{$node->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
+#			$group->_throw_error_message( 'SRT_G_IMP_MUTEX_RA_BL_ATT' );
+#		$node->{$NSPROP_ATT_MUTEX} and 
+#			$group->_throw_error_message( 'SRT_G_IMP_MUTEX_OTHER_MUTEX_ATT' );
+#	}
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_MUTEX} = $group;
+#		Scalar::Util::weaken( $node->{$NSPROP_ATT_MUTEX} );
+#	}
+#	$group->{$GPROP_IS_MUTEX} = 1;
+#}
+
+#sub remove_mutex {
+#	my ($group) = @_;
+#	$group->{$GPROP_IS_MUTEX} or return; # no-op
+#	# TODO: Assert that there are no un-committed transactions involving member Nodes.
+#	foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#		$node->{$NSPROP_ATT_MUTEX} = undef;
+#	}
+#	$group->{$GPROP_IS_MUTEX} = 0;
+#}
+
+######################################################################
+
+#sub add_node {
+#	my ($group, $node) = @_;
+#	defined( $node ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_UNDEF', { 'METH' => 'add_node', 'ARGNM' => 'NODE' } );
+#	ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'add_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#
+#}
+
+######################################################################
+
+#sub add_node_tree {
+#	my ($group, $node) = @_;
+#	defined( $node ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_UNDEF', { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE' } );
+#	ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#
+#}
+
+######################################################################
+
+#sub remove_node {
+#	my ($group, $node) = @_;
+#	defined( $node ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_UNDEF', { 'METH' => 'remove_node', 'ARGNM' => 'NODE' } );
+#	ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'remove_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#
+#}
+
+######################################################################
+
+#sub remove_node_tree {
+#	my ($group, $node) = @_;
+#	defined( $node ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_UNDEF', { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE' } );
+#	ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
+#		'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#
+#}
+
+######################################################################
+######################################################################
+
 1;
 __END__
 
@@ -4551,9 +4799,9 @@ of, since more advanced features are not shown for brevity.
 			[ 'routine_arg', { 'si_name' => 'login_pass', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
 			[ 'routine_var', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
 			[ 'routine_stmt', { 'call_sroutine' => 'CATALOG_OPEN', }, [
-				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item', 'conn_cx', }, ],
-				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_NAME', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_name', }, ],
-				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item', 'login_pass', }, ],
+				[ 'routine_expr', { 'call_sroutine_cxt' => 'CONN_CX', 'cont_type' => 'CONN', 'valf_p_routine_item' => 'conn_cx', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_NAME', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'login_name', }, ],
+				[ 'routine_expr', { 'call_sroutine_arg' => 'LOGIN_PASS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 'login_pass', }, ],
 			], ],
 			[ 'routine_var', { 'si_name' => 'pwp_ary', 'cont_type' => 'RW_ARY', 'row_data_type' => 'person_with_parents', }, ],
 			[ 'routine_stmt', { 'call_sroutine' => 'SELECT', }, [
@@ -5028,22 +5276,22 @@ L<SQL::Routine::NodeTypes>.>
 
 This module is implemented by several object-oriented Perl 5 packages, each of
 which is referred to as a class.  They are: B<SQL::Routine> (the module's
-name-sake), B<SQL::Routine::Container> (aka B<Container>, aka B<Model>), and
-B<SQL::Routine::Node> (aka B<Node>).  This module also has 2 private classes
-named B<SQL::Routine::ContainerStorage> and B<SQL::Routine::NodeStorage>, which
-help to implement Container and Node respectively; each of the latter is a 
-wrapper for one of the former.
+name-sake), B<SQL::Routine::Container> (aka B<Container>, aka B<Model>),
+B<SQL::Routine::Node> (aka B<Node>), and B<SQL::Routine::Group> (aka B<Group>). 
+This module also has 2 private classes named B<SQL::Routine::ContainerStorage>
+and B<SQL::Routine::NodeStorage>, which help to implement Container and Node
+respectively; each of the latter is a wrapper for one of the former.
 
-I<While all 5 of the above classes are implemented in one module for
-convenience, you should consider all 5 names as being "in use"; do not create
+I<While all 6 of the above classes are implemented in one module for
+convenience, you should consider all 6 names as being "in use"; do not create
 any modules or packages yourself that have the same names.>
 
-The Container and Node classes do most of the work and are what you mainly use.
-The name-sake class mainly exists to guide CPAN in indexing the whole module,
-but it also provides a set of stateless utility methods and constants that the
-other two classes inherit, and it provides a few wrapper functions over the
-other classes for your convenience; you never instantiate an object of
-SQL::Routine itself.
+The Container and Node and Group classes do most of the work and are what you
+mainly use.  The name-sake class mainly exists to guide CPAN in indexing the
+whole module, but it also provides a set of stateless utility methods and
+constants that the other two classes inherit, and it provides a few wrapper
+functions over the other classes for your convenience; you never instantiate an
+object of SQL::Routine itself.
 
 Most of the SQL::Routine documentation you will see simply uses the terms
 'Container' and 'Node' to refer to the pair of classes or objects which
@@ -5063,6 +5311,7 @@ CONSTRUCTOR WRAPPER FUNCTIONS:
 
 	new_container()
 	new_node( CONTAINER, NODE_TYPE[, NODE_ID] )
+	new_group( CONTAINER )
 
 CONTAINER CONSTRUCTOR FUNCTIONS:
 
@@ -5072,7 +5321,6 @@ CONTAINER OBJECT METHODS:
 
 	new_interface()
 	get_self_id()
-	is_read_only([ NEW_VALUE ])
 	auto_assert_deferrable_constraints([ NEW_VALUE ])
 	auto_set_node_ids([ NEW_VALUE ])
 	may_match_surrogate_node_ids([ NEW_VALUE ])
@@ -5139,6 +5387,12 @@ NODE OBJECT METHODS:
 	find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 	get_relative_surrogate_id( SELF_ATTR_NAME )
 	assert_deferrable_constraints()
+
+GROUP CONSTRUCTOR FUNCTIONS:
+
+	new( CONTAINER )
+
+GROUP OBJECT METHODS: (TODO)
 
 CONTAINER OR NODE METHODS FOR DEBUGGING:
 

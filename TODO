@@ -1,5 +1,45 @@
 TODO
 
+* Compress the SQL::Routine main API to involve a lot fewer methods, with terser
+names, that are easier to use.  For example, consolidate all get_*_attribute()
+functions into the get_attribute() function, since the amount of CPU work is
+almost the same regardless of which version of the function someone uses.
+
+* Update all code files to have version numbers of format N.N.N rather than
+N.NN, and the new ones will be v-strings; at the same time, add dependency on
+something like only.pm, which knows how to enforce dependencies involving
+v-strings.
+
+* Update the white space of this distribution to follow some best practices. 
+This includes indenting with spaces instead of tabs, and having code lines not
+be longer than 80 or 78 characters.  Run through perltidy for the first time as
+well (though I was very consistent before), which may alter a few other things
+towards best practices.
+
+* Convert all class objects to be of the inside-out variety rather than
+hash-based, so to gain rigorous protection against external code directly
+accessing our object attributes, and to avoid related maintenance problems.
+
+* Redo the input validation architecture to throw exceptions that are more
+helpful.  Do what Carp does to determine where in the caller code we were
+invoked badly, and cite the problem as occurring there, possibly with a stack
+trace from that point upward.  Do not name the invoked method and offending
+method arg in the core error message any more; they can be part of the caller
+line or trace info.  All the work should be doable in a single _throw* function
+that knows its context as Carp does.  State errors based on what is attempted,
+rather than tying it to args; eg, "can't set Node attribute 'foo' to an
+undefined value".
+
+* Data dictionary update to make routine definitions more Pascal-like, such that
+function return values are defined like out-args, and you assign to said arg
+prior to exiting in order to return a value; then, 'return' takes no arguments.
+
+* Finish implementing the new Group class enough that write-blocks work.
+
+* Once the above are done, announce Rosetta/SQL::Routine Developer Release #3.
+
+* Implement the in-model transactional features and Node mutexes.
+
 * Continue fleshing out the standard_routine enumerated type documentation.
 
 * Add more deferred constraints to reduce erroneous models.

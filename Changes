@@ -1,3 +1,108 @@
+                             SQL-Routine
+----------------------------------------------------------------------
+
+2005-09-01   Darren Duncan <perl@DarrenDuncan.net>
+
+	* SQL-Routine Release 0.68.
+
+	* New code file versions are: Routine.pm v0.68 and en.pm v0.36.
+
+	* Added a new main title to this Changes file that matches the ReadMe file.
+
+	* Rewrote the documentation section KEEPING UP TO DATE in the ReadMe file.
+
+	* Corresponding changes in Routine.pm, Details.pod, en.pm:  Deleted the
+	boolean property "is read only" from the ContainerStorage class, along with
+	its accessor method is_read_only(); this will be replaced with alternate
+	functionality called "access controls".  Also updated the Routine.pm code
+	for these 21 methods to remove references to the property:
+	auto_assert_deferrable_constraints(), auto_set_node_ids(),
+	may_match_surrogate_node_ids(), Container.delete_node_tree(),
+	ContainerStorage._new(), move_before_sibling(), NodeStorage._new(),
+	_delete_node[|_tree](), _set_node_id(),
+	_[clear|set]_primary_parent_attribute(),
+	_clear_[literal|enumerated|node_ref]_attribute[|s](),
+	_set_[literal|enumerated|node_ref]_attribute().  Also removed the 2 en.pm
+	user text messages 'SRT_[C|N]_METH_ASS_READ_ONLY'.
+
+	* Deleted test file t/SRT_10_ReadOnly.t, which is no longer applicable.
+
+	* Corresponding changes in Routine.pm, Details.pod, en.pm:  Moved these 3
+	boolean properties from the ContainerStorage class to the Container
+	interface class: "auto assert deferrable constraints", "auto set node ids",
+	"may match surrogate node ids"; from now on, setting any of these 3
+	properties to true will only affect program actions done through their own
+	Container interface (or child Node interfaces), and not those done through
+	other interfaces.  Updated the Routine.pm code and Details.pod documentation
+	of the corresponding 3 property accessor methods.  Updated the Routine.pm
+	code for these 6 methods that reference those properties: Container.new(),
+	new_interface(), _build_node_is_child_or_not(), ContainerStorage._new(),
+	Node.new(), _set_node_ref_attribute().  Also updated the 2 en.pm user text 
+	messages 'SRT_N_NEW_NODE_NO_ARG_ID' and 'SRT_N_SET_NREF_AT_NO_ALLOW_SID'.
+
+	* Large update to Details.pod:  Added new main documentation section FAULT
+	TOLERANCE, DATA INTEGRITY, AND CONCURRENCY; it has 4 sub-sections named
+	"Structural Matters", "Function or Method Types and Exceptions", "Input
+	Validation", and "Multiple Thread Concurrency".  Removed main documentation
+	section FAULT TOLERANCE AND MULTI-THREADING SUPPORT; all of its contents
+	have been moved into the aforementioned new main section, comprising a
+	majority of all the former's sub-sections except for "Input Validation". 
+	Removed all but the first SYNTAX paragraph; all of that content has been
+	moved into the aforementioned new main section, mostly becoming "Input
+	Validation".  FAULT ... has a small amount of new material also.
+
+	* Updated Routine.pm to fix a bug in _delete_node_tree() and
+	_delete_node_tree__add_to_candidates(); Perl 5 hashes always stringify their
+	keys, so we can't use the keys of %candidates as objects; updated
+	%candidates to store the actual NodeStorage ref in the hash value, and
+	updated use code to iterate values instead of keys.
+
+	* Corresponding minor bug fix in the SYNOPSIS of Routine.pm and the code of
+	t_SRT_Synopsis.pm: corrected 3 syntax errors where members of 3 key/value
+	pairs were separated from their partners by ',' rather than '=>'.
+
+	* Added new test file t/SRT_10_Identity.t, to test the new_interface() and
+	get_self_id() functions that were added in release 0.66, plus other aspects
+	of that all Node fetches generate new Node interface objects.  It has 22
+	blocks of tests, where the first 10 are written and the last 12 are not yet
+	written; those will come in some future release; however, the existing
+	blocks 5 thru 10 of the present ones are like the missing ones, where the
+	truly unique ones, 1-4, are done already.
+
+	* Corresponding changes in Routine.pm, Details.pod, en.pm:  Added new core
+	class SQL::Routine::Group (Group), objects of which are associated with
+	Container interface objects and provide convenient means to address a group
+	of Nodes as a unit, mainly in regards to defining access controls.  In
+	Details.pod, added new main documentation section "ABOUT NODE GROUPS", and
+	in Routine.pm, updated the "CLASSES IN THIS MODULE" documentation.  In the
+	code of Routine.pm, added the Group class declaration (with 2 default
+	properties, 'container' and 'member_nsrefs'), which has its own new()
+	constructor function, but which currently has no other methods (some were
+	started, but they're commented out); also added new SQL::Routine wrapper
+	function new_group(). Added documentation for those 2 new constructor
+	functions in Details.pod. Added 2 new en.pm user text messages for
+	Group.new(), 'SRT_G_NEW_GROUP_[NO_ARG|BAD]_CONT'.
+
+	* Corresponding changes in Routine.pm, Details.pod, en.pm:  Added the
+	beginnings of some new core features, such as shared and exclusive locks on
+	Nodes, transactions and near-ACID compliance.  In Details.pod, added 2 new
+	sub-sections of FAULT TOLERANCE, "ACID Compliance and Transactions" and
+	"Access Controls and Reentrancy"; they outline and describe how these
+	features are intended to be once complete.  In the code of Routine.pm, added
+	new properties to 3 classes; Container interface gained 2, 'explicit_groups'
+	and 'default_group'; NodeStorage gained 4,
+	'att_[write|pc_add|lc_add]_blocks' and 'att_mutex'; Group gained 4,
+	'is_[write|pc_add|lc_add]_block' and 'is_mutex'; none of them have accessor
+	methods, as of yet or ever.  Also updated the Routine.pm code for these 20
+	methods to add references to the new properties: Container.new(),
+	Container.new_interface(), Container.delete_node_tree(),
+	move_before_sibling(), NodeStorage._new(), _delete_node[|_tree](),
+	_set_node_id(), _[clear|set]_primary_parent_attribute(),
+	_clear_[literal|enumerated|node_ref]_attribute[|s](),
+	_set_[literal|enumerated|node_ref]_attribute(), Group.new().  Also added the
+	4 en.pm user text messages 'SRT_[C|N]_METH_VIOL_WRITE_BLOCKS' and
+	'SRT_N_METH_VIOL_[P|L]C_ADD_BLOCKS'.
+
 2005-07-16   Darren Duncan <perl@DarrenDuncan.net>
 
 	* SQL-Routine Release 0.67.

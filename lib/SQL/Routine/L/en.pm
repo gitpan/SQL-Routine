@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.35';
+our $VERSION = '0.36';
 
 ######################################################################
 
@@ -69,10 +69,13 @@ way of suggesting improvements to the standard version.
 
 my $CC = 'SQL::Routine::Container';
 my $CN = 'SQL::Routine::Node';
+my $CG = 'SQL::Routine::Group';
 
 my %text_strings = (
-	'SRT_C_METH_ASS_READ_ONLY' =>
-		$CC.'.{METH}(): this Container is currently read-only so you may not alter its contents',
+	'SRT_C_METH_VIOL_WRITE_BLOCKS' =>
+		$CC.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a write block is imposed on it by at least one Container interface, '.
+		'so it can not be edited or deleted',
 
 	'SRT_C_METH_ARG_UNDEF' => 
 		$CC.'.{METH}(): undefined (or missing) {ARGNM} argument',
@@ -95,9 +98,18 @@ my %text_strings = (
 		$CC.'.build_child_node_tree(): invalid NODE_TYPE argument; a "{ARGNTYPE}" Node does not '.
 		'have a pseudo-Node parent and can not be made a direct child of a Container',
 
-	'SRT_N_METH_ASS_READ_ONLY' =>
+	'SRT_N_METH_VIOL_WRITE_BLOCKS' =>
 		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'its host Container is currently read-only so you may not alter its contents',
+		'a write block is imposed on it by at least one Container interface, '.
+		'so it can not be edited or deleted',
+	'SRT_N_METH_VIOL_PC_ADD_BLOCKS' =>
+		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a primary child addition block is imposed on it by at least one Container interface, '.
+		'so it can not gain primary child Nodes',
+	'SRT_N_METH_VIOL_LC_ADD_BLOCKS' =>
+		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'a referencing/link child addition block is imposed on it by at least one Container interface, '.
+		'so it can not gain referencing/link child Nodes',
 
 	'SRT_N_METH_ARG_UNDEF' => 
 		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -129,7 +141,7 @@ my %text_strings = (
 		$CN.'.new_node(): invalid NODE_TYPE argument; there is no Node Type named "{ARGNTYPE}"',
 	'SRT_N_NEW_NODE_NO_ARG_ID' => 
 		$CN.'.new_node(): concerning the new "{ARGNTYPE}" Node under construction; '.
-		'missing NODE_ID argument and the given Container is not configured to auto-set missing Node Ids',
+		'missing NODE_ID argument and the given Container interface is not configured to auto-set missing Node Ids',
 	'SRT_N_NEW_NODE_BAD_ID' => 
 		$CN.'.new_node(): concerning the new "{ARGNTYPE}" Node under construction; '.
 		'invalid NODE_ID argument; a Node Id may only be a positive integer; '.
@@ -247,7 +259,7 @@ my %text_strings = (
 	'SRT_N_SET_NREF_AT_NO_ALLOW_SID' => 
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
-		'this Node\'s host Container does not allow the use of Surrogate Ids to match Nodes when linking; '.
+		'this Node\'s host Container interface does not allow the use of Surrogate Ids to match Nodes when linking; '.
 		'ATTR_VALUE must be either a Node ref or a positive integer Node Id',
 	'SRT_N_SET_NREF_AT_NONEX_SID' => 
 		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
@@ -455,6 +467,11 @@ my %text_strings = (
 		'when its enumerated ("{PENUMTYPE}") attribute "{PATNM}" has a value value of "{PATVL}", '.
 		'this Node must have a child Node whose appropriate related enumerated attribute is set '.
 		'for each of these child enumerated values, which are all missing: {CATVLS}',
+
+	'SRT_G_NEW_GROUP_NO_ARG_CONT' => 
+		$CG.'.new_group(): missing CONTAINER argument',
+	'SRT_G_NEW_GROUP_BAD_CONT' => 
+		$CG.'.new_group(): invalid CONTAINER argument; it is not a Container object, but rather is "{ARGNCONT}"',
 );
 
 ######################################################################
