@@ -3,6 +3,38 @@
 
 2005-09-01   Darren Duncan <perl@DarrenDuncan.net>
 
+	* SQL-Routine Release 0.69.
+
+	* New code file versions are: Routine.pm v0.69 and en.pm v0.37.
+
+	* Removed a long-standing erroneous "=head1" in the ReadMe file, which
+	caused the search.cpan.org documentation maker to mis-format that file.
+
+	* Corresponding changes in Routine.pm, Details.pod, en.pm:  Merged the 18
+	Node interface methods named
+	[get|clear|set]_[literal|enumerated|node_ref]_attribute[|s]() into the
+	pre-existing 6 Node interface methods named [get|clear_set]_attribute[|s]();
+	the newly size-reduced API of SQL::Routine should hopefully be less daunting
+	to programmers than the old API, even though it is now a bit less
+	self-documenting.  As part of this change, the 6 en.pm user text messages
+	'SRT_N_METH_ARG_NO_[LIT|ENUM|NREF]_AT_NM' and
+	'SRT_N_SET_[LIT|ENUM|NREF]_AT_NO_ARG_VAL' were merged into the pre-existing
+	2 messages 'SRT_N_METH_ARG_NO_AT_NM' and 'SRT_N_SET_AT_NO_ARG_VAL'.  There
+	were also 11 other en.pm messages altered, that were used by private methods
+	which the old 24 public methods had invoked.  There were also 4 en.pm
+	messages moved upward in the file to just below the PP messages.  In
+	Routine.pm, 9 NodeStorage private methods were slightly altered to use the
+	aforementioned altered en.pm messages,
+	_clear_[literal|enumerated|node_ref]_attribute[|s]() and
+	_set_[literal|enumerated|node_ref]_attribute().  Besides the above, there 
+	were a few trivial related documentation updates in Routine.pm, Details.pod.
+
+	* Updated the 2 test suite files t_SRT_Verbose.pm and SRT_10_Identity.t to
+	replace invocations of the removed methods with invocations of their shorter
+	counterparts; SRT_10_Identity.t also had a net 2 test blocks removed.
+
+2005-09-01   Darren Duncan <perl@DarrenDuncan.net>
+
 	* SQL-Routine Release 0.68.
 
 	* New code file versions are: Routine.pm v0.68 and en.pm v0.36.

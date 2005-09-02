@@ -968,117 +968,11 @@ it has one.
 This "setter" method will set or replace this Node's primary parent attribute
 value, if it has one, giving it the new value specified in ATTR_VALUE.
 
-=head2 get_literal_attribute( ATTR_NAME )
-
-This "getter" method will return the value for this Node's literal attribute named
-in the ATTR_NAME argument.
-
-=head2 get_literal_attributes()
-
-This "getter" method will fetch all of this Node's literal attributes, 
-returning them in a Hash ref.
-
-=head2 clear_literal_attribute( ATTR_NAME )
-
-This "setter" method will clear this Node's literal attribute named in
-the ATTR_NAME argument.
-
-=head2 clear_literal_attributes()
-
-This "setter" method will clear all of this Node's literal attributes.
-
-=head2 set_literal_attribute( ATTR_NAME, ATTR_VALUE )
-
-This "setter" method will set or replace this Node's literal attribute named in
-the ATTR_NAME argument, giving it the new value specified in ATTR_VALUE.
-
-=head2 set_literal_attributes( ATTRS )
-
-This "setter" method will set or replace multiple Node literal attributes,
-whose names and values are specified by keys and values of the ATTRS hash ref
-argument; this method will invoke set_literal_attribute() for each key/value
-pair.
-
-=head2 get_enumerated_attribute( ATTR_NAME )
-
-This "getter" method will return the value for this Node's enumerated attribute
-named in the ATTR_NAME argument.
-
-=head2 get_enumerated_attributes()
-
-This "getter" method will fetch all of this Node's enumerated attributes,
-returning them in a Hash ref.
-
-=head2 clear_enumerated_attribute( ATTR_NAME )
-
-This "setter" method will clear this Node's enumerated attribute named in the
-ATTR_NAME argument.
-
-=head2 clear_enumerated_attributes()
-
-This "setter" method will clear all of this Node's enumerated attributes.
-
-=head2 set_enumerated_attribute( ATTR_NAME, ATTR_VALUE )
-
-This "setter" method will set or replace this Node's enumerated attribute named in
-the ATTR_NAME argument, giving it the new value specified in ATTR_VALUE.
-
-=head2 set_enumerated_attributes( ATTRS )
-
-This "setter" method will set or replace multiple Node enumerated attributes,
-whose names and values are specified by keys and values of the ATTRS hash ref
-argument; this method will invoke set_enumerated_attribute() for each key/value
-pair.
-
-=head2 get_node_ref_attribute( ATTR_NAME[, GET_TARGET_SI] )
-
-This "getter" method will return the value for this Node's node attribute named
-in the ATTR_NAME argument, if it is set, or undef if it isn't.  The returned
-value is a Node ref by default; if the optional boolean argument GET_TARGET_SI
-is true, then this method will instead lookup (recursively) and return the
-target Node's literal or enumerated surrogate id value (a single value, not a
-chain).
-
-=head2 get_node_ref_attributes([ GET_TARGET_SI ])
-
-This "getter" method will fetch all of this Node's node attributes, returning
-them in a Hash ref.  Each attribute value is returned in the format specified by
-get_node_ref_attribute( <attr-name>, GET_TARGET_SI ).
-
-=head2 clear_node_ref_attribute( ATTR_NAME )
-
-This "setter" method will clear this Node's node attribute named in the
-ATTR_NAME argument; the other Node being referred to will also have its child
-list reciprocal link to the current Node cleared.
-
-=head2 clear_node_ref_attributes()
-
-This "setter" method will clear all of this Node's node attributes; see 
-the clear_node_ref_attribute() documentation for the semantics.
-
-=head2 set_node_ref_attribute( ATTR_NAME, ATTR_VALUE )
-
-This "setter" method will set or replace this Node's node attribute named in the
-ATTR_NAME argument, giving it the new value specified in ATTR_VALUE (if it is
-different).  If the attribute was previously valued, this method will first
-invoke clear_node_ref_attribute() on it.  When setting a new value it will also
-add the current Node to the other Node's child list.  ATTR_VALUE may either be a
-perl reference to a Node, or a Node Id value, or a relative Surrogate Node Id
-value (scalar or array ref); the last one will only work if this Node is in a
-Container that matches Nodes by surrogate ids.
-
-=head2 set_node_ref_attributes( ATTRS )
-
-This "setter" method will set or replace multiple Node node attributes,
-whose names and values are specified by keys and values of the ATTRS hash ref
-argument; this method will invoke set_node_ref_attribute() for each key/value
-pair.
-
 =head2 get_surrogate_id_attribute([ GET_TARGET_SI ])
 
 This "getter" method will return the value for this Node's surrogate id
 attribute.  The GET_TARGET_SI argument is relevant only for Node-ref attributes;
-its effects are explained by get_node_ref_attribute().
+its effects are explained by get_attribute().
 
 =head2 clear_surrogate_id_attribute()
 
@@ -1095,31 +989,44 @@ value, giving it the new value specified in ATTR_VALUE.
 	my $curr_val = $node->get_attribute( 'si_name' );
 
 This "getter" method will return the value for this Node's attribute named in
-the ATTR_NAME argument.  The GET_TARGET_SI argument is relevant only for
-Node-ref attributes; its effects are explained by get_node_ref_attribute().
+the ATTR_NAME argument, if it is set, or undef if it isn't.  With Node-ref
+attributes, the returned value is a Node ref by default; if the optional boolean
+argument GET_TARGET_SI is true, then this method will instead lookup
+(recursively) and return the target Node's literal or enumerated surrogate id
+value (a single value, not a chain).
 
 =head2 get_attributes([ GET_TARGET_SI ])
 
 	my $rh_attrs = $node->get_attributes();
 
-This "getter" method will fetch all of this Node's attributes, returning them
-in a Hash ref.  The GET_TARGET_SI argument is relevant only for Node-ref
-attributes; its effects are explained by get_node_ref_attribute().
+This "getter" method will fetch all of this Node's attributes, returning them in
+a Hash ref.  Each attribute value is returned in the format specified by
+get_attribute( <attr-name>, GET_TARGET_SI ).
 
 =head2 clear_attribute( ATTR_NAME )
 
 This "setter" method will clear this Node's attribute named in the ATTR_NAME
 argument, unless ATTR_NAME is 'id'; since the Node Id attribute has a constantly
 applied mandatory constraint, this method will throw an exception if you try.
+With Node-ref attributes, the other Node being referred to will also have its
+child list reciprocal link to the current Node cleared.
 
 =head2 clear_attributes()
 
-This "setter" method will clear all of this Node's attributes, except 'id'.
+This "setter" method will clear all of this Node's attributes, except 'id'; see 
+the clear_attribute() documentation for the semantics.
 
 =head2 set_attribute( ATTR_NAME, ATTR_VALUE )
 
 This "setter" method will set or replace this Node's attribute named in the
-ATTR_NAME argument, giving it the new value specified in ATTR_VALUE.
+ATTR_NAME argument, giving it the new value specified in ATTR_VALUE; in the case
+of a replacement, the semantics of this method are like invoking
+clear_attribute( ATTR_NAME ) before setting the new value.  With Node-ref
+attributes, ATTR_VALUE may either be a perl reference to a Node, or a Node Id
+value, or a relative Surrogate Node Id value (scalar or array ref); the last one
+will only work if this Node is in a Container that matches Nodes by surrogate
+ids.  With Node-ref attributes, when setting a new value this method will also
+add the current Node to the other Node's child list.
 
 =head2 set_attributes( ATTRS )
 
@@ -1127,7 +1034,7 @@ ATTR_NAME argument, giving it the new value specified in ATTR_VALUE.
 
 This "setter" method will set or replace multiple Node attributes, whose names
 and values are specified by keys and values of the ATTRS hash ref argument;
-this method will invoke set_attribute() for each key/value pair.
+this method behaves like invoking set_attribute() for each key/value pair.
 
 =head2 move_before_sibling( SIBLING[, PARENT] )
 
@@ -1210,8 +1117,8 @@ addressable types".  Note that it is illegal to use the return value of
 get_surrogate_id_chain() as a TARGET_ATTR_VALUE with this method; you can give
 the return value of get_relative_surrogate_id(), however.  Note that counting
 the number of return values from find_node_by_surrogate_id() is an accurate way
-to tell whether set_node_ref_attribute() with the same 2 arguments will succeed
-or not; it will only succeed if this method returns exactly 1 matching Node.
+to tell whether set_attribute() with the same 2 arguments will succeed or not;
+it will only succeed if this method returns exactly 1 matching Node.
 
 =head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 

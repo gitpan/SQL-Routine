@@ -19,15 +19,15 @@ isa_ok( $contA1, 'SQL::Routine::Container',
 my $nodeA1 = SQL::Routine->new_node( $contA1, 'scalar_data_type', 1 );
 isa_ok( $nodeA1, 'SQL::Routine::Node', 
 	'nodeA1 = SQL::Routine.new_node( contA1, \'scalar_data_type\', 1 ) ret NI obj' );
-$nodeA1->set_literal_attribute( 'si_name', 'foo' );
-pass( 'nodeA1.set_literal_attribute( \'si_name\', \'foo\' )' );
+$nodeA1->set_attribute( 'si_name', 'foo' );
+pass( 'nodeA1.set_attribute( \'si_name\', \'foo\' )' );
 my $nodeA2 = SQL::Routine->new_node( $contA1, 'scalar_data_type_opt', 2 );
 isa_ok( $nodeA2, 'SQL::Routine::Node', 
 	'nodeA2 = SQL::Routine.new_node( contA1, \'scalar_data_type_opt\', 2 ) ret NI obj' );
 $nodeA1->add_child_node( $nodeA2 );
 pass( 'nodeA1.add_child_node( nodeA2 )' );
-$nodeA2->set_literal_attribute( 'si_value', 'bar' );
-pass( 'nodeA2.set_literal_attribute( \'si_name\', \'bar\' )' );
+$nodeA2->set_attribute( 'si_value', 'bar' );
+pass( 'nodeA2.set_attribute( \'si_name\', \'bar\' )' );
 
 t_SRT_Util->message( 'Now a sanity check; "=" assignment results in 2 refs to same objects.' );
 
@@ -246,14 +246,6 @@ is( $nodeH1b->get_container(), $nodeH1->get_container(),
 
 t_SRT_Util->message( 'TODO: Now confirm that N.set_primary_parent_attribute() accepts same S, rejects diff S.' );
 
-t_SRT_Util->message( 'TODO: Now confirm that N.get_node_ref_attribute() returns new NI with the same CI.' );
-
-t_SRT_Util->message( 'TODO: Now confirm that N.set_node_ref_attribute() accepts same S, rejects diff S.' );
-
-t_SRT_Util->message( 'TODO: Now confirm that N.get_node_ref_attributes() returns new NIs with the same CIs.' );
-
-t_SRT_Util->message( 'TODO: Now confirm that N.set_node_ref_attributes() accepts same S, rejects diff S.' );
-
 t_SRT_Util->message( 'TODO: Now confirm that N.get_surrogate_id_attribute() returns new NIs with the same CIs.' );
 
 t_SRT_Util->message( 'TODO: Now confirm that N.set_surrogate_id_attribute() accepts same S, rejects diff S.' );
@@ -261,6 +253,10 @@ t_SRT_Util->message( 'TODO: Now confirm that N.set_surrogate_id_attribute() acce
 t_SRT_Util->message( 'TODO: Now confirm that N.get_attribute() returns new NIs with the same CIs.' );
 
 t_SRT_Util->message( 'TODO: Now confirm that N.set_attribute() accepts same S, rejects diff S.' );
+
+t_SRT_Util->message( 'TODO: Now confirm that N.get_attributes() returns new NIs with the same CIs.' );
+
+t_SRT_Util->message( 'TODO: Now confirm that N.set_attributes() accepts same S, rejects diff S.' );
 
 t_SRT_Util->message( 'TODO: Now confirm that N.get_referencing_nodes() returns new NIs with the same CIs.' );
 

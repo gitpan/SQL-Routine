@@ -1,10 +1,5 @@
 TODO
 
-* Compress the SQL::Routine main API to involve a lot fewer methods, with terser
-names, that are easier to use.  For example, consolidate all get_*_attribute()
-functions into the get_attribute() function, since the amount of CPU work is
-almost the same regardless of which version of the function someone uses.
-
 * Update all code files to have version numbers of format N.N.N rather than
 N.NN, and the new ones will be v-strings; at the same time, add dependency on
 something like only.pm, which knows how to enforce dependencies involving

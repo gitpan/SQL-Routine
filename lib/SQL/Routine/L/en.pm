@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-our $VERSION = '0.36';
+our $VERSION = '0.37';
 
 ######################################################################
 
@@ -200,77 +200,6 @@ my %text_strings = (
 		'you may not use Surrogate Ids to match Nodes when setting the primary parent attribute; '.
 		'ATTR_VALUE must be either a Node ref or a positive integer Node Id',
 
-	'SRT_N_METH_ARG_NO_LIT_AT_NM' => 
-		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid {ARGNM} argument; there is no literal attribute named "{ARGVL}" in this Node',
-
-	'SRT_N_SET_LIT_AT_NO_ARG_VAL' => 
-		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'missing ATTR_VALUE argument when setting "{ATNM}"',
-	'SRT_N_SET_LIT_AT_INVAL_V_IS_REF' => 
-		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
-		'a scalar value; you tried to set it to a "{ARG_REF_TYPE}" reference',
-	'SRT_N_SET_LIT_AT_INVAL_V_BOOL' => 
-		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
-		'a boolean value, as expressed by "0" or "1"; you tried to set it to "{ARG}"',
-	'SRT_N_SET_LIT_AT_INVAL_V_UINT' => 
-		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
-		'a non-negative integer; you tried to set it to "{ARG}"',
-	'SRT_N_SET_LIT_AT_INVAL_V_SINT' => 
-		$CN.'.set_literal_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
-		'an integer; you tried to set it to "{ARG}"',
-
-	'SRT_N_METH_ARG_NO_ENUM_AT_NM' => 
-		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid {ARGNM} argument; there is no enumerated attribute named "{ARGVL}" in this Node',
-
-	'SRT_N_SET_ENUM_AT_NO_ARG_VAL' => 
-		$CN.'.set_enumerated_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'missing ATTR_VALUE argument when setting "{ATNM}"',
-	'SRT_N_SET_ENUM_AT_INVAL_V' => 
-		$CN.'.set_enumerated_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument; this Node\'s enumerated attribute named "{ATNM}" may only be '.
-		'a "{ENUMTYPE}" value; you tried to set it to "{ARG}"',
-
-	'SRT_N_METH_ARG_NO_NREF_AT_NM' => 
-		$CN.'.{METH}(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid {ARGNM} argument; there is no Node-ref attribute named "{ARGVL}" in this Node',
-
-	'SRT_N_SET_NREF_AT_NO_ARG_VAL' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'missing ATTR_VALUE argument when setting "{ATNM}"',
-
-	'SRT_N_SET_NREF_AT_WRONG_NODE_TYPE' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; the given Node is an "{ARGNTYPE}" '.
-		'Node but this Node-ref attribute may only reference a "{EXPNTYPE}" Node',
-	'SRT_N_SET_NREF_AT_DIFF_CONT' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; that Node is not in '.
-		'the same Container as this current Node, so they can not be linked',
-	'SRT_N_SET_NREF_AT_NONEX_NID' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Node Id but '.
-		'it does not match the Id of any "{EXPNTYPE}" Node in this Node\'s Container',
-	'SRT_N_SET_NREF_AT_NO_ALLOW_SID' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
-		'this Node\'s host Container interface does not allow the use of Surrogate Ids to match Nodes when linking; '.
-		'ATTR_VALUE must be either a Node ref or a positive integer Node Id',
-	'SRT_N_SET_NREF_AT_NONEX_SID' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
-		'it does not match the Surrogate Id of any "{EXPNTYPE}" Node in this Node\'s Container',
-	'SRT_N_SET_NREF_AT_AMBIG_SID' => 
-		$CN.'.set_node_ref_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
-		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
-		'it is too ambiguous to match the Surrogate Id of any single "{EXPNTYPE}" Node in this Node\'s Container; '.
-		'all of these Nodes are equally qualified to match, but only one is allowed to: "{CANDIDATES}"',
-
 	'SRT_N_CLEAR_SI_AT_MAND_NID' => 
 		$CN.'.clear_surrogate_id_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'you can not clear the "id" attribute because the Node Id is constantly always mandatory',
@@ -286,6 +215,55 @@ my %text_strings = (
 	'SRT_N_SET_AT_NO_ARG_VAL' => 
 		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
 		'missing ATTR_VALUE argument when setting "{ATNM}"',
+
+	'SRT_N_SET_AT_INVAL_LIT_V_IS_REF' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
+		'a scalar value; you tried to set it to a "{ARG_REF_TYPE}" reference',
+	'SRT_N_SET_AT_INVAL_LIT_V_BOOL' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
+		'a boolean value, as expressed by "0" or "1"; you tried to set it to "{ARG}"',
+	'SRT_N_SET_AT_INVAL_LIT_V_UINT' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
+		'a non-negative integer; you tried to set it to "{ARG}"',
+	'SRT_N_SET_AT_INVAL_LIT_V_SINT' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; this Node\'s literal attribute named "{ATNM}" may only be '.
+		'an integer; you tried to set it to "{ARG}"',
+
+	'SRT_N_SET_AT_INVAL_ENUM_V' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument; this Node\'s enumerated attribute named "{ATNM}" may only be '.
+		'a "{ENUMTYPE}" value; you tried to set it to "{ARG}"',
+
+	'SRT_N_SET_AT_NREF_WRONG_NODE_TYPE' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; the given Node is an "{ARGNTYPE}" '.
+		'Node but this Node-ref attribute may only reference a "{EXPNTYPE}" Node',
+	'SRT_N_SET_AT_NREF_DIFF_CONT' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; that Node is not in '.
+		'the same Container as this current Node, so they can not be linked',
+	'SRT_N_SET_AT_NREF_NONEX_NID' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Node Id but '.
+		'it does not match the Id of any "{EXPNTYPE}" Node in this Node\'s Container',
+	'SRT_N_SET_AT_NREF_NO_ALLOW_SID' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
+		'this Node\'s host Container interface does not allow the use of Surrogate Ids to match Nodes when linking; '.
+		'ATTR_VALUE must be either a Node ref or a positive integer Node Id',
+	'SRT_N_SET_AT_NREF_NONEX_SID' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
+		'it does not match the Surrogate Id of any "{EXPNTYPE}" Node in this Node\'s Container',
+	'SRT_N_SET_AT_NREF_AMBIG_SID' => 
+		$CN.'.set_attribute(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.
+		'invalid ATTR_VALUE argument when setting "{ATNM}"; "{ARG}" looks like a Surrogate Id but '.
+		'it is too ambiguous to match the Surrogate Id of any single "{EXPNTYPE}" Node in this Node\'s Container; '.
+		'all of these Nodes are equally qualified to match, but only one is allowed to: "{CANDIDATES}"',
 
 	'SRT_N_SET_ATS_NO_ARG_ELEM_VAL' => 
 		$CN.'.set_attributes(): concerning the "{NTYPE}" Node with Id "{NID}" and Surrogate Id Chain "{SIDCH}"; '.

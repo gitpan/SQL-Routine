@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Scalar::Util 1.11;
 use Locale::KeyedText 1.05;
@@ -180,7 +180,7 @@ my $NSPROP_LINK_CHILD_NSREFS = 'link_child_nsrefs'; # array - list of refs to ot
 	# however, when rendering to XML, we only render a NodeStorage once, and not as many times as linked; 
 	# it is also possible that we may never be put in this situation from real-world usage.
 	# Note that in the above situation, a normalized child list would have the above two links sitting 
-	# adjacent to each other; however, calls to set_node_ref_attribute() won't do this, but rather 
+	# adjacent to each other; however, calls to set_attribute() won't do this, but rather 
 	# append new links to the end of the list.  In the interest of simplicity, any method that wants to 
 	# change the order of a child list should also normalize any multiple same-child occurrances.
 my $NSPROP_ATT_WRITE_BLOCKS = 'att_write_blocks'; # hash ("Group",Group) - 
@@ -2549,186 +2549,6 @@ sub set_primary_parent_attribute {
 
 ######################################################################
 
-sub get_literal_attribute {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
-		{ 'METH' => 'get_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	return $node->{$NPROP_STORAGE}->_get_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-}
-
-sub get_literal_attributes {
-	my ($node) = @_;
-	return {%{$node->{$NPROP_STORAGE}->{$NSPROP_AT_LITERALS}}};
-}
-
-sub clear_literal_attribute {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
-		{ 'METH' => 'clear_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	$node->{$NPROP_STORAGE}->_clear_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-}
-
-sub clear_literal_attributes {
-	my ($node) = @_;
-	$node->{$NPROP_STORAGE}->_clear_literal_attributes( $node->{$NPROP_CONTAINER} );
-}
-
-sub set_literal_attribute {
-	my ($node, $attr_name, $attr_value) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_literal_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_LIT_AT_NM', 
-		{ 'METH' => 'set_literal_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_LIT_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
-	$node->{$NPROP_STORAGE}->_set_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_lit_type, $attr_value );
-}
-
-sub set_literal_attributes {
-	my ($node, $attrs) = @_;
-	defined( $attrs ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_literal_attributes', 'ARGNM' => 'ATTRS' } );
-	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_literal_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
-	foreach my $attr_name (keys %{$attrs}) {
-		$node->set_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $attrs->{$attr_name} );
-	}
-}
-
-######################################################################
-
-sub get_enumerated_attribute {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
-		{ 'METH' => 'get_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	return $node->{$NPROP_STORAGE}->_get_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-}
-
-sub get_enumerated_attributes {
-	my ($node) = @_;
-	return {%{$node->{$NPROP_STORAGE}->{$NSPROP_AT_ENUMS}}};
-}
-
-sub clear_enumerated_attribute {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
-		{ 'METH' => 'clear_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	$node->{$NPROP_STORAGE}->_clear_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-}
-
-sub clear_enumerated_attributes {
-	my ($node) = @_;
-	$node->{$NPROP_STORAGE}->_clear_enumerated_attributes( $node->{$NPROP_CONTAINER} );
-}
-
-sub set_enumerated_attribute {
-	my ($node, $attr_name, $attr_value) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_enumerated_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_ENUM_AT_NM', 
-		{ 'METH' => 'set_enumerated_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ENUM_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
-	$node->{$NPROP_STORAGE}->_set_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_enum_type, $attr_value );
-}
-
-sub set_enumerated_attributes {
-	my ($node, $attrs) = @_;
-	defined( $attrs ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_enumerated_attributes', 'ARGNM' => 'ATTRS' } );
-	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_enumerated_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
-	foreach my $attr_name (keys %{$attrs}) {
-		$node->set_enumerated_attribute( $attr_name, $attrs->{$attr_name} );
-	}
-}
-
-######################################################################
-
-sub get_node_ref_attribute {
-	my ($node, $attr_name, $get_target_si) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
-		{ 'METH' => 'get_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $get_target_si ) );
-}
-
-sub get_node_ref_attributes {
-	my ($node, $get_target_si) = @_;
-	my $container = $node->{$NPROP_CONTAINER};
-	my $at_nsrefs = $node->{$NPROP_STORAGE}->{$NSPROP_AT_NSREFS};
-	if( $get_target_si ) {
-		return {map { ($_ => $at_nsrefs->{$_}->_get_surrogate_id_attribute( $container, $get_target_si )) } keys %{$at_nsrefs}};
-	} else {
-		return $node->_ns_to_ni( $at_nsrefs );
-	}
-}
-
-sub clear_node_ref_attribute {
-	my ($node, $attr_name) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	$type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
-		{ 'METH' => 'clear_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	$node->{$NPROP_STORAGE}->_clear_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-}
-
-sub clear_node_ref_attributes {
-	my ($node) = @_;
-	$node->{$NPROP_STORAGE}->_clear_node_ref_attributes( $node->{$NPROP_CONTAINER} );
-}
-
-sub set_node_ref_attribute {
-	my ($node, $attr_name, $attr_value) = @_;
-	defined( $attr_name ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_ref_attribute', 'ARGNM' => 'ATTR_NAME' } );
-	my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-	my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} or 
-		$node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
-		{ 'METH' => 'set_node_ref_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
-	defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
-	if( ref($attr_value) eq ref($node) ) {
-		$attr_value = $attr_value->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
-	}
-	$node->{$NPROP_STORAGE}->_set_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_node_types, $attr_value );
-}
-
-sub set_node_ref_attributes {
-	my ($node, $attrs) = @_;
-	defined( $attrs ) or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_ref_attributes', 'ARGNM' => 'ATTRS' } );
-	ref($attrs) eq 'HASH' or $node->_throw_error_message( 
-		'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_node_ref_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
-	foreach my $attr_name (keys %{$attrs}) {
-		$node->set_node_ref_attribute( $attr_name, $attrs->{$attr_name} );
-	}
-}
-
-######################################################################
-
 sub get_surrogate_id_attribute {
 	my ($node, $get_target_si) = @_;
 	return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_surrogate_id_attribute( $node->{$NPROP_CONTAINER}, $get_target_si ) );
@@ -2780,13 +2600,17 @@ sub get_attribute {
 
 sub get_attributes {
 	my ($node, $get_target_si) = @_;
+	my $container = $node->{$NPROP_CONTAINER};
+	my $at_nsrefs = $node->{$NPROP_STORAGE}->{$NSPROP_AT_NSREFS};
 	return {
 		$ATTR_ID => $node->get_node_id(),
 		($NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} ? 
 			($ATTR_PP => $node->{$NPROP_STORAGE}->_get_primary_parent_attribute( $node->{$NPROP_CONTAINER} )) : ()),
-		%{$node->get_literal_attributes()},
-		%{$node->get_enumerated_attributes()},
-		%{$node->get_node_ref_attributes( $get_target_si )},
+		%{$node->{$NPROP_STORAGE}->{$NSPROP_AT_LITERALS}},
+		%{$node->{$NPROP_STORAGE}->{$NSPROP_AT_ENUMS}},
+		($get_target_si ? 
+			(map { ($_ => $at_nsrefs->{$_}->_get_surrogate_id_attribute( $container, $get_target_si )) } keys %{$at_nsrefs}) : 
+			($node->_ns_to_ni( $at_nsrefs ))),
 	};
 }
 
@@ -3438,7 +3262,7 @@ sub _get_literal_attribute {
 sub _clear_literal_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_literal_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
 	delete( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} );
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3446,7 +3270,7 @@ sub _clear_literal_attribute {
 sub _clear_literal_attributes {
 	my ($nodstor, $container) = @_;
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_literal_attributes' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
 	$nodstor->{$NSPROP_AT_LITERALS} = {};
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3455,7 +3279,7 @@ sub _set_literal_attribute {
 	my ($nodstor, $container, $attr_name, $exp_lit_type, $attr_value) = @_;
 
 	if( ref($attr_value) ) {
-		$nodstor->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_IS_REF', 
+		$nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_IS_REF', 
 			{ 'ATNM' => $attr_name, 'ARG_REF_TYPE' => ref($attr_value) } );
 	}
 
@@ -3463,26 +3287,26 @@ sub _set_literal_attribute {
 
 	if( $exp_lit_type eq 'bool' ) {
 		unless( $attr_value eq '0' or $attr_value eq '1' ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_BOOL', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_BOOL', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 
 	} elsif( $exp_lit_type eq 'uint' ) {
 		unless( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_UINT', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_UINT', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 
 	} elsif( $exp_lit_type eq 'sint' ) {
 		unless( $attr_value =~ m/^-?\d+$/ ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_LIT_AT_INVAL_V_SINT', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_SINT', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 
 	} else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
 
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_literal_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
 
 	$nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} = $attr_value;
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3498,7 +3322,7 @@ sub _get_enumerated_attribute {
 sub _clear_enumerated_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_enumerated_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
 	delete( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} );
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3506,7 +3330,7 @@ sub _clear_enumerated_attribute {
 sub _clear_enumerated_attributes {
 	my ($nodstor, $container) = @_;
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_enumerated_attributes' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
 	$nodstor->{$NSPROP_AT_ENUMS} = {};
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3515,12 +3339,12 @@ sub _set_enumerated_attribute {
 	my ($nodstor, $container, $attr_name, $exp_enum_type, $attr_value) = @_;
 
 	unless( $ENUMERATED_TYPES{$exp_enum_type}->{$attr_value} ) {
-		$nodstor->_throw_error_message( 'SRT_N_SET_ENUM_AT_INVAL_V', { 'ATNM' => $attr_name, 
+		$nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_ENUM_V', { 'ATNM' => $attr_name, 
 			'ENUMTYPE' => $exp_enum_type, 'ARG' => $attr_value } );
 	}
 
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_enumerated_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
 
 	$nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} = $attr_value;
 	$nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3542,7 +3366,7 @@ sub _clear_node_ref_attribute {
 	my ($nodstor, $container, $attr_name) = @_;
 	my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} or return; # no-op; attr not set
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_node_ref_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
 	# The attribute value is a Node object, so clear its link back.
 	my $ra_children_of_parent = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
 	foreach my $i (0..$#{$ra_children_of_parent}) {
@@ -3559,7 +3383,7 @@ sub _clear_node_ref_attribute {
 sub _clear_node_ref_attributes {
 	my ($nodstor, $container) = @_;
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_node_ref_attributes' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
 	foreach my $attr_name (keys %{$nodstor->{$NSPROP_AT_NSREFS}}) {
 		$nodstor->_clear_node_ref_attribute( $container, $attr_name );
 	}
@@ -3572,34 +3396,34 @@ sub _set_node_ref_attribute {
 	if( ref($attr_value) eq ref($nodstor) ) {
 		# We were given a Node object for a new attribute value.
 		unless( grep { $attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
 				'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NSPROP_NODE_TYPE} } );
 		}
 		unless( $attr_value->{$NSPROP_CONSTOR} eq $nodstor->{$NSPROP_CONSTOR} ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_DIFF_CONT', { 'ATNM' => $attr_name } );
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_DIFF_CONT', { 'ATNM' => $attr_name } );
 		}
 		# If we get here, both Nodes are in the same Container and can link
 	} elsif( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
 		# We were given a Node Id for a new attribute value.
 		my $searched_attr_value = $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_ALL_NODES}->{$attr_value};
 		unless( $searched_attr_value and grep { $searched_attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_NID', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_NID', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 		}
 		$attr_value = $searched_attr_value;
 	} else {
 		# We were given a Surrogate Node Id for a new attribute value.
 		unless( $container->{$CPROP_MAY_MATCH_SNIDS} ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
 		}
 		my $searched_attr_values = $nodstor->_find_node_by_surrogate_id( $container, $attr_name, 
 			ref($attr_value) eq 'ARRAY' ? $attr_value : [$attr_value] );
 		unless( $searched_attr_values ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_NONEX_SID', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_SID', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
 		}
 		if( @{$searched_attr_values} > 1 ) {
-			$nodstor->_throw_error_message( 'SRT_N_SET_NREF_AT_AMBIG_SID', 
+			$nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_AMBIG_SID', 
 				{ 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types, 
 				'CANDIDATES' => [';', map { (@{$_->get_surrogate_id_chain()},';') } @{$searched_attr_values}] } );
 		}
@@ -3611,9 +3435,9 @@ sub _set_node_ref_attribute {
 	}
 
 	(keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_node_ref_attribute' } );
+		$nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
 	(keys %{$attr_value->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
-		$attr_value->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'set_node_ref_attribute' } );
+		$attr_value->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'set_attribute' } );
 
 	$nodstor->_clear_node_ref_attribute( $container, $attr_name ); # clears any existing link through this attribute
 	$nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} = $attr_value;
@@ -4941,7 +4765,7 @@ of, since more advanced features are not shown for brevity.
 Note that one key feature of SQL::Routine is that all of a model's pieces are
 linked by references rather than by name as in SQL itself.  For example, the
 name of the 'person' table is only stored once internally; if, after executing
-all of the above code, you were to run "$tb_person->set_literal_attribute(
+all of the above code, you were to run "$tb_person->set_attribute(
 'si_name', 'The Huddled Masses' );", then all of the other parts of the model
 that referred to the table would not break, and an XML dump would show that all
 the references now say 'The Huddled Masses'.
@@ -5350,24 +5174,6 @@ NODE OBJECT METHODS:
 	get_primary_parent_attribute()
 	clear_primary_parent_attribute()
 	set_primary_parent_attribute( ATTR_VALUE )
-	get_literal_attribute( ATTR_NAME )
-	get_literal_attributes()
-	clear_literal_attribute( ATTR_NAME )
-	clear_literal_attributes()
-	set_literal_attribute( ATTR_NAME, ATTR_VALUE )
-	set_literal_attributes( ATTRS )
-	get_enumerated_attribute( ATTR_NAME )
-	get_enumerated_attributes()
-	clear_enumerated_attribute( ATTR_NAME )
-	clear_enumerated_attributes()
-	set_enumerated_attribute( ATTR_NAME, ATTR_VALUE )
-	set_enumerated_attributes( ATTRS )
-	get_node_ref_attribute( ATTR_NAME[, GET_TARGET_SI] )
-	get_node_ref_attributes([ GET_TARGET_SI ])
-	clear_node_ref_attribute( ATTR_NAME )
-	clear_node_ref_attributes()
-	set_node_ref_attribute( ATTR_NAME, ATTR_VALUE )
-	set_node_ref_attributes( ATTRS )
 	get_surrogate_id_attribute([ GET_TARGET_SI ])
 	clear_surrogate_id_attribute()
 	set_surrogate_id_attribute( ATTR_VALUE )
@@ -5437,7 +5243,7 @@ areas are covered.
 You can not use surrogate id values that look like valid Node ids (that are
 positive integers) since some methods won't do what you expect when given such
 values.  Nodes having such surrogate id values won't be matched by values
-passed to set_node_ref_attribute(), directly or indirectly.  That method only
+passed to set_attribute(), directly or indirectly.  That method only
 tries to lookup a Node by its surrogate id if its argument doesn't look like a
 Node ref or a Node id.  Similarly, the build*() methods will decide whether to
 interpret a defined but non-Node-ref ATTRS argument as a Node id or a surrogate
