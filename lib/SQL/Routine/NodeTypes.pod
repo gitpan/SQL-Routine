@@ -4,47 +4,6 @@
 
 SQL::Routine::NodeTypes - What Node types are part of SQL::Routine's language or grammar
 
-=head1 COPYRIGHT AND LICENSE
-
-This file is part of the SQL::Routine database portability library.
-
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
-visit http://www.DarrenDuncan.net/ for more information.
-
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (http://www.fsf.org/); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
-
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
-
-Any versions of SQL::Routine that you modify and distribute must carry
-prominent notices stating that you changed the files and the date of any
-changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
-
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
-
 =head1 DESCRIPTION
 
 This POD file contains most of the details about the Node types that are part of
@@ -80,19 +39,19 @@ The B<Attribute List> says what all of the attributes are, in order, along with
 each one's major+minor type, an indicator of whether it is a primary parent
 node candidate, and a description.  Each list element is in this format:
 
-	<attr> ::= <id-attr>|<pp-attr>|<si-attr>|<wrap-attr>|<detail-attr> - <description>
-	<id-attr> ::= id - NODE_ID
-	<pp-attr> ::= pp - N.<node-type-list>
-	<si-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr> - <surrogate-id-flag>
-	<wrap-attr> ::= <attr-name> - <nref-attr> - <wrapper-flag>[ - <mandatory-flag>]
-	<detail-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr>[ - <mandatory-flag>]
-	<literal-attr> ::= <attr-name> - L.<literal-type>
-	<enum-attr> ::= <attr-name> - E.<enumerated-type>
-	<nref-attr> ::= <attr-name> - N.<node-type-list>
-	<node-type-list> ::= *|(<node-type>(,<node-type>){0,})
-	<surrogate-id-flag> ::= SI
-	<wrapper-flag> ::= WR
-	<mandatory-flag> ::= MA
+    <attr> ::= <id-attr>|<pp-attr>|<si-attr>|<wrap-attr>|<detail-attr> - <description>
+    <id-attr> ::= id - NODE_ID
+    <pp-attr> ::= pp - N.<node-type-list>
+    <si-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr> - <surrogate-id-flag>
+    <wrap-attr> ::= <attr-name> - <nref-attr> - <wrapper-flag>[ - <mandatory-flag>]
+    <detail-attr> ::= <attr-name> - <literal-attr>|<enum-attr>|<nref-attr>[ - <mandatory-flag>]
+    <literal-attr> ::= <attr-name> - L.<literal-type>
+    <enum-attr> ::= <attr-name> - E.<enumerated-type>
+    <nref-attr> ::= <attr-name> - N.<node-type-list>
+    <node-type-list> ::= *|(<node-type>(,<node-type>){0,})
+    <surrogate-id-flag> ::= SI
+    <wrapper-flag> ::= WR
+    <mandatory-flag> ::= MA
 
 Every Node type's "id"/"NODE_ID" attribute is implicitly always-mandatory;
 moreover, that attribute is implicitly always-distinct between all Nodes in a
@@ -163,7 +122,7 @@ The B<Exclusive Attribute Groups List> says what groups of mutually exclusive
 attributes there are for a Node type; no more than one member of a group may
 have a set value at any given time.  Each list element is in this format:
 
-	<mutex-name> - <attr-name>(,<attr-name>){1,}[ - <mandatory-flag>]
+    <mutex-name> - <attr-name>(,<attr-name>){1,}[ - <mandatory-flag>]
 
 For each mutex-name group, there are 2 or more attr-name which are members of
 the group; if mandatory-flag is present, which looks like "MA", then one member
@@ -179,8 +138,8 @@ dependent attributes can not be set unless the depended-on attributes are
 valued and/or have specific determined values.  Each list element
 is in this format:
 
-	<dep-on-attr-name>:
-		<dep-attr-name>(,<dep-attr-name>){0,}[ - <dep-on-attr-val>(,<dep-on-attr-val>){0,}][ - <mandatory-flag>]
+    <dep-on-attr-name>:
+        <dep-attr-name>(,<dep-attr-name>){0,}[ - <dep-on-attr-val>(,<dep-on-attr-val>){0,}][ - <mandatory-flag>]
 
 For each distinct depended-on attribute, there can be one or more dependent
 attributes; the latter can be of any attribute type.  A dependent attribute may
@@ -205,13 +164,13 @@ For example, the si_row_field attribute of a table_field Node must point to a
 child Node of what the latter's parent "table" Node's row_data_type or
 row_domain attribute points to.  Each list element is in this format:
 
-	<correlation> ::= <dep-attr-name> - <step>(.<step>){0,} - <description>
-	<step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>|<nref-attr-pick>
-	<self> ::= S
-	<primary-parent> ::= P
-	<root-of-type> ::= R
-	<primary-child> ::= C
-	<nref-attr-pick> ::= <node-type>=<nref-attr>(,<node-type>=<nref-attr>){0,}
+    <correlation> ::= <dep-attr-name> - <step>(.<step>){0,} - <description>
+    <step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>|<nref-attr-pick>
+    <self> ::= S
+    <primary-parent> ::= P
+    <root-of-type> ::= R
+    <primary-child> ::= C
+    <nref-attr-pick> ::= <node-type>=<nref-attr>(,<node-type>=<nref-attr>){0,}
 
 For each correlated Node ref attribute (dep-attr-name), there is an ordered list
 of one or more movement steps that must be followed in order, where the result
@@ -250,7 +209,7 @@ not a sibling of one of their primary-parent Nodes (scope is implicit), and when
 it is not the child part of a correlation pair (scope defined by "Ancestor
 Attribute Correlation List").  The list element is in this format:
 
-	<primary-ancestor-type>(,<primary-ancestor-type>){0,}
+    <primary-ancestor-type>(,<primary-ancestor-type>){0,}
 
 Nodes of any Node type that specifies a primary-ancestor-type may be remotely
 addressed if they are primary-descendants of a Node whose type is specified by
@@ -268,8 +227,8 @@ call_sroutine_arg attribute of a routine_expr Node must be a conceptual child of
 its parent routine_expr's valf_call_sroutine attribute.  Each list element is in
 this format:
 
-	<child-attr-name>:
-		<parent-node-type> - <parent-attr-name>
+    <child-attr-name>:
+        <parent-node-type> - <parent-attr-name>
 
 The dependent child Node enumerated attribute, child-attr-name, must be related
 to the depended-on parent Node enumerated attribute, parent-attr-name; moreover,
@@ -286,7 +245,7 @@ The B<Child Quantity List> says when a Node must have a specific number of
 primary-child Nodes of a particular Node type (usually >= 1).  Each list
 element is in this format:
 
-	<child-node-type> - <range-min>[ - <range-max>]
+    <child-node-type> - <range-min>[ - <range-max>]
 
 For each child-node-type, there can be a limit on how few or how many
 primary-child Nodes of that Node type are allowed.  A common range-min is 1,
@@ -300,8 +259,8 @@ primary-child Nodes there are for Nodes of a Node type; each member Node of a
 group must have distinct/unique values for particular attributes (usually
 "name") or attribute combinations.  Each list element is in this format:
 
-	<mudi-name>:
-		<child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
+    <mudi-name>:
+        <child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
 
 For each mudi-name group there can be one or more Node attributes where the
 attribute value combination must be distinct, besides the constantly applied
@@ -332,8 +291,8 @@ set.  For example, when the call_sroutine attribute of a routine_stmt Node is
 attributes are 'SELECT_DEFN' and 'INTO' respectively.  Each list element is in
 this format:
 
-	<parent-attr-name>:
-		<child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
+    <parent-attr-name>:
+        <child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
 
 The depended-on parent Node enumerated attribute, parent-attr-name, requires
 that a dependent child-node-type child Node exists whose enumerated attribute,
@@ -359,7 +318,7 @@ This pseudo-Node has two child Node-types: catalog, application.
 
 Child Quantity List:
 
-	application - 1
+    application - 1
 
 =head2 tools
 
@@ -368,10 +327,10 @@ data_link_product.
 
 Distinct Child Groups List:
 
-	ak_storage_product_code:
-		data_storage_product - product_code
-	ak_link_product_code:
-		data_link_product - product_code
+    ak_storage_product_code:
+        data_storage_product - product_code
+    ak_link_product_code:
+        data_link_product - product_code
 
 =head2 sites
 
@@ -380,7 +339,7 @@ application_instance.
 
 Child Quantity List:
 
-	application_instance - 1
+    application_instance - 1
 
 =head2 circumventions
 
@@ -419,49 +378,49 @@ the store_fixed attribute to true.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - the name this scalar data type is identified by
-	base_type - E.simple_scalar_type - MA - name of the base data type this data_type is customized from
-	num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
-	num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
-	num_octets - L.uint - for integral or inexact (floating point) numbers, fixed storage size in octets
-	num_unsigned - L.bool - for numbers, true means only values >= 0 may be stored
-	max_octets - L.uint - maximum size in octets for a binary/bit string
-	max_chars - L.uint - maximum size in characters for a character string
-	store_fixed - L.bool - when true then try to reserve max size on disk even if not all used
-	char_enc - E.char_enc_type - which character encoding to use
-	trim_white - L.bool - when true then trim lead/trailing whitespace on save into STR_CHAR field/var
-	uc_latin - L.bool - do we uppercase latin chars in STR_CHAR before writing (no change on reading)
-	lc_latin - L.bool - do we lowercase latin chars in STR_CHAR before writing (no change on reading)
-	pad_char - L.cstr - when store_fixed is true then pad actual value with this to max size on save
-	trim_pad - L.bool - when store_fixed is true then trim padding on read from STR_CHAR field/var
-	calendar - E.calendar - what calendar the date and time (or date only) is in
-	with_zone - L.sint - if timestamp/time to include a 'with time zone', this says what time zone
-	range_min - L.misc - when applicable, what the allowed minimum value is (for bounds/check constraint)
-	range_max - L.misc - when applicable, what the allowed maximum value is (for bounds/check constraint)
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - the name this scalar data type is identified by
+    base_type - E.simple_scalar_type - MA - name of the base data type this data_type is customized from
+    num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
+    num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
+    num_octets - L.uint - for integral or inexact (floating point) numbers, fixed storage size in octets
+    num_unsigned - L.bool - for numbers, true means only values >= 0 may be stored
+    max_octets - L.uint - maximum size in octets for a binary/bit string
+    max_chars - L.uint - maximum size in characters for a character string
+    store_fixed - L.bool - when true then try to reserve max size on disk even if not all used
+    char_enc - E.char_enc_type - which character encoding to use
+    trim_white - L.bool - when true then trim lead/trailing whitespace on save into STR_CHAR field/var
+    uc_latin - L.bool - do we uppercase latin chars in STR_CHAR before writing (no change on reading)
+    lc_latin - L.bool - do we lowercase latin chars in STR_CHAR before writing (no change on reading)
+    pad_char - L.cstr - when store_fixed is true then pad actual value with this to max size on save
+    trim_pad - L.bool - when store_fixed is true then trim padding on read from STR_CHAR field/var
+    calendar - E.calendar - what calendar the date and time (or date only) is in
+    with_zone - L.sint - if timestamp/time to include a 'with time zone', this says what time zone
+    range_min - L.misc - when applicable, what the allowed minimum value is (for bounds/check constraint)
+    range_max - L.misc - when applicable, what the allowed maximum value is (for bounds/check constraint)
 
 Exclusive Attribute Groups List:
 
-	num_size - num_precision,num_octets
+    num_size - num_precision,num_octets
 
 Local Attribute Dependencies List:
 
-	base_type:
-		num_precision - NUM_INT,NUM_EXA,NUM_APR
-		num_scale - NUM_EXA,NUM_APR
-		num_octets - NUM_INT,NUM_APR
-		num_unsigned - NUM_INT,NUM_EXA,NUM_APR
-		max_octets - STR_BIT - MA
-		max_chars - STR_CHAR - MA
-		char_enc - STR_CHAR - MA
-		trim_white - STR_CHAR
-		uc_latin,lc_latin - STR_CHAR
-		pad_char - STR_CHAR
-		trim_pad - STR_CHAR
-		calendar - DATM_FULL,DATM_DATE - MA
-		with_zone - DATM_FULL,DATM_DATE,DATM_TIME
-	num_precision:
-		num_scale
+    base_type:
+        num_precision - NUM_INT,NUM_EXA,NUM_APR
+        num_scale - NUM_EXA,NUM_APR
+        num_octets - NUM_INT,NUM_APR
+        num_unsigned - NUM_INT,NUM_EXA,NUM_APR
+        max_octets - STR_BIT - MA
+        max_chars - STR_CHAR - MA
+        char_enc - STR_CHAR - MA
+        trim_white - STR_CHAR
+        uc_latin,lc_latin - STR_CHAR
+        pad_char - STR_CHAR
+        trim_pad - STR_CHAR
+        calendar - DATM_FULL,DATM_DATE - MA
+        with_zone - DATM_FULL,DATM_DATE,DATM_TIME
+    num_precision:
+        num_scale
 
 =head2 scalar_data_type_opt
 
@@ -473,9 +432,9 @@ from anything in this option list.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.scalar_data_type - what "scalar_data_type" Node this option is associated with
-	si_value - L.misc - SI - this is the actual enumerated value that the scalar_data_type_opt Node represents
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.scalar_data_type - what "scalar_data_type" Node this option is associated with
+    si_value - L.misc - SI - this is the actual enumerated value that the scalar_data_type_opt Node represents
 
 =head2 row_data_type
 
@@ -491,12 +450,12 @@ rather than having to specify each component field separately.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - the name this row data type is identified by
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - the name this row data type is identified by
 
 Child Quantity List:
 
-	row_data_type_field - 1
+    row_data_type_field - 1
 
 =head2 row_data_type_field
 
@@ -505,10 +464,10 @@ that are specific to that field, primarily a name and data type.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.row_data_type - what row this field is a part of
-	si_name - L.cstr - SI - unique identifier for this field within the row
-	scalar_data_type - N.scalar_data_type - MA - the user-customized scalar data type for this field
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.row_data_type - what row this field is a part of
+    si_name - L.cstr - SI - unique identifier for this field within the row
+    scalar_data_type - N.scalar_data_type - MA - the user-customized scalar data type for this field
 
 =head2 external_cursor
 
@@ -522,8 +481,8 @@ that declares the cursor handle.  No useful details are stored inside this Node.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - the name this row data type is identified by
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - the name this row data type is identified by
 
 =head1 BLUEPRINTS CATEGORY NODE TYPES
 
@@ -544,9 +503,9 @@ users should be here.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the blueprint if you want; this isn't used when making SQL
-	single_schema - L.bool - true, catalog lim to 1 schema, rendered in 1-sch prod w no nm prefix
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the blueprint if you want; this isn't used when making SQL
+    single_schema - L.bool - true, catalog lim to 1 schema, rendered in 1-sch prod w no nm prefix
 
 =head2 application
 
@@ -567,8 +526,8 @@ more SQL statements pushed over the command line, and even the 'attach' /
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the blueprint if you want
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the blueprint if you want
 
 =head2 owner
 
@@ -580,9 +539,9 @@ schema owner.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog - the catalog that this user is in
-	si_name - L.cstr - SI - the name this owner is identified by
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog - the catalog that this user is in
+    si_name - L.cstr - SI - the name this owner is identified by
 
 =head2 catalog_link
 
@@ -609,10 +568,10 @@ schema name, one is using a partially qualified name.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog,application - the schema|app objects in this blueprint may use the unrealized catalog link
-	si_name - L.cstr - SI - the "catalog link" that is the front of the fully qualified remote schema object name
-	target - N.catalog - MA - this is what the link connects to
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog,application - the schema|app objects in this blueprint may use the unrealized catalog link
+    si_name - L.cstr - SI - the "catalog link" that is the front of the fully qualified remote schema object name
+    target - N.catalog - MA - this is what the link connects to
 
 =head2 schema
 
@@ -638,10 +597,10 @@ anyway, if practical.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog - the catalog that this schema/namespace is in
-	si_name - L.cstr - SI - the name this schema/namespace is identified by
-	owner - N.owner - MA - the user that owns this schema
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog - the catalog that this schema/namespace is in
+    si_name - L.cstr - SI - the name this schema/namespace is identified by
+    owner - N.owner - MA - the user that owns this schema
 
 =head2 role
 
@@ -650,9 +609,9 @@ user privileges.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog - the catalog that this role is in
-	si_name - L.cstr - SI - the name this role is identified by
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog - the catalog that this role is in
+    si_name - L.cstr - SI - the name this role is identified by
 
 =head2 privilege_on
 
@@ -664,9 +623,9 @@ privilege_for Nodes, which are children of the privilege_on Node.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.role - the role that this privilege is granted to
-	si_priv_on - N.schema,scalar_domain,row_domain,sequence,table,view,routine - SI - what object this privilege is on
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.role - the role that this privilege is granted to
+    si_priv_on - N.schema,scalar_domain,row_domain,sequence,table,view,routine - SI - what object this privilege is on
 
 =head2 privilege_for
 
@@ -675,9 +634,9 @@ that is defined by this Node's privilege_on parent Node.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.privilege_on - what "privilege_on" Node this option is associated with
-	si_priv_type - E.privilege_type - SI - what manner of privilege this is
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.privilege_on - what "privilege_on" Node this option is associated with
+    si_priv_type - E.privilege_type - SI - what manner of privilege this is
 
 =head2 scalar_domain
 
@@ -688,14 +647,14 @@ definitions, and routine variables.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.schema,application - the schema|app-space that this domain is in
-	si_name - L.cstr - SI - the name this domain is identified by
-	data_type - N.scalar_data_type - MA - the core defining details of this domain
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.schema,application - the schema|app-space that this domain is in
+    si_name - L.cstr - SI - the name this domain is identified by
+    data_type - N.scalar_data_type - MA - the core defining details of this domain
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 =head2 row_domain
 
@@ -705,14 +664,14 @@ named database schema object, and reference it by its own identifier as the
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.schema,application - the schema|app-space that this domain is in
-	si_name - L.cstr - SI - the name this domain is identified by
-	data_type - N.row_data_type - WR - MA - the core defining details of this domain
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.schema,application - the schema|app-space that this domain is in
+    si_name - L.cstr - SI - the name this domain is identified by
+    data_type - N.row_data_type - WR - MA - the core defining details of this domain
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 =head2 sequence
 
@@ -724,19 +683,19 @@ standards.  The standard says that only integers can be produced by sequences.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.schema,application - the schema|app-space that this sequence generator is in
-	si_name - L.cstr - SI - the name this sequence generator is identified by
-	increment - L.sint - the interval between sequence numbers; defaults to 1 if not set
-	min_val - L.sint - the minimum value that the sequence can generate; no minimum if not set
-	max_val - L.sint - the maximum value that the sequence can generate; no maximum if not set
-	start_val - L.sint - specify first value; def min_val if asc seq, max if desc, 1 if min/max not set
-	cycle - L.bool - if true, sequence continues after reaching bound, at other end; defaults to false
-	order - L.bool - if true, seq guaranteed to ret numbers in order; def false, will just be unique
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.schema,application - the schema|app-space that this sequence generator is in
+    si_name - L.cstr - SI - the name this sequence generator is identified by
+    increment - L.sint - the interval between sequence numbers; defaults to 1 if not set
+    min_val - L.sint - the minimum value that the sequence can generate; no minimum if not set
+    max_val - L.sint - the maximum value that the sequence can generate; no maximum if not set
+    start_val - L.sint - specify first value; def min_val if asc seq, max if desc, 1 if min/max not set
+    cycle - L.bool - if true, sequence continues after reaching bound, at other end; defaults to false
+    order - L.bool - if true, seq guaranteed to ret numbers in order; def false, will just be unique
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 =head2 table
 
@@ -754,14 +713,14 @@ name-space of any database schema.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.schema,application - the schema|app-space that this base table is in
-	si_name - L.cstr - SI - the name this table is identified by
-	row_data_type - N.row_data_type,row_domain - WR - MA - defines the names and types of this table's column set
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.schema,application - the schema|app-space that this base table is in
+    si_name - L.cstr - SI - the name this table is identified by
+    row_data_type - N.row_data_type,row_domain - WR - MA - defines the names and types of this table's column set
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 =head2 table_field
 
@@ -770,23 +729,23 @@ specific to that column.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.table - what table this column is a part of
-	si_row_field - N.row_data_type_field - SI - defines the name and type of this column
-	mandatory - L.bool - the col's "nullability characteristic; true, "known not nullable"; else, "possibly nullable"
-	default_val - L.misc - an optional default value for the column, or starting val for auto_inc
-	auto_inc - L.bool - when true, col val defaults from a special auto-incrementing sequence
-	default_seq - N.sequence - when set, the column defaults to a value from this named sequence
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.table - what table this column is a part of
+    si_row_field - N.row_data_type_field - SI - defines the name and type of this column
+    mandatory - L.bool - the col's "nullability characteristic; true, "known not nullable"; else, "possibly nullable"
+    default_val - L.misc - an optional default value for the column, or starting val for auto_inc
+    auto_inc - L.bool - when true, col val defaults from a special auto-incrementing sequence
+    default_seq - N.sequence - when set, the column defaults to a value from this named sequence
 
-	Note: See SQL:2003 Foundation 4.13 "Columns, fields, and attributes" (p49).
+    Note: See SQL:2003 Foundation 4.13 "Columns, fields, and attributes" (p49).
 
 Exclusive Attribute Groups List:
 
-	default - default_val,default_seq
+    default - default_val,default_seq
 
 Ancestor Attribute Correlation List:
 
-	si_row_field - S.P - match child of S.P(table).row_data_type(row_data_type)
+    si_row_field - S.P - match child of S.P(table).row_data_type(row_data_type)
 
 =head2 table_index
 
@@ -799,25 +758,25 @@ no table indexes qualify then the table has no primary key.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.table - unique identifier for this table
-	si_name - L.cstr - SI - unique identifier for index within table
-	index_type - E.table_index_type - MA - what type of index this is (eg: UNIQUE, FOREIGN)
-	f_table - N.table - foreign key constraining table
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.table - unique identifier for this table
+    si_name - L.cstr - SI - unique identifier for index within table
+    index_type - E.table_index_type - MA - what type of index this is (eg: UNIQUE, FOREIGN)
+    f_table - N.table - foreign key constraining table
 
 Local Attribute Dependencies List:
 
-	index_type:
-		f_table - FOREIGN,UFOREIGN - MA
+    index_type:
+        f_table - FOREIGN,UFOREIGN - MA
 
 Child Quantity List:
 
-	table_index_field - 1
+    table_index_field - 1
 
 Distinct Child Groups List:
 
-	ak_f_table_field:
-		table_index_field - f_field
+    ak_f_table_field:
+        table_index_field - f_field
 
 =head2 table_index_field
 
@@ -826,15 +785,15 @@ says which table columns are involved in each table index.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.table_index - unique identifier for index within table
-	si_field - N.row_data_type_field - SI - unique identifier for column within table
-	f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.table_index - unique identifier for index within table
+    si_field - N.row_data_type_field - SI - unique identifier for column within table
+    f_field - N.row_data_type_field - when the index type is a foreign key, this is the constraining column
 
 Ancestor Attribute Correlation List:
 
-	si_field - S.P.P - match child of S.P(table_index).P(table).row_data_type(row_data_type)
-	f_field - S.P.f_table - match child of S.P(table_index).f_table(table).row_data_type(row_data_type)
+    si_field - S.P.P - match child of S.P(table_index).P(table).row_data_type(row_data_type)
+    f_field - S.P.f_table - match child of S.P(table_index).f_table(table).row_data_type(row_data_type)
 
 =head2 view
 
@@ -900,52 +859,52 @@ You can "create temporary view" by storing the view in an application space.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view,routine_var,routine_stmt,schema,application - parent view|routine_[var|stmt] of this one, or the schema|app-space that this view is in
-	si_name - L.cstr - SI - the name this view is identified by, if any
-	view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
-	row_data_type - N.row_data_type,row_domain - WR - defines the names and types of this view's column set
-	recursive - L.bool - if true, this view is a recursive correlated subquery
-	compound_op - E.compound_operator - how to merge any child rowsets/views of this one together, if any
-	distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
-	may_write - L.bool - true when we should at least try allowing updates through the selecting view
-	ins_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are inserting into the table/view
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view,routine_var,routine_stmt,schema,application - parent view|routine_[var|stmt] of this one, or the schema|app-space that this view is in
+    si_name - L.cstr - SI - the name this view is identified by, if any
+    view_type - E.view_type - MA - what kind of view this is; eg: alias, joined, grouped, compound, IUD
+    row_data_type - N.row_data_type,row_domain - WR - defines the names and types of this view's column set
+    recursive - L.bool - if true, this view is a recursive correlated subquery
+    compound_op - E.compound_operator - how to merge any child rowsets/views of this one together, if any
+    distinct_rows - L.bool - (set quantifier) true, select|compound returns distinct rows; false, return all rows
+    may_write - L.bool - true when we should at least try allowing updates through the selecting view
+    ins_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are inserting into the table/view
 
-	Note: if pp is a routine_var, then that var declares a cursor defined by this view; 
-	if pp is a routine_stmt, then stmt is a SELECT or DML statement defined by this view.
+    Note: if pp is a routine_var, then that var declares a cursor defined by this view; 
+    if pp is a routine_stmt, then stmt is a SELECT or DML statement defined by this view.
 
-	Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
-	a false or undefined value results in "[SELECT|UNION|...] ALL".
+    Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
+    a false or undefined value results in "[SELECT|UNION|...] ALL".
 
 Local Attribute Dependencies List:
 
-	view_type:
-		row_data_type - ALIAS,JOINED,GROUPED,COMPOUND,INSERT - MA
-		recursive - JOINED,GROUPED,COMPOUND
-		compound_op - COMPOUND - MA
-		distinct_rows - JOINED,GROUPED,COMPOUND
-		may_write - ALIAS,JOINED,GROUPED,COMPOUND
-		ins_p_routine_item - INSERT - MA
+    view_type:
+        row_data_type - ALIAS,JOINED,GROUPED,COMPOUND,INSERT - MA
+        recursive - JOINED,GROUPED,COMPOUND
+        compound_op - COMPOUND - MA
+        distinct_rows - JOINED,GROUPED,COMPOUND
+        may_write - ALIAS,JOINED,GROUPED,COMPOUND
+        ins_p_routine_item - INSERT - MA
  
-	Note: Not expressable yet; recursive can be set only when pp is a view (unless main can be correlated).
- 	Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine_stmt.
+    Note: Not expressable yet; recursive can be set only when pp is a view (unless main can be correlated).
+     Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine_stmt.
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 Distinct Child Groups List:
 
-	ak_join:
-		view_join - lhs_src,rhs_src
-	ak_join_limit_one:
-		view_join - rhs_src
-	ak_expr_set_result_field:
-		view_expr - set_result_field
-	ak_expr_set_src_field:
-		view_expr - set_src_field
-	ak_expr_call_src_arg:
-		view_expr - call_src_arg
+    ak_join:
+        view_join - lhs_src,rhs_src
+    ak_join_limit_one:
+        view_join - rhs_src
+    ak_expr_set_result_field:
+        view_expr - set_result_field
+    ak_expr_set_src_field:
+        view_expr - set_src_field
+    ak_expr_call_src_arg:
+        view_expr - call_src_arg
 
 =head2 view_arg
 
@@ -972,24 +931,24 @@ or does not take any arguments.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view - what named sub-query view this is an argument for
-	si_name - L.cstr - SI - name of the argument
-	cont_type - E.container_type - MA - what basic container type the argument is
-	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
-	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view - what named sub-query view this is an argument for
+    si_name - L.cstr - SI - name of the argument
+    cont_type - E.container_type - MA - what basic container type the argument is
+    scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
+    row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
 
 Exclusive Attribute Groups List:
 
-	data_type - scalar_data_type,row_data_type - MA
+    data_type - scalar_data_type,row_data_type - MA
 
-	Notes: This helps force cont_type to be one of [SCALAR,ROW,SC_ARY,RW_ARY].
+    Notes: This helps force cont_type to be one of [SCALAR,ROW,SC_ARY,RW_ARY].
 
 Local Attribute Dependencies List:
 
-	cont_type:
-		scalar_data_type - SCALAR,SC_ARY - MA
-		row_data_type - ROW,RW_ARY - MA
+    cont_type:
+        scalar_data_type - SCALAR,SC_ARY - MA
+        row_data_type - ROW,RW_ARY - MA
 
 =head2 view_src
 
@@ -1000,15 +959,15 @@ would be a unique alias for it.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view - unique identifier for view
-	si_name - L.cstr - SI - unique "alias" identifier for source within view
-	match - N.table,view,view_arg,routine_arg,routine_var - MA - use value of a named table or view, or ROW/RW_ARY arg or var
-	catalog_link - N.catalog_link - if match_[table|view] in another catalog, say via which catalog link
-	may_write - L.bool - alternately to the same 'view' attribute, say here which exact sources we want to 'select for update'
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view - unique identifier for view
+    si_name - L.cstr - SI - unique "alias" identifier for source within view
+    match - N.table,view,view_arg,routine_arg,routine_var - MA - use value of a named table or view, or ROW/RW_ARY arg or var
+    catalog_link - N.catalog_link - if match_[table|view] in another catalog, say via which catalog link
+    may_write - L.bool - alternately to the same 'view' attribute, say here which exact sources we want to 'select for update'
 
-	Note: The 'match' attribute can be either a named table or view that is nearby, 
-	or a ROW/RW_ARY arg to the parent view, or a ROW/RW_ARY arg or var of the parent routine.
+    Note: The 'match' attribute can be either a named table or view that is nearby, 
+    or a ROW/RW_ARY arg to the parent view, or a ROW/RW_ARY arg or var of the parent routine.
 
 =head2 view_src_arg
 
@@ -1019,9 +978,9 @@ values when used in a "from" clause.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view_src - which view source this column is associated with
-	si_match_view_arg - N.view_arg - SI - which argument in the source view is represented
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view_src - which view source this column is associated with
+    si_match_view_arg - N.view_arg - SI - which argument in the source view is represented
 
 =head2 view_src_field
 
@@ -1030,13 +989,13 @@ this view, as specified in the view_src table.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view_src - which view source this column is associated with
-	si_match_field - N.row_data_type_field - SI - which field from the source table/view/var is represented
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view_src - which view source this column is associated with
+    si_match_field - N.row_data_type_field - SI - which field from the source table/view/var is represented
 
 Ancestor Attribute Correlation List:
 
-	si_match_field - S.P.match - match child of S.P(view_src).match(table|*).row_data_type(row_data_type)
+    si_match_field - S.P.match - match child of S.P(view_src).match(table|*).row_data_type(row_data_type)
 
 =head2 view_field
 
@@ -1046,19 +1005,19 @@ the data comes from or goes to) is not described here.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view - what view this column is a result/interface for
-	si_row_field - N.row_data_type_field - SI - defines the name and type of this column
-	src_field - N.view_src_field - simply match this src col rather than defining with a view_expr
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view - what view this column is a result/interface for
+    si_row_field - N.row_data_type_field - SI - defines the name and type of this column
+    src_field - N.view_src_field - simply match this src col rather than defining with a view_expr
 
-	is_writeable - L.bool - true when enough info is known to write changes to this column
-	mandatory - L.bool - true when corresponding value must always be populated
-	is_key - L.bool - true when this column is a part of unique id for source table or for view row
+    is_writeable - L.bool - true when enough info is known to write changes to this column
+    mandatory - L.bool - true when corresponding value must always be populated
+    is_key - L.bool - true when this column is a part of unique id for source table or for view row
 
 Ancestor Attribute Correlation List:
 
-	si_row_field - S.P - match child of S.P(view).row_data_type(row_data_type)
-	src_field - S.P.C - match child of S.P(view).C(view_src)
+    si_row_field - S.P - match child of S.P(view).row_data_type(row_data_type)
+    src_field - S.P.C - match child of S.P(view).C(view_src)
 
 =head2 view_join
 
@@ -1072,22 +1031,22 @@ other source, which in many databases is illegal.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view - unique identifier for this view
-	lhs_src - N.view_src - MA - which view source is on the left side of the join
-	rhs_src - N.view_src - MA - which view source is on the right side of the join
-	join_op - E.join_operator - MA - what kind of table/view join is being done
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view - unique identifier for this view
+    lhs_src - N.view_src - MA - which view source is on the left side of the join
+    rhs_src - N.view_src - MA - which view source is on the right side of the join
+    join_op - E.join_operator - MA - what kind of table/view join is being done
 
 Child Quantity List:
 
-	view_join_field - 1
+    view_join_field - 1
 
 Distinct Child Groups List:
 
-	ak_lhs_field:
-		view_join_field - lhs_src_field
-	ak_rhs_field:
-		view_join_field - rhs_src_field
+    ak_lhs_field:
+        view_join_field - lhs_src_field
+    ak_rhs_field:
+        view_join_field - rhs_src_field
 
 =head2 view_join_field
 
@@ -1099,15 +1058,15 @@ source columns (one from each source) that are being matched.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view_join - which view join this column is associated with
-	lhs_src_field - N.view_src_field - MA - which column from the left source is being matched on
-	rhs_src_field - N.view_src_field - MA - which column from the right source is being matched on
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view_join - which view join this column is associated with
+    lhs_src_field - N.view_src_field - MA - which column from the left source is being matched on
+    rhs_src_field - N.view_src_field - MA - which column from the right source is being matched on
 
 Ancestor Attribute Correlation List:
 
-	lhs_src_field - S.P.lhs_src - match child of S.P(view_join).lhs_src(view_src)
-	rhs_src_field - S.P.rhs_src - match child of S.P(view_join).rhs_src(view_src)
+    lhs_src_field - S.P.lhs_src - match child of S.P(view_join).lhs_src(view_src)
+    rhs_src_field - S.P.rhs_src - match child of S.P(view_join).rhs_src(view_src)
 
 =head2 view_compound_elem
 
@@ -1115,9 +1074,9 @@ This type of Node specifies a source that is an operand in a compound view.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view - this is the resulting compound view
-	operand - N.view_src - MA - this is an operand in the compound view
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view - this is the resulting compound view
+    operand - N.view_src - MA - this is an operand in the compound view
 
 =head2 view_expr
 
@@ -1147,76 +1106,76 @@ or function calls, and not just literal values.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.view_expr,view - parent expression of this one, or what view this expression has a part in defining
-	view_part - E.view_part - what "part" of a view definition this is defining
-	set_result_field - N.row_data_type_field - the view interface/result column we are defining the value of
-	set_src_field - N.view_src_field - this is the column we are setting the value of in insert or update op
-	call_src_arg - N.view_src_arg - arg of named subquery used in "from" we are passing value to
-	call_view_arg - N.view_arg - if parent expr set valf_call_view, name view arg that curr expr passes value to
-	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
-	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
-	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
-	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
-	cont_type - E.container_type - MA - what basic container type the expression value is
-	valf_literal - L.misc - use a literal value, such as number or string
-	scalar_data_type - N.scalar_data_type,scalar_domain - cast or declare curr literal expr into this data type / domain
-	valf_src_field - N.view_src_field - use the value of a local view source column
-	valf_result_field - N.row_data_type_field - match a result column; used mainly in 'having' or 'order' sql
-	valf_p_view_arg - N.view_arg - when view is a correlated subquery, use value of an argument to the view
-	valf_p_routine_item - N.routine_context,routine_arg,routine_var - use val of a cxt-arg|arg to curr rtn or a var decl in curr rtn
-	valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
-	valf_call_view - N.view - use result of a call to a view, such as a subquery or a cursor
-	valf_call_sroutine - E.standard_routine - use result of a call to a standard built-in function (or directive); one of standard_routine
-	valf_call_uroutine - N.routine - use result of a call to a user-defined stored function (routine)
-	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.view_expr,view - parent expression of this one, or what view this expression has a part in defining
+    view_part - E.view_part - what "part" of a view definition this is defining
+    set_result_field - N.row_data_type_field - the view interface/result column we are defining the value of
+    set_src_field - N.view_src_field - this is the column we are setting the value of in insert or update op
+    call_src_arg - N.view_src_arg - arg of named subquery used in "from" we are passing value to
+    call_view_arg - N.view_arg - if parent expr set valf_call_view, name view arg that curr expr passes value to
+    call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
+    call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
+    call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
+    call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
+    cont_type - E.container_type - MA - what basic container type the expression value is
+    valf_literal - L.misc - use a literal value, such as number or string
+    scalar_data_type - N.scalar_data_type,scalar_domain - cast or declare curr literal expr into this data type / domain
+    valf_src_field - N.view_src_field - use the value of a local view source column
+    valf_result_field - N.row_data_type_field - match a result column; used mainly in 'having' or 'order' sql
+    valf_p_view_arg - N.view_arg - when view is a correlated subquery, use value of an argument to the view
+    valf_p_routine_item - N.routine_context,routine_arg,routine_var - use val of a cxt-arg|arg to curr rtn or a var decl in curr rtn
+    valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
+    valf_call_view - N.view - use result of a call to a view, such as a subquery or a cursor
+    valf_call_sroutine - E.standard_routine - use result of a call to a standard built-in function (or directive); one of standard_routine
+    valf_call_uroutine - N.routine - use result of a call to a user-defined stored function (routine)
+    catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
 
 Local Attribute Dependencies List:
 
-	view_part:
-		set_result_field - RESULT - MA
-		set_src_field - SET - MA
-		call_src_arg - FROM - MA
-	valf_literal:
-		scalar_data_type - MA
-	valf_call_uroutine:
-		catalog_link
+    view_part:
+        set_result_field - RESULT - MA
+        set_src_field - SET - MA
+        call_src_arg - FROM - MA
+    valf_literal:
+        scalar_data_type - MA
+    valf_call_uroutine:
+        catalog_link
 
-	Note: Not expressable yet; view_part can be set only when pp is a view.
+    Note: Not expressable yet; view_part can be set only when pp is a view.
 
 Ancestor Attribute Correlation List:
 
-	set_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
-	set_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
-	call_src_arg - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
-	call_view_arg - S.P.view_expr=valf_call_view - match child of S.P(view_expr).valf_call_view(view)
-	call_uroutine_cxt - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
-	call_uroutine_arg - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
-	valf_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
-	valf_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
+    set_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
+    set_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+    call_src_arg - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+    call_view_arg - S.P.view_expr=valf_call_view - match child of S.P(view_expr).valf_call_view(view)
+    call_uroutine_cxt - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
+    call_uroutine_arg - S.P.view_expr=valf_call_uroutine - match child of S.P(view_expr).valf_call_uroutine(routine)
+    valf_src_field - S.R.P.C - match child of S.R(view_expr).P(view).C(view_src)
+    valf_result_field - S.R.P - match child of S.R(view_expr).P(view).row_data_type(row_data_type)
 
 Related Parent Enumerated Attributes List:
 
-	call_sroutine_cxt:
-		view_expr - valf_call_sroutine
-	call_sroutine_arg:
-		view_expr - valf_call_sroutine
+    call_sroutine_cxt:
+        view_expr - valf_call_sroutine
+    call_sroutine_arg:
+        view_expr - valf_call_sroutine
 
 Distinct Child Groups List:
 
-	ak_view_arg:
-		view_expr - call_view_arg
-	ak_sroutine_arg:
-		view_expr - call_sroutine_cxt
-		view_expr - call_sroutine_arg
-	ak_uroutine_arg:
-		view_expr - call_uroutine_cxt
-		view_expr - call_uroutine_arg
+    ak_view_arg:
+        view_expr - call_view_arg
+    ak_sroutine_arg:
+        view_expr - call_sroutine_cxt
+        view_expr - call_sroutine_arg
+    ak_uroutine_arg:
+        view_expr - call_uroutine_cxt
+        view_expr - call_uroutine_arg
 
 Mandatory Related Child Enumerated Attributes List:
 
-	valf_call_sroutine:
-		view_expr - call_sroutine_cxt,call_sroutine_arg
+    valf_call_sroutine:
+        view_expr - call_sroutine_cxt,call_sroutine_arg
 
 =head2 routine
 
@@ -1232,40 +1191,40 @@ that may change soon.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine,schema,application - parent routine of this one, or the schema|app-space that this view is in
-	si_name - L.cstr - SI - name routine ident by in a [routine, schema, app], or name of trigger
-	routine_type - E.routine_type - MA - what kind of routine this is
-	return_cont_type - E.container_type - container type of function's return value
-	return_scalar_data_type - N.scalar_data_type,scalar_domain - data type of a function's SCALAR/SC_ARY return value
-	return_row_data_type - N.row_data_type,row_domain - data type of a function's ROW/RW_ARY return value
-	return_conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
-	return_curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
-	trigger_on - N.table,view - the table|view that the trigger watches
-	trigger_event - E.basic_trigger_event - when a trigger executes
-	trigger_per_stmt - L.bool - true, exec each stmt, false, each row
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine,schema,application - parent routine of this one, or the schema|app-space that this view is in
+    si_name - L.cstr - SI - name routine ident by in a [routine, schema, app], or name of trigger
+    routine_type - E.routine_type - MA - what kind of routine this is
+    return_cont_type - E.container_type - container type of function's return value
+    return_scalar_data_type - N.scalar_data_type,scalar_domain - data type of a function's SCALAR/SC_ARY return value
+    return_row_data_type - N.row_data_type,row_domain - data type of a function's ROW/RW_ARY return value
+    return_conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+    return_curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
+    trigger_on - N.table,view - the table|view that the trigger watches
+    trigger_event - E.basic_trigger_event - when a trigger executes
+    trigger_per_stmt - L.bool - true, exec each stmt, false, each row
 
 Local Attribute Dependencies List:
 
-	routine_type:
-		return_cont_type - FUNCTION - MA
-		trigger_on - TRIGGER - MA
-		trigger_event - TRIGGER - MA
-		trigger_per_stmt - TRIGGER - MA
-	return_cont_type:
-		return_scalar_data_type - SCALAR,SC_ARY - MA
-		return_row_data_type - ROW,RW_ARY - MA
-		return_conn_link - CONN - MA
-		return_curs_ext - CURSOR - MA
+    routine_type:
+        return_cont_type - FUNCTION - MA
+        trigger_on - TRIGGER - MA
+        trigger_event - TRIGGER - MA
+        trigger_per_stmt - TRIGGER - MA
+    return_cont_type:
+        return_scalar_data_type - SCALAR,SC_ARY - MA
+        return_row_data_type - ROW,RW_ARY - MA
+        return_conn_link - CONN - MA
+        return_curs_ext - CURSOR - MA
 
 Remotely Addressable Types List:
 
-	catalog
+    catalog
 
 Child Quantity List:
 
-	routine_context - 0 - 1
-	routine_stmt - 1
+    routine_context - 0 - 1
+    routine_stmt - 1
 
 =head2 routine_context
 
@@ -1273,24 +1232,24 @@ This type of Node describes a special context argument variable to a routine.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine - what routine this context argument is for
-	si_name - L.cstr - SI - unique identifier for variable within view
-	cont_type - E.container_type - MA - what basic container type the context is
-	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
-	curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine - what routine this context argument is for
+    si_name - L.cstr - SI - unique identifier for variable within view
+    cont_type - E.container_type - MA - what basic container type the context is
+    conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+    curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
 
 Exclusive Attribute Groups List:
 
-	context - conn_link,curs_ext - MA
+    context - conn_link,curs_ext - MA
 
-	Notes: This helps force cont_type to be one of [CONN, CURSOR].
+    Notes: This helps force cont_type to be one of [CONN, CURSOR].
 
 Local Attribute Dependencies List:
 
-	cont_type:
-		conn_link - CONN - MA
-		curs_ext - CURSOR - MA
+    cont_type:
+        conn_link - CONN - MA
+        curs_ext - CURSOR - MA
 
 =head2 routine_arg
 
@@ -1298,22 +1257,22 @@ This type of Node describes an input and/or output argument variable to a routin
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine - what routine this argument is for
-	si_name - L.cstr - SI - unique identifier for variable within view
-	cont_type - E.container_type - MA - what basic container type the argument is
-	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
-	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
-	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
-	curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine - what routine this argument is for
+    si_name - L.cstr - SI - unique identifier for variable within view
+    cont_type - E.container_type - MA - what basic container type the argument is
+    scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY argument
+    row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY argument
+    conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+    curs_ext - N.external_cursor - for CURSOR cont_type, ref to view def the cursor
 
 Local Attribute Dependencies List:
 
-	cont_type:
-		scalar_data_type - SCALAR,SC_ARY - MA
-		row_data_type - ROW,RW_ARY - MA
-		conn_link - CONN - MA
-		curs_ext - CURSOR - MA
+    cont_type:
+        scalar_data_type - SCALAR,SC_ARY - MA
+        row_data_type - ROW,RW_ARY - MA
+        conn_link - CONN - MA
+        curs_ext - CURSOR - MA
 
 =head2 routine_var
 
@@ -1326,34 +1285,34 @@ child Node of the routine_var.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine - what routine this variable is in
-	si_name - L.cstr - SI - unique identifier for variable within view
-	cont_type - E.container_type - MA - what basic container type the variable is
-	scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY variable
-	row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY variable
-	init_lit_val - L.misc - an initial value for a SCALAR var can go here
-	is_constant - L.bool - this says a SCALAR value may not be changed
-	conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
-	curs_ext - N.external_cursor - for CURSOR cont_type, indirect ref to view def shared cursor
-	curs_for_update - L.bool - true if CURSOR is select for update, false (def) if r/o
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine - what routine this variable is in
+    si_name - L.cstr - SI - unique identifier for variable within view
+    cont_type - E.container_type - MA - what basic container type the variable is
+    scalar_data_type - N.scalar_data_type,scalar_domain - user customized data type of SCALAR/SC_ARY variable
+    row_data_type - N.row_data_type,row_domain - WR - user customized data type of ROW/RW_ARY variable
+    init_lit_val - L.misc - an initial value for a SCALAR var can go here
+    is_constant - L.bool - this says a SCALAR value may not be changed
+    conn_link - N.catalog_link - for CONN cont_type, ref to cat link def the conn handle
+    curs_ext - N.external_cursor - for CURSOR cont_type, indirect ref to view def shared cursor
+    curs_for_update - L.bool - true if CURSOR is select for update, false (def) if r/o
 
 Local Attribute Dependencies List:
 
-	cont_type:
-		scalar_data_type - SCALAR,SC_ARY - MA
-		row_data_type - ROW,RW_ARY - MA
-		init_lit_val - SCALAR
-		is_constant - SCALAR
-		conn_link - CONN - MA
-		curs_ext - CURSOR - MA
-		curs_for_update - CURSOR
+    cont_type:
+        scalar_data_type - SCALAR,SC_ARY - MA
+        row_data_type - ROW,RW_ARY - MA
+        init_lit_val - SCALAR
+        is_constant - SCALAR
+        conn_link - CONN - MA
+        curs_ext - CURSOR - MA
+        curs_for_update - CURSOR
 
-	Note: for simplicity we treat all cursors like they might be shared, even if they aren't.
+    Note: for simplicity we treat all cursors like they might be shared, even if they aren't.
 
 Child Quantity List:
 
-	view - 0 - 1
+    view - 0 - 1
 
 =head2 routine_stmt
 
@@ -1367,49 +1326,49 @@ operation is a child Node of the routine_var.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine - what routine this statement is in
-	block_routine - N.routine - this child routine defs contents of BEGIN ... END
-	assign_dest - N.routine_arg,routine_var - this 'out' arg or var may be where expr result goes
-	call_sroutine - E.standard_routine - this is the standard built-in procedure to call
-	call_uroutine - N.routine - this is the user-defined stored procedure (routine) to call
-	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine - what routine this statement is in
+    block_routine - N.routine - this child routine defs contents of BEGIN ... END
+    assign_dest - N.routine_arg,routine_var - this 'out' arg or var may be where expr result goes
+    call_sroutine - E.standard_routine - this is the standard built-in procedure to call
+    call_uroutine - N.routine - this is the user-defined stored procedure (routine) to call
+    catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
 
-	If 'block_routine' is set, the routine statement declares a compound
-	statement that can contain other statements; eg BEGIN ... END.  If 
-	'assign_dest' is set, the action is an assignment of an
-	expression value to a variable (SQL:2003 calls it 'SET').  If either of
-	'call_[s|u]routine' is set, the action is to call that built-in or routine.
+    If 'block_routine' is set, the routine statement declares a compound
+    statement that can contain other statements; eg BEGIN ... END.  If 
+    'assign_dest' is set, the action is an assignment of an
+    expression value to a variable (SQL:2003 calls it 'SET').  If either of
+    'call_[s|u]routine' is set, the action is to call that built-in or routine.
 
-	TODO: Relevant structures to specify certain exceptions to catch or throw. 
-	Meanwhile, all exceptions are thrown out to the application that is using SRT.
+    TODO: Relevant structures to specify certain exceptions to catch or throw. 
+    Meanwhile, all exceptions are thrown out to the application that is using SRT.
 
 Exclusive Attribute Groups List:
 
-	stmt_type - block_routine,assign_dest,call_sroutine,call_uroutine - MA
+    stmt_type - block_routine,assign_dest,call_sroutine,call_uroutine - MA
 
 Local Attribute Dependencies List:
 
-	call_uroutine:
-		catalog_link
+    call_uroutine:
+        catalog_link
 
 Child Quantity List:
 
-	view - 0 - 1
+    view - 0 - 1
 
 Distinct Child Groups List:
 
-	ak_sroutine_arg:
-		routine_expr - call_sroutine_cxt
-		routine_expr - call_sroutine_arg
-	ak_uroutine_arg:
-		routine_expr - call_uroutine_cxt
-		routine_expr - call_uroutine_arg
+    ak_sroutine_arg:
+        routine_expr - call_sroutine_cxt
+        routine_expr - call_sroutine_arg
+    ak_uroutine_arg:
+        routine_expr - call_uroutine_cxt
+        routine_expr - call_uroutine_arg
 
 Mandatory Related Child Enumerated Attributes List:
 
-	call_sroutine:
-		routine_expr - call_sroutine_cxt,call_sroutine_arg
+    call_sroutine:
+        routine_expr - call_sroutine_cxt,call_sroutine_arg
 
 =head2 routine_expr
 
@@ -1422,61 +1381,61 @@ the statement.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.routine_expr,routine_stmt - parent expression of this one, or what routine_stmt this expression is part of
-	call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
-	call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
-	call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
-	call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
-	query_dest - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are setting value of via "select/fetch into"
-	cont_type - E.container_type - MA - what basic container type the expression value is
-	valf_literal - L.misc - use a literal value, such as number or string
-	scalar_data_type - N.scalar_data_type,scalar_domain - cast or declare curr literal expr into this data type / domain
-	valf_p_routine_item - N.routine_context,routine_arg,routine_var - use val of a cxt-arg|arg to curr rtn or a var decl in curr rtn
-	valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
-	valf_call_sroutine - E.standard_routine - use result of a call to a standard built-in function (or directive); one of standard_routine
-	valf_call_uroutine - N.routine - use result of a call to a user-defined stored function (routine)
-	catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
-	act_on - N.catalog_link,schema,scalar_domain,row_domain,sequence,table,view,routine,user - the act-on sroutine arg that is acted on
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.routine_expr,routine_stmt - parent expression of this one, or what routine_stmt this expression is part of
+    call_sroutine_cxt - E.standard_routine_context - if parent expr set valf_call_sroutine, this cxt curr expr passes val to
+    call_sroutine_arg - E.standard_routine_arg - if parent expr set valf_call_sroutine, this arg curr expr passes val to
+    call_uroutine_cxt - N.routine_context - if parent expr set valf_call_uroutine, name routine cxt that curr expr passes value to
+    call_uroutine_arg - N.routine_arg - if parent expr set valf_call_uroutine, name routine arg that curr expr passes value to
+    query_dest - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are setting value of via "select/fetch into"
+    cont_type - E.container_type - MA - what basic container type the expression value is
+    valf_literal - L.misc - use a literal value, such as number or string
+    scalar_data_type - N.scalar_data_type,scalar_domain - cast or declare curr literal expr into this data type / domain
+    valf_p_routine_item - N.routine_context,routine_arg,routine_var - use val of a cxt-arg|arg to curr rtn or a var decl in curr rtn
+    valf_seq_next - N.sequence - use "next" value from a named user defined sequence generator (schema object)
+    valf_call_sroutine - E.standard_routine - use result of a call to a standard built-in function (or directive); one of standard_routine
+    valf_call_uroutine - N.routine - use result of a call to a user-defined stored function (routine)
+    catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
+    act_on - N.catalog_link,schema,scalar_domain,row_domain,sequence,table,view,routine,user - the act-on sroutine arg that is acted on
 
 Local Attribute Dependencies List:
 
-	call_sroutine_arg:
-		query_dest - INTO - MA  # assume used only when sroutine is CURSOR_FETCH() or SELECT()
-	cont_type:
-		act_on - SRT_NODE - MA
-	valf_literal:
-		scalar_data_type - MA
-	valf_call_uroutine:
-		catalog_link
+    call_sroutine_arg:
+        query_dest - INTO - MA  # assume used only when sroutine is CURSOR_FETCH() or SELECT()
+    cont_type:
+        act_on - SRT_NODE - MA
+    valf_literal:
+        scalar_data_type - MA
+    valf_call_uroutine:
+        catalog_link
 
 Ancestor Attribute Correlation List:
 
-	call_uroutine_cxt - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
-	call_uroutine_arg - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
+    call_uroutine_cxt - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
+    call_uroutine_arg - S.P.routine_stmt=call_uroutine,routine_expr=valf_call_uroutine - match child of S.P(routine_[expr|stmt]).[valf_]call_uroutine(routine)
 
 Related Parent Enumerated Attributes List:
 
-	call_sroutine_cxt:
-		routine_stmt - call_sroutine
-		routine_expr - valf_call_sroutine
-	call_sroutine_arg:
-		routine_stmt - call_sroutine
-		routine_expr - valf_call_sroutine
+    call_sroutine_cxt:
+        routine_stmt - call_sroutine
+        routine_expr - valf_call_sroutine
+    call_sroutine_arg:
+        routine_stmt - call_sroutine
+        routine_expr - valf_call_sroutine
 
 Distinct Child Groups List:
 
-	ak_sroutine_arg:
-		routine_expr - call_sroutine_cxt
-		routine_expr - call_sroutine_arg
-	ak_uroutine_arg:
-		routine_expr - call_uroutine_cxt
-		routine_expr - call_uroutine_arg
+    ak_sroutine_arg:
+        routine_expr - call_sroutine_cxt
+        routine_expr - call_sroutine_arg
+    ak_uroutine_arg:
+        routine_expr - call_uroutine_cxt
+        routine_expr - call_uroutine_arg
 
 Mandatory Related Child Enumerated Attributes List:
 
-	valf_call_sroutine:
-		routine_expr - call_sroutine_cxt,call_sroutine_arg
+    valf_call_sroutine:
+        routine_expr - call_sroutine_cxt,call_sroutine_arg
 
 =head1 TOOLS CATEGORY NODE TYPES
 
@@ -1498,17 +1457,17 @@ different versions may not support the same features or interface.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the product in the model if you want
-	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
-	is_memory_based - L.bool - if true, db data is held entirely in RAM memory of our own process
-	is_file_based - L.bool - if true, db data held in named file(s) that we ref to open in our own process
-	is_local_proc - L.bool - if true, database is a local service we access via IPC or something
-	is_network_svc - L.bool - if true, database is on a network server, access by network protocol
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the product in the model if you want
+    product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
+    is_memory_based - L.bool - if true, db data is held entirely in RAM memory of our own process
+    is_file_based - L.bool - if true, db data held in named file(s) that we ref to open in our own process
+    is_local_proc - L.bool - if true, database is a local service we access via IPC or something
+    is_network_svc - L.bool - if true, database is on a network server, access by network protocol
 
 Exclusive Attribute Groups List:
 
-	type - is_memory_based,is_file_based,is_local_proc,is_network_svc - MA
+    type - is_memory_based,is_file_based,is_local_proc,is_network_svc - MA
 
 =head2 data_link_product
 
@@ -1529,10 +1488,10 @@ different versions may not support the same features or interface.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the product in the model if you want
-	product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
-	is_proxy - L.bool - if true, link product is a transparent proxy which calls another link prod (we may spec)
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the product in the model if you want
+    product_code - L.cstr - MA - a string recognized by the mediation layer as what product we have
+    is_proxy - L.bool - if true, link product is a transparent proxy which calls another link prod (we may spec)
 
 =head1 SITES CATEGORY NODE TYPES
 
@@ -1556,21 +1515,21 @@ users shouldn't log in as those.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the instance if you want; this isn't used when making SQL
-	blueprint - N.catalog - MA - what catalog blueprint describes this instance
-	product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
-	file_path - L.cstr - Path on a file system for a file-based database, if applicable
-	server_ip - L.cstr - Internet IP address of the database server, if applicable
-	server_domain - L.cstr - Internet domain name of the database server, if applicable
-	server_port - L.uint - TCP/IP port the database listens to, if applicable
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the instance if you want; this isn't used when making SQL
+    blueprint - N.catalog - MA - what catalog blueprint describes this instance
+    product - N.data_storage_product - MA - what product implements this; determines SQL dialect to use
+    file_path - L.cstr - Path on a file system for a file-based database, if applicable
+    server_ip - L.cstr - Internet IP address of the database server, if applicable
+    server_domain - L.cstr - Internet domain name of the database server, if applicable
+    server_port - L.uint - TCP/IP port the database listens to, if applicable
 
 Distinct Child Groups List:
 
-	ak_cat_link_inst:
-		catalog_link_instance - blueprint
+    ak_cat_link_inst:
+        catalog_link_instance - blueprint
 
-	MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
+    MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
 
 =head2 catalog_instance_opt
 
@@ -1595,10 +1554,10 @@ model.  Or in the first case, whether multiple catalogs should get combined.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog_instance - the catalog_instance that this option customizes
-	si_key - L.cstr - SI - this is the option key that the the external code looks for
-	value - L.misc - MA - this is the associated option value
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog_instance - the catalog_instance that this option customizes
+    si_key - L.cstr - SI - this is the option key that the the external code looks for
+    value - L.misc - MA - this is the associated option value
 
 =head2 application_instance
 
@@ -1609,16 +1568,16 @@ knows about the blueprint for said instances.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	si_name - L.cstr - SI - lets you label the instance if you want
-	blueprint - N.application - MA - what application blueprint describes this instance
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    si_name - L.cstr - SI - lets you label the instance if you want
+    blueprint - N.application - MA - what application blueprint describes this instance
 
 Distinct Child Groups List:
 
-	ak_cat_link_inst:
-		catalog_link_instance - blueprint
+    ak_cat_link_inst:
+        catalog_link_instance - blueprint
 
-	MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
+    MAYBE TODO: Likewise limit child catalog_link_instance.target to being distinct.
 
 =head2 catalog_link_instance
 
@@ -1648,25 +1607,25 @@ Node gets used, which points to the address of the proxy.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog_link_instance,catalog_instance,application_instance - parent link of this one (that which calls this), or the routines in this catalog|app inst may use the actual catalog link
-	blueprint - N.catalog_link - MA - the unrealized catalog link that we are 'implementing'
-	product - N.data_link_product - MA - what product implements this; determines driver to use
-	target - N.catalog_instance - MA - this is what the link connects to
-	local_dsn - L.cstr - locally known driver-specific name for the catalog link (to cat or ch prox)
-	login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
-	login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog_link_instance,catalog_instance,application_instance - parent link of this one (that which calls this), or the routines in this catalog|app inst may use the actual catalog link
+    blueprint - N.catalog_link - MA - the unrealized catalog link that we are 'implementing'
+    product - N.data_link_product - MA - what product implements this; determines driver to use
+    target - N.catalog_instance - MA - this is what the link connects to
+    local_dsn - L.cstr - locally known driver-specific name for the catalog link (to cat or ch prox)
+    login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
+    login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
-	TODO: blueprint and target actually aren't mandatory when pp is a catalog_link_instance; 
-	they inherit their root-of-type copy of said attributes.
+    TODO: blueprint and target actually aren't mandatory when pp is a catalog_link_instance; 
+    they inherit their root-of-type copy of said attributes.
 
 Ancestor Attribute Correlation List:
 
-	blueprint - S.P.blueprint - match child of S.P(cat|app_instance).blueprint(catalog|application)
+    blueprint - S.P.blueprint - match child of S.P(cat|app_instance).blueprint(catalog|application)
 
 Child Quantity List:
 
-	catalog_link_instance - 0 - 1
+    catalog_link_instance - 0 - 1
 
 =head2 catalog_link_instance_opt
 
@@ -1679,10 +1638,10 @@ ways other than what the dsn and login name/pass are.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog_link_instance - the catalog_link_instance that this option customizes
-	si_key - L.cstr - SI - this is the option key that the the external code looks for
-	value - L.misc - MA - this is the associated option value
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog_link_instance - the catalog_link_instance that this option customizes
+    si_key - L.cstr - SI - this is the option key that the the external code looks for
+    value - L.misc - MA - this is the associated option value
 
 =head2 user
 
@@ -1709,26 +1668,26 @@ schema, then it should have an additional database user for that purpose.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.catalog_instance - the catalog_instance that this user is in
-	si_name - L.cstr - SI - the name this user is identified by, and what he authenticates himself with
-	user_type - E.user_type - MA - what type of user this is; eg: schema owner vs data editor
-	match_owner - N.owner - the catalog that this user is in
-	password - L.cstr - the password this user provides when authenticating themself
-	default_schema - N.schema - this user's default schema; unqualified object references look here
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.catalog_instance - the catalog_instance that this user is in
+    si_name - L.cstr - SI - the name this user is identified by, and what he authenticates himself with
+    user_type - E.user_type - MA - what type of user this is; eg: schema owner vs data editor
+    match_owner - N.owner - the catalog that this user is in
+    password - L.cstr - the password this user provides when authenticating themself
+    default_schema - N.schema - this user's default schema; unqualified object references look here
 
 Local Attribute Dependencies List:
 
-	user_type:
-		match_owner - SCHEMA_OWNER - MA
-		password - ROOT,SCHEMA_OWNER,DATA_EDITOR - MA
+    user_type:
+        match_owner - SCHEMA_OWNER - MA
+        password - ROOT,SCHEMA_OWNER,DATA_EDITOR - MA
 
-	Note: In other words to the above, all user types *except* ANONYMOUS have a user name and password.
+    Note: In other words to the above, all user types *except* ANONYMOUS have a user name and password.
 
 Ancestor Attribute Correlation List:
 
-	match_owner - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
-	default_schema - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
+    match_owner - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
+    default_schema - S.P.blueprint - match child of S.P(catalog_instance).blueprint(catalog)
 
 =head2 user_role
 
@@ -1737,13 +1696,13 @@ specific role, and the privileges that come with it.
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	pp - N.user - the user that a role is granted to
-	si_role - N.role - SI - the role that is being granted
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    pp - N.user - the user that a role is granted to
+    si_role - N.role - SI - the role that is being granted
 
 Ancestor Attribute Correlation List:
 
-	si_role - S.P.P.blueprint - match child of S.P(user).P(catalog_instance).blueprint(catalog)
+    si_role - S.P.P.blueprint - match child of S.P(user).P(catalog_instance).blueprint(catalog)
 
 =head1 CIRCUMVENTIONS CATEGORY NODE TYPES
 
@@ -1754,20 +1713,65 @@ is generated from SQL::Routine Nodes.  I<Details may be changed later.>
 
 Attribute List:
 
-	id - NODE_ID - unique identifier for each Node within this Node Type
-	attach_to - N.* - MA - the normal Node we attach this SQL fragment to
-	product - N.data_storage_product - if set, only use with this product; if not, use with all prods
-	is_inside - L.bool - the fragment goes "inside" the SQL generated from attached-to Node
-	is_before - L.bool - the fragment goes "before" the SQL
-	is_after - L.bool - the fragment goes "after" the SQL
-	fragment - L.cstr - this is the actual SQL string fragment to be injected
+    id - NODE_ID - unique identifier for each Node within this Node Type
+    attach_to - N.* - MA - the normal Node we attach this SQL fragment to
+    product - N.data_storage_product - if set, only use with this product; if not, use with all prods
+    is_inside - L.bool - the fragment goes "inside" the SQL generated from attached-to Node
+    is_before - L.bool - the fragment goes "before" the SQL
+    is_after - L.bool - the fragment goes "after" the SQL
+    fragment - L.cstr - this is the actual SQL string fragment to be injected
 
 Exclusive Attribute Groups List:
 
-	is_where - is_inside,is_before,is_after
+    is_where - is_inside,is_before,is_after
 
 =head1 SEE ALSO
 
 L<SQL::Routine> and the various other modules mentioned in its SEE ALSO.
+
+=head1 AUTHOR
+
+Darren R. Duncan (C<perl@DarrenDuncan.net>)
+
+=head1 LICENCE AND COPYRIGHT
+
+This file is part of the SQL::Routine database portability library.
+
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
+visit L<http://www.DarrenDuncan.net/> for more information.
+
+SQL::Routine is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
+
+Linking SQL::Routine statically or dynamically with other modules is making a
+combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
+cover the whole combination.  As a special exception, the copyright holders of
+SQL::Routine give you permission to link SQL::Routine with independent modules,
+regardless of the license terms of these independent modules, and to copy and
+distribute the resulting combined work under terms of your choice, provided
+that every copy of the combined work is accompanied by a complete copy of the
+source code of SQL::Routine (the version of SQL::Routine used to produce the
+combined work), being distributed under the terms of the GPL plus this
+exception.  An independent module is a module which is not derived from or
+based on SQL::Routine, and which is fully useable when not linked to
+SQL::Routine in any form.
+
+Any versions of SQL::Routine that you modify and distribute must carry
+prominent notices stating that you changed the files and the date of any
+changes, in addition to preserving this original copyright notice and other
+credits. SQL::Routine is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+
+While it is by no means required, the copyright holders of SQL::Routine would
+appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a practical
+way of suggesting improvements to the standard version.
 
 =cut

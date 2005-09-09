@@ -1,13 +1,8 @@
 TODO
 
-* Update all code files to have version numbers of format N.N.N rather than
-N.NN, and the new ones will be v-strings; at the same time, add dependency on
-something like only.pm, which knows how to enforce dependencies involving
-v-strings.
-
-* Update the white space of this distribution to follow some best practices. 
-This includes indenting with spaces instead of tabs, and having code lines not
-be longer than 80 or 78 characters.  Run through perltidy for the first time as
+* Update the white space of this distribution to follow some best practices.
+This includes having code lines (and POD lines, presumably) not be longer than
+80 or 78 characters.  Also run the works through perltidy for the first time as
 well (though I was very consistent before), which may alter a few other things
 towards best practices.
 

@@ -4,47 +4,6 @@
 
 SQL::Routine::Language - What language or grammar SQL::Routine speaks
 
-=head1 COPYRIGHT AND LICENSE
-
-This file is part of the SQL::Routine database portability library.
-
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
-visit http://www.DarrenDuncan.net/ for more information.
-
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (http://www.fsf.org/); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
-
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
-
-Any versions of SQL::Routine that you modify and distribute must carry
-prominent notices stating that you changed the files and the date of any
-changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
-
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
-
 =head1 DESCRIPTION
 
 SQL::Routine contains SQL schemas and queries, represented as a tree of
@@ -132,82 +91,82 @@ third-party and vendor documentation for Oracle, and the odd other SQL site.
 This is a brief and incomplete list of major supported features (the rest of
 this document goes into more detail on them):
 
-	- native Unicode 4 (UTF-8) support for all identifiers and character data
-	- multiple character encoding support in the same database for character data
-	- global binary/bit object/data support
-	- both exact and inexact numbers, the former being of any length
-	- large object support; all character or binary fields can contain 2GB or more
-	- multi-column indexes, unique constraints, foreign key constraints
-	- large/full text indexing
-	- boolean data type
-	- datetime/date, interval/time data types
-	- multiple schemas in the same catalogue
-	- objects in any schema can reference those in other schemas or other catalogues
-	- identifiers are internally case-sensitive; case-insensitive ones match as fully uppercase
-	- no effective limits; eg: number of tables or columns or rows, size of data per field or row
-	- simple domains and user-defined data types (UDTs)
-	- enumerated data types
-	- arbitrary 'check' constraints (?)
-	- routines (stored procedures, user defined functions, triggers)
-	- named sub-routines inside routines
-	- row, array/rowset data types as variables inside routines, and arguments and return values
-	- multiple column unique and foreign key constraints on tables
-	- viewed tables / views
-	- expressions in any part of a query
-	- regular expressions / pattern matching
-	- multiple-column predicates in any part of a query
-	- cross, inner, and full|left|right outer table joins
-	- self joins (same table or view joined to itself N times)
-	- compound queries such as union, difference (except), intersection, exclusion
-	- 'all' and 'distinct' set quantifiers on both normal and compound queries
-	- 'where', 'group by', 'having', 'order by', 'limit'
-	- anonymous subqueries in any part of main query
-	- named subqueries ("with") likewise
-	- both correlated (takes arguments) and uncorrelated (no arguments) subqueries
-	- recursive queries
-	- all routine and subquery args are declared and used with named syntax (rather than positional)
-	- all built-in standard routine args are used with named syntax (rather than positional)
-	- select/insert/update/delete rows in tables and viewed tables
-	- named (rather than positional) mapping of 'into' clause to 'select list'
-	- named (rather than positional) mapping of all input data for both inserts and updates
-	- OLAP extensions, rollup, cube, grouping sets (related to group-by)
-	- updateable views; inserts, updates, deletes through any view (if key data not lost)
-	- "insert as select"
-	- multiple users, roles, privileges
-	- create/alter/delete schema objects, including user defined functions
-	- create/alter/delete catalogs, schemas, users
-	- cursors
-	- multiple row insert / "write cursors"
-	- application host parameters for any data type
-	- all host parameters are named (rather than positional)
-	- explicit transactions and nested transactions (and savepoints?)
-	- record locking for read and locking for write
-	- throwing exceptions
-	- catching and handling exceptions
-	- create, use simple sequence generators, named and on table cols
-	- temporary objects, usually tables
-	- triggers firing on DML events of either tables or views
-	- "base tables" and "temporary base tables"
+    - native Unicode 4 (UTF-8) support for all identifiers and character data
+    - multiple character encoding support in the same database for character data
+    - global binary/bit object/data support
+    - both exact and inexact numbers, the former being of any length
+    - large object support; all character or binary fields can contain 2GB or more
+    - multi-column indexes, unique constraints, foreign key constraints
+    - large/full text indexing
+    - boolean data type
+    - datetime/date, interval/time data types
+    - multiple schemas in the same catalogue
+    - objects in any schema can reference those in other schemas or other catalogues
+    - identifiers are internally case-sensitive; case-insensitive ones match as fully uppercase
+    - no effective limits; eg: number of tables or columns or rows, size of data per field or row
+    - simple domains and user-defined data types (UDTs)
+    - enumerated data types
+    - arbitrary 'check' constraints (?)
+    - routines (stored procedures, user defined functions, triggers)
+    - named sub-routines inside routines
+    - row, array/rowset data types as variables inside routines, and arguments and return values
+    - multiple column unique and foreign key constraints on tables
+    - viewed tables / views
+    - expressions in any part of a query
+    - regular expressions / pattern matching
+    - multiple-column predicates in any part of a query
+    - cross, inner, and full|left|right outer table joins
+    - self joins (same table or view joined to itself N times)
+    - compound queries such as union, difference (except), intersection, exclusion
+    - 'all' and 'distinct' set quantifiers on both normal and compound queries
+    - 'where', 'group by', 'having', 'order by', 'limit'
+    - anonymous subqueries in any part of main query
+    - named subqueries ("with") likewise
+    - both correlated (takes arguments) and uncorrelated (no arguments) subqueries
+    - recursive queries
+    - all routine and subquery args are declared and used with named syntax (rather than positional)
+    - all built-in standard routine args are used with named syntax (rather than positional)
+    - select/insert/update/delete rows in tables and viewed tables
+    - named (rather than positional) mapping of 'into' clause to 'select list'
+    - named (rather than positional) mapping of all input data for both inserts and updates
+    - OLAP extensions, rollup, cube, grouping sets (related to group-by)
+    - updateable views; inserts, updates, deletes through any view (if key data not lost)
+    - "insert as select"
+    - multiple users, roles, privileges
+    - create/alter/delete schema objects, including user defined functions
+    - create/alter/delete catalogs, schemas, users
+    - cursors
+    - multiple row insert / "write cursors"
+    - application host parameters for any data type
+    - all host parameters are named (rather than positional)
+    - explicit transactions and nested transactions (and savepoints?)
+    - record locking for read and locking for write
+    - throwing exceptions
+    - catching and handling exceptions
+    - create, use simple sequence generators, named and on table cols
+    - temporary objects, usually tables
+    - triggers firing on DML events of either tables or views
+    - "base tables" and "temporary base tables"
 
 This is a brief list of major non-supported features (at present), or current limitations:
 
-	- multiple distinct values per row field (this violates level-1 normalization)
-	- complex domains and compound user-defined data types
-	- 'set' data types
-	- collection types, such as arrays, stored in table fields
-	- reference data types, stored in tables
-	- table hierarchies or subtables; anything not a "base table" or "viewed table"
-	- object data types
-	- user defined "operators" (as being distinct from user defined functions)
-	- geographical data types and related extensions
-	- referencing objects in an "information schema" by users like normal schema objects (?)
-	- dynamic SQL; eg: generating and executing new SQL in a stored procedure
-	- creating user defined functions that aren't SQL (though they can be called)
-	- sequence generators will only produce integers, and not fractions or strings
-	- explic ref most "optimization" features; eg: hints, cache sett, res pre-alloc or limits, "tablespaces"
-	- explicit references to logs or replication managed by the database product itself
-	- named Oracle "synonyms" (?)
-	- triggers firing on non-DML events
+    - multiple distinct values per row field (this violates level-1 normalization)
+    - complex domains and compound user-defined data types
+    - 'set' data types
+    - collection types, such as arrays, stored in table fields
+    - reference data types, stored in tables
+    - table hierarchies or subtables; anything not a "base table" or "viewed table"
+    - object data types
+    - user defined "operators" (as being distinct from user defined functions)
+    - geographical data types and related extensions
+    - referencing objects in an "information schema" by users like normal schema objects (?)
+    - dynamic SQL; eg: generating and executing new SQL in a stored procedure
+    - creating user defined functions that aren't SQL (though they can be called)
+    - sequence generators will only produce integers, and not fractions or strings
+    - explic ref most "optimization" features; eg: hints, cache sett, res pre-alloc or limits, "tablespaces"
+    - explicit references to logs or replication managed by the database product itself
+    - named Oracle "synonyms" (?)
+    - triggers firing on non-DML events
 
 Generally speaking, SQL::Routine holds to a purely relational database
 model, where every intersection of a column and a row in a table or view is an
@@ -301,101 +260,101 @@ node type beneath its parent; a value of 'M' means 'many' and '1' means 'one'.
 The node attribute 'r' indicates recursion, where a node can be a child of
 another of the same type (eg: a sub-query or sub-routine).
 
-	<root>
-		<elements c="1">
-			<scalar_data_type c="M">
-				<scalar_data_type_opt c="M" />
-			</scalar_data_type>
-			<row_data_type c="M">
-				<row_data_type_field c="M" />
-			</row_data_type>
-			<external_cursor c="M" />
-		</elements>
-		<blueprints c="1">
-			<catalog c="M">
-				<owner c="M" />
-				<catalog_link c="M" />
-				<schema c="M">
-					<scalar_domain c="M" />
-					<row_domain c="M" />
-					<sequence c="M" />
-					<table c="M" />
-					<view c="M" />
-					<routine c="M" />
-				</schema>
-				<role c="M">
-					<privilege_on c="M">
-						<privilege_for c="M" />
-					</privilege_on>
-				</role>
-			</catalog>
-			<application c="M">
-				<catalog_link c="M" />
-				<scalar_domain c="M" />
-				<row_domain c="M" />
-				<sequence c="M" />
-				<table c="M" />
-				<view c="M" />
-				<routine c="M" />
-			</application>
-		</blueprints>
-		<tools c="1">
-			<data_storage_product c="M" />
-			<data_link_product c="M" />
-		</tools>
-		<sites c="1">
-			<catalog_instance c="M">
-				<catalog_instance_opt c="M" />
-				<catalog_link_instance c="M" />
-				<user c="M">
-					<user_role c="M" />
-				</user>
-			</catalog_instance>
-			<application_instance c="M">
-				<catalog_link_instance c="M" />
-			</application_instance>
-		</sites>
-		<circumventions c="1">
-			<sql_fragment c="M" />
-		</circumventions>
-	</root>
+    <root>
+        <elements c="1">
+            <scalar_data_type c="M">
+                <scalar_data_type_opt c="M" />
+            </scalar_data_type>
+            <row_data_type c="M">
+                <row_data_type_field c="M" />
+            </row_data_type>
+            <external_cursor c="M" />
+        </elements>
+        <blueprints c="1">
+            <catalog c="M">
+                <owner c="M" />
+                <catalog_link c="M" />
+                <schema c="M">
+                    <scalar_domain c="M" />
+                    <row_domain c="M" />
+                    <sequence c="M" />
+                    <table c="M" />
+                    <view c="M" />
+                    <routine c="M" />
+                </schema>
+                <role c="M">
+                    <privilege_on c="M">
+                        <privilege_for c="M" />
+                    </privilege_on>
+                </role>
+            </catalog>
+            <application c="M">
+                <catalog_link c="M" />
+                <scalar_domain c="M" />
+                <row_domain c="M" />
+                <sequence c="M" />
+                <table c="M" />
+                <view c="M" />
+                <routine c="M" />
+            </application>
+        </blueprints>
+        <tools c="1">
+            <data_storage_product c="M" />
+            <data_link_product c="M" />
+        </tools>
+        <sites c="1">
+            <catalog_instance c="M">
+                <catalog_instance_opt c="M" />
+                <catalog_link_instance c="M" />
+                <user c="M">
+                    <user_role c="M" />
+                </user>
+            </catalog_instance>
+            <application_instance c="M">
+                <catalog_link_instance c="M" />
+            </application_instance>
+        </sites>
+        <circumventions c="1">
+            <sql_fragment c="M" />
+        </circumventions>
+    </root>
 
-	<table>
-		<table_field c="M" />
-		<table_index c="M">
-			<table_index_field c="M" />
-		</table_index>
-	</table>
+    <table>
+        <table_field c="M" />
+        <table_index c="M">
+            <table_index_field c="M" />
+        </table_index>
+    </table>
 
-	<view r="Y">
-		<view_arg c="M" />
-		<view_src c="M">
-			<view_src_arg c="M" />
-			<view_src_field c="M" />
-		</view_src>
-		<view_field c="M" />
-		<view_join c="M">
-			<view_join_field c="M" />
-		</view_join>
-		<view_compound_elem c="M" />
-		<view_expr c="M" r="Y" />
-	</view>
+    <view r="Y">
+        <view_arg c="M" />
+        <view_src c="M">
+            <view_src_arg c="M" />
+            <view_src_field c="M" />
+        </view_src>
+        <view_field c="M" />
+        <view_join c="M">
+            <view_join_field c="M" />
+        </view_join>
+        <view_compound_elem c="M" />
+        <view_expr c="M" r="Y" />
+    </view>
 
-	<routine r="Y">
-		<routine_context c="1" />
-		<routine_arg c="M" />
-		<routine_var c="M">
-			<view c="1" />
-		</routine_var>
-		<routine_stmt c="M">
-			<view c="1" />
-			<routine_expr c="M" r="Y" />
-		</routine_stmt>
-	</routine>
+    <routine r="Y">
+        <routine_context c="1" />
+        <routine_arg c="M" />
+        <routine_var c="M">
+            <view c="1" />
+        </routine_var>
+        <routine_stmt c="M">
+            <view c="1" />
+            <routine_expr c="M" r="Y" />
+        </routine_stmt>
+    </routine>
 
-	<catalog_link_instance r="Y">
-		<catalog_link_instance_opt c="M" />
-	</catalog_link_instance>
+    <catalog_link_instance r="Y">
+        <catalog_link_instance_opt c="M" />
+    </catalog_link_instance>
 
 For the most part, each 'concept' shown in the tree above corresponds to a
 single SQL::Routine Node Type.  Each Node Type is explained in further
@@ -559,23 +518,23 @@ used to store any literal whose type varies or isn't a bool or uint or cstr.
 Here is a compact list of the enumerated attribute types that SQL::Routine knows
 about.  For full details on each one, please see L<SQL::Routine::EnumTypes>.
 
-	container_type
-	exception_type
-	standard_routine
-	standard_routine_context
-	standard_routine_arg
-	simple_scalar_type
-	char_enc_type
-	calendar
-	privilege_type
-	table_index_type
-	view_type
-	compound_operator
-	join_operator
-	view_part
-	routine_type
-	basic_trigger_event
-	user_type
+    container_type
+    exception_type
+    standard_routine
+    standard_routine_context
+    standard_routine_arg
+    simple_scalar_type
+    char_enc_type
+    calendar
+    privilege_type
+    table_index_type
+    view_type
+    compound_operator
+    join_operator
+    view_part
+    routine_type
+    basic_trigger_event
+    user_type
 
 =head1 BRIEF NODE TYPE LIST
 
@@ -586,73 +545,73 @@ please see L<SQL::Routine::NodeTypes>.
 
 PSEUDO-NODE TYPES:
 
-	root
-	elements
-	blueprints
-	tools
-	sites
-	circumventions
+    root
+    elements
+    blueprints
+    tools
+    sites
+    circumventions
 
 ELEMENTS CATEGORY NODE TYPES:
 
-	scalar_data_type
-	scalar_data_type_opt
-	row_data_type
-	row_data_type_field
-	external_cursor
+    scalar_data_type
+    scalar_data_type_opt
+    row_data_type
+    row_data_type_field
+    external_cursor
 
 BLUEPRINTS CATEGORY NODE TYPES:
 
-	catalog
-	application
-	owner
-	catalog_link
-	schema
-	role
-	privilege_on
-	privilege_for
-	scalar_domain
-	row_domain
-	sequence
-	table
-	table_field
-	table_index
-	table_index_field
-	view
-	view_arg
-	view_src
-	view_src_arg
-	view_src_field
-	view_field
-	view_join
-	view_join_field
-	view_compound_elem
-	view_expr
-	routine
-	routine_context
-	routine_arg
-	routine_var
-	routine_stmt
-	routine_expr
+    catalog
+    application
+    owner
+    catalog_link
+    schema
+    role
+    privilege_on
+    privilege_for
+    scalar_domain
+    row_domain
+    sequence
+    table
+    table_field
+    table_index
+    table_index_field
+    view
+    view_arg
+    view_src
+    view_src_arg
+    view_src_field
+    view_field
+    view_join
+    view_join_field
+    view_compound_elem
+    view_expr
+    routine
+    routine_context
+    routine_arg
+    routine_var
+    routine_stmt
+    routine_expr
 
 TOOLS CATEGORY NODE TYPES:
 
-	data_storage_product
-	data_link_product
+    data_storage_product
+    data_link_product
 
 SITES CATEGORY NODE TYPES:
 
-	catalog_instance
-	catalog_instance_opt
-	application_instance
-	catalog_link_instance
-	catalog_link_instance_opt
-	user
-	user_role
+    catalog_instance
+    catalog_instance_opt
+    application_instance
+    catalog_link_instance
+    catalog_link_instance_opt
+    user
+    user_role
 
 CIRCUMVENTIONS CATEGORY NODE TYPES:
 
-	sql_fragment
+    sql_fragment
 
 =head1 OLDER DOCUMENTATION
 
@@ -718,5 +677,50 @@ SQL::Routine::Command objects having types of: 'data_select', 'data_insert',
 =head1 SEE ALSO
 
 L<SQL::Routine> and the various other modules mentioned in its SEE ALSO.
+
+=head1 AUTHOR
+
+Darren R. Duncan (C<perl@DarrenDuncan.net>)
+
+=head1 LICENCE AND COPYRIGHT
+
+This file is part of the SQL::Routine database portability library.
+
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
+visit L<http://www.DarrenDuncan.net/> for more information.
+
+SQL::Routine is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
+
+Linking SQL::Routine statically or dynamically with other modules is making a
+combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
+cover the whole combination.  As a special exception, the copyright holders of
+SQL::Routine give you permission to link SQL::Routine with independent modules,
+regardless of the license terms of these independent modules, and to copy and
+distribute the resulting combined work under terms of your choice, provided
+that every copy of the combined work is accompanied by a complete copy of the
+source code of SQL::Routine (the version of SQL::Routine used to produce the
+combined work), being distributed under the terms of the GPL plus this
+exception.  An independent module is a module which is not derived from or
+based on SQL::Routine, and which is fully useable when not linked to
+SQL::Routine in any form.
+
+Any versions of SQL::Routine that you modify and distribute must carry
+prominent notices stating that you changed the files and the date of any
+changes, in addition to preserving this original copyright notice and other
+credits. SQL::Routine is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+
+While it is by no means required, the copyright holders of SQL::Routine would
+appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a practical
+way of suggesting improvements to the standard version.
 
 =cut

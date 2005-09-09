@@ -4,47 +4,6 @@
 
 SQL::Routine::Details - Main structural and API documentation for SQL::Routine
 
-=head1 COPYRIGHT AND LICENSE
-
-This file is part of the SQL::Routine database portability library.
-
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
-visit http://www.DarrenDuncan.net/ for more information.
-
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (http://www.fsf.org/); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
-
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
-
-Any versions of SQL::Routine that you modify and distribute must carry
-prominent notices stating that you changed the files and the date of any
-changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
-
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
-
 =head1 DESCRIPTION
 
 This POD file contains most of the core detail documentation for SQL::Routine,
@@ -647,13 +606,6 @@ must be a primary-child of one of the primary parent Node's parent Nodes.
 
 I<NOTE THAT FURTHER DOCUMENTATION ABOUT LINKING BY SURROGATE IDS IS PENDING.>
 
-=head1 SYNTAX
-
-This class does not export any functions or methods, so you need to call them
-using object notation.  This means using B<Class-E<gt>function()> for functions
-and B<$object-E<gt>method()> for methods.  If you are inheriting this class for
-your own modules, then that often means something like B<$self-E<gt>method()>.  
-
 =head1 CONSTRUCTOR WRAPPER FUNCTIONS
 
 These functions are stateless and can be invoked off of either the module name,
@@ -662,37 +614,37 @@ are thin wrappers over other methods and exist strictly for convenience.
 
 =head2 new_container()
 
-	my $model = SQL::Routine->new_container();
-	my $model2 = SQL::Routine::Container->new_container();
-	my $model3 = SQL::Routine::Node->new_container();
-	my $model4 = SQL::Routine::Group->new_container();
-	my $model5 = $model->new_container();
-	my $model6 = $node->new_container();
-	my $model7 = $group->new_container();
+    my $model = SQL::Routine->new_container();
+    my $model2 = SQL::Routine::Container->new_container();
+    my $model3 = SQL::Routine::Node->new_container();
+    my $model4 = SQL::Routine::Group->new_container();
+    my $model5 = $model->new_container();
+    my $model6 = $node->new_container();
+    my $model7 = $group->new_container();
 
 This function wraps SQL::Routine::Container->new().
 
 =head2 new_node( CONTAINER, NODE_TYPE[, NODE_ID] )
 
-	my $node = SQL::Routine->new_node( $model, 'table' );
-	my $node2 = SQL::Routine::Container->new_node( $model, 'table' );
-	my $node3 = SQL::Routine::Node->new_node( $model, 'table', 32 );
-	my $node4 = SQL::Routine::Group->new_node( $model, 'table_field', 6 );
-	my $node5 = $model->new_node( $model, 'table', 45 );
-	my $node6 = $node->new_node( $model, 'table' );
-	my $node7 = $group->new_node( $model, 'view' );
+    my $node = SQL::Routine->new_node( $model, 'table' );
+    my $node2 = SQL::Routine::Container->new_node( $model, 'table' );
+    my $node3 = SQL::Routine::Node->new_node( $model, 'table', 32 );
+    my $node4 = SQL::Routine::Group->new_node( $model, 'table_field', 6 );
+    my $node5 = $model->new_node( $model, 'table', 45 );
+    my $node6 = $node->new_node( $model, 'table' );
+    my $node7 = $group->new_node( $model, 'view' );
 
 This function wraps SQL::Routine::Node->new( CONTAINER, NODE_TYPE, NODE_ID ).
 
 =head2 new_group()
 
-	my $group = SQL::Routine->new_group();
-	my $group2 = SQL::Routine::Container->new_group();
-	my $group3 = SQL::Routine::Node->new_group();
-	my $group4 = SQL::Routine::Group->new_group();
-	my $group5 = $model->new_group();
-	my $group6 = $node->new_group();
-	my $group7 = $group->new_group();
+    my $group = SQL::Routine->new_group();
+    my $group2 = SQL::Routine::Container->new_group();
+    my $group3 = SQL::Routine::Node->new_group();
+    my $group4 = SQL::Routine::Group->new_group();
+    my $group5 = $model->new_group();
+    my $group6 = $node->new_group();
+    my $group7 = $group->new_group();
 
 This function wraps SQL::Routine::Group->new().
 
@@ -703,8 +655,8 @@ class name or an existing Container object, with the same result.
 
 =head2 new()
 
-	my $model = SQL::Routine::Container->new();
-	my $model2 = $model->new();
+    my $model = SQL::Routine::Container->new();
+    my $model2 = $model->new();
 
 This "getter" function will create and return a single Container object.
 
@@ -763,8 +715,8 @@ order, except for being a lot faster.
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
-	my $ra_node_list = $model->get_child_nodes();
-	my $ra_node_list = $model->get_child_nodes( 'catalog' );
+    my $ra_node_list = $model->get_child_nodes();
+    my $ra_node_list = $model->get_child_nodes( 'catalog' );
 
 This "getter" method returns a list of this Container's primary-child Nodes, in
 a new array ref.  A Container's primary-child Nodes are defined as being all
@@ -775,7 +727,7 @@ returned.  All Nodes are returned in the same order they were added.
 
 =head2 find_node_by_id( NODE_ID )
 
-	my $node = $model->find_node_by_id( 1 );
+    my $node = $model->find_node_by_id( 1 );
 
 This "getter" method searches for a member Node of this Container whose Node Id
 matches the NODE_ID argument; if one is found then it is returned by reference;
@@ -786,7 +738,7 @@ same amount of time regardless of how many Nodes are in the Container.
 
 =head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 
-	my $data_type_node = $model->find_child_node_by_surrogate_id( 'str100' );
+    my $data_type_node = $model->find_child_node_by_surrogate_id( 'str100' );
 
 This "getter" method searches for a Node in this Container whose Surrogate Node
 Id matches the TARGET_ATTR_VALUE argument; if one is found then it is returned
@@ -803,7 +755,7 @@ the child Nodes of all pseudo-Nodes are searched.
 
 =head2 get_next_free_node_id()
 
-	my $node_id = $model->get_next_free_node_id();
+    my $node_id = $model->get_next_free_node_id();
 
 This "getter" method returns an integer which is valid for use as the Node ID of
 a new Node that is going to be put in this Container.  Its value is 1 higher
@@ -817,7 +769,7 @@ Container, and it can not be externally edited.
 
 =head2 get_edit_count()
 
-	my $count_sample = $model->get_edit_count();
+    my $count_sample = $model->get_edit_count();
 
 This "getter" method will return the integral "edit count" property of this
 Container, which counts the changes to this Container's Node set.  Its value
@@ -834,7 +786,7 @@ Perl closures, so that it can easily tell when the cache may have become stale
 
 =head2 deferrable_constraints_are_tested()
 
-	my $is_all_ok = $model->deferrable_constraints_are_tested();
+    my $is_all_ok = $model->deferrable_constraints_are_tested();
 
 This "getter" method returns true if, following the last time this Container's
 Node set was edited, the Container.assert_deferrable_constraints() method had
@@ -846,7 +798,7 @@ completely devoid of Nodes may violate a deferrable constraint).
 
 =head2 assert_deferrable_constraints()
 
-	$model->assert_deferrable_constraints();
+    $model->assert_deferrable_constraints();
 
 This "getter" method implements several types of deferrable data validation, to
 make sure that every Node in this Container is ready to be used, both
@@ -869,10 +821,10 @@ class name or an existing Node object, with the same result.
 
 =head2 new( CONTAINER, NODE_TYPE[, NODE_ID] )
 
-	my $node = SQL::Routine::Node->new( $model, 'table' );
-	my $node2 = SQL::Routine::Node->new( $model, 'table', 27 );
-	my $node3 = $node->new( $model, 'table' );
-	my $node4 = $node->new( $model, 'table', 42 );
+    my $node = SQL::Routine::Node->new( $model, 'table' );
+    my $node2 = SQL::Routine::Node->new( $model, 'table', 27 );
+    my $node3 = $node->new( $model, 'table' );
+    my $node4 = $node->new( $model, 'table', 42 );
 
 This "getter" function will create and return a single Node object that lives in
 the Container object given in the CONTAINER argument; the new Node will live in
@@ -929,13 +881,13 @@ of database commands that they use, and they may not need this method at all.
 
 =head2 get_container()
 
-	my $model = $node->get_container();
+    my $model = $node->get_container();
 
 This "getter" method returns the Container object which this Node lives in.
 
 =head2 get_node_type()
 
-	my $type = $node->get_node_type();
+    my $type = $node->get_node_type();
 
 This "getter" method returns the Node Type scalar (enum) property of this Node.
 You can not change this property on an existing Node, but you can set it on a
@@ -953,7 +905,7 @@ same Node Id already exists in the same Container.
 
 =head2 get_primary_parent_attribute()
 
-	my $parent = $node->get_primary_parent_attribute();
+    my $parent = $node->get_primary_parent_attribute();
 
 This "getter" method returns the primary parent Node of the current Node, if
 there is one.
@@ -986,7 +938,7 @@ value, giving it the new value specified in ATTR_VALUE.
 
 =head2 get_attribute( ATTR_NAME[, GET_TARGET_SI] )
 
-	my $curr_val = $node->get_attribute( 'si_name' );
+    my $curr_val = $node->get_attribute( 'si_name' );
 
 This "getter" method will return the value for this Node's attribute named in
 the ATTR_NAME argument, if it is set, or undef if it isn't.  With Node-ref
@@ -997,7 +949,7 @@ value (a single value, not a chain).
 
 =head2 get_attributes([ GET_TARGET_SI ])
 
-	my $rh_attrs = $node->get_attributes();
+    my $rh_attrs = $node->get_attributes();
 
 This "getter" method will fetch all of this Node's attributes, returning them in
 a Hash ref.  Each attribute value is returned in the format specified by
@@ -1030,7 +982,7 @@ add the current Node to the other Node's child list.
 
 =head2 set_attributes( ATTRS )
 
-	$node->set_attributes( $rh_attrs );
+    $node->set_attributes( $rh_attrs );
 
 This "setter" method will set or replace multiple Node attributes, whose names
 and values are specified by keys and values of the ATTRS hash ref argument;
@@ -1052,8 +1004,8 @@ the sibling.
 
 =head2 get_child_nodes([ NODE_TYPE ])
 
-	my $ra_node_list = $table_node->get_child_nodes();
-	my $ra_node_list = $table_node->get_child_nodes( 'table_field' );
+    my $ra_node_list = $table_node->get_child_nodes();
+    my $ra_node_list = $table_node->get_child_nodes( 'table_field' );
 
 This "getter" method returns a list of this Node's primary-child Nodes, in a new
 array ref.  If the optional argument NODE_TYPE is defined, then only child Nodes
@@ -1062,7 +1014,7 @@ Nodes are returned in the same order they were added.
 
 =head2 add_child_node( CHILD )
 
-	$node->add_child_node( $child );
+    $node->add_child_node( $child );
 
 This "setter" method allows you to add a new primary-child Node to this Node,
 which is provided as the single CHILD Node ref argument.  The new child Node is
@@ -1071,7 +1023,7 @@ new or first primary parent Node of CHILD.
 
 =head2 add_child_nodes( CHILDREN )
 
-	$model->add_child_nodes( [$child1,$child2] );
+    $model->add_child_nodes( [$child1,$child2] );
 
 This "setter" method takes an array ref in its single CHILDREN argument, and
 calls add_child_node() for each element found in it.  This method does not
@@ -1079,8 +1031,8 @@ return anything.
 
 =head2 get_referencing_nodes([ NODE_TYPE ])
 
-	my $ra_node_list = $row_data_type_node->get_referencing_nodes();
-	my $ra_node_list = $row_data_type_node->get_referencing_nodes( 'table' );
+    my $ra_node_list = $row_data_type_node->get_referencing_nodes();
+    my $ra_node_list = $row_data_type_node->get_referencing_nodes( 'table' );
 
 This "getter" method returns a list of this Node's link-child Nodes (which are
 other Nodes that refer to this one in a non-PP nref attribute) in a new array
@@ -1098,7 +1050,7 @@ models that are subsequently reorganized; it is also much longer.
 
 =head2 find_node_by_surrogate_id( SELF_ATTR_NAME, TARGET_ATTR_VALUE )
 
-	my $table_node = $table_index_node->find_node_by_surrogate_id( 'f_table', 'person' );
+    my $table_node = $table_index_node->find_node_by_surrogate_id( 'f_table', 'person' );
 
 This "getter" method's first argument SELF_ATTR_NAME must match a valid Node-ref
 attribute name of the current Node (but not the 'pp' attribute); it throws an
@@ -1122,7 +1074,7 @@ it will only succeed if this method returns exactly 1 matching Node.
 
 =head2 find_child_node_by_surrogate_id( TARGET_ATTR_VALUE )
 
-	my $table_index_node = $table_node->find_child_node_by_surrogate_id( 'fk_father' );
+    my $table_index_node = $table_node->find_child_node_by_surrogate_id( 'fk_father' );
 
 This "getter" method searches for a primary-child Node of the
 current Node whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if
@@ -1137,10 +1089,10 @@ Container.find_child_node_by_surrogate_id( TARGET_ATTR_VALUE ).
 
 =head2 get_relative_surrogate_id( SELF_ATTR_NAME[, WANT_SHORTEST] )
 
-	my $longer_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table' );
-	my $shorter_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table', 1 );
-	my $longer_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name' );
-	my $shorter_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name', 1 );
+    my $longer_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table' );
+    my $shorter_table_si_value = $table_index_node->get_relative_surrogate_id( 'f_table', 1 );
+    my $longer_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name' );
+    my $shorter_view_src_col_si_value = $view_expr_node->get_relative_surrogate_id( 'name', 1 );
 
 This "getter" method's first argument SELF_ATTR_NAME must match a valid Node-ref
 attribute name of the current Node (but not the 'pp' attribute); it throws an
@@ -1180,8 +1132,8 @@ class name or an existing Group object, with the same result.
 
 =head2 new( CONTAINER )
 
-	my $group = SQL::Routine::Group->new( $model );
-	my $group2 = $group->new( $model );
+    my $group = SQL::Routine::Group->new( $model );
+    my $group2 = $group->new( $model );
 
 This "getter" function will create and return a single Group object that is
 associated with the Container interface object given in the CONTAINER argument.
@@ -1204,12 +1156,12 @@ Nodes in the Container as their children.
 
 =head2 get_all_properties([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
-	$rh_node_properties = $container->get_all_properties();
-	$rh_node_properties = $container->get_all_properties( 1 );
-	$rh_node_properties = $container->get_all_properties( 1, 1 );
-	$rh_node_properties = $node->get_all_properties();
-	$rh_node_properties = $node->get_all_properties( 1 );
-	$rh_node_properties = $node->get_all_properties( 1, 1 );
+    $rh_node_properties = $container->get_all_properties();
+    $rh_node_properties = $container->get_all_properties( 1 );
+    $rh_node_properties = $container->get_all_properties( 1, 1 );
+    $rh_node_properties = $node->get_all_properties();
+    $rh_node_properties = $node->get_all_properties( 1 );
+    $rh_node_properties = $node->get_all_properties( 1, 1 );
 
 This method returns a deep copy of all of the properties of this object as
 non-blessed Perl data structures.  These data structures are also arranged in a
@@ -1239,12 +1191,12 @@ argument (its other boolean args can all be false).
 
 =head2 get_all_properties_as_perl_str([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
-	$perl_code_str = $container->get_all_properties_as_perl_str();
-	$perl_code_str = $container->get_all_properties_as_perl_str( 1 );
-	$perl_code_str = $container->get_all_properties_as_perl_str( 1, 1 );
-	$perl_code_str = $node->get_all_properties_as_perl_str();
-	$perl_code_str = $node->get_all_properties_as_perl_str( 1 );
-	$perl_code_str = $node->get_all_properties_as_perl_str( 1, 1 );
+    $perl_code_str = $container->get_all_properties_as_perl_str();
+    $perl_code_str = $container->get_all_properties_as_perl_str( 1 );
+    $perl_code_str = $container->get_all_properties_as_perl_str( 1, 1 );
+    $perl_code_str = $node->get_all_properties_as_perl_str();
+    $perl_code_str = $node->get_all_properties_as_perl_str( 1 );
+    $perl_code_str = $node->get_all_properties_as_perl_str( 1, 1 );
 
 This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
 its output into a pretty-printed string of Perl code, suitable for humans to
@@ -1253,12 +1205,12 @@ structure.
 
 =head2 get_all_properties_as_xml_str([ LINKS_AS_SI[, WANT_SHORTEST] ])
 
-	$xml_doc_str = $container->get_all_properties_as_xml_str();
-	$xml_doc_str = $container->get_all_properties_as_xml_str( 1 );
-	$xml_doc_str = $container->get_all_properties_as_xml_str( 1, 1 );
-	$xml_doc_str = $node->get_all_properties_as_xml_str();
-	$xml_doc_str = $node->get_all_properties_as_xml_str( 1 );
-	$xml_doc_str = $node->get_all_properties_as_xml_str( 1, 1 );
+    $xml_doc_str = $container->get_all_properties_as_xml_str();
+    $xml_doc_str = $container->get_all_properties_as_xml_str( 1 );
+    $xml_doc_str = $container->get_all_properties_as_xml_str( 1, 1 );
+    $xml_doc_str = $node->get_all_properties_as_xml_str();
+    $xml_doc_str = $node->get_all_properties_as_xml_str( 1 );
+    $xml_doc_str = $node->get_all_properties_as_xml_str( 1, 1 );
 
 This method is a wrapper for get_all_properties( LINKS_AS_SI ) that serializes
 its output into a pretty-printed string of XML, suitable for humans to read.
@@ -1280,8 +1232,8 @@ called a "method", it can only be invoked off of Container or Node objects.
 
 =head2 build_node( NODE_TYPE[, ATTRS] )
 
-	my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } ); 
-	my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } ); 
+    my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } ); 
+    my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } ); 
 
 This method will create and return a new Node, that lives in the invocant
 Container or in the same Container as the invocant Node, whose type is specified
@@ -1504,111 +1456,156 @@ is made, it will be done later for the sake of better performance.
 
 CONTENT OF libSQLRT.h
 
-	#ifndef _libSQLRT_h
-	#define _libSQLRT_h
+    #ifndef _libSQLRT_h
+    #define _libSQLRT_h
 
-	/************************************************************************/
-	/* define some simple data types here */
+    /************************************************************************/
+    /* define some simple data types here */
 
-	typedef unsigned char sqlrt_dt_flag; /* stores only two values: 0 (false) or 1 (true) */
-	typedef unsigned char sqlrt_dt_octet; /* a generic eight-bit value */
-	typedef unsigned int  sqlrt_dt_scale; /* a precise integer between 0 and +4,294,967,295 */
-	typedef struct {
-		sqlrt_dt_octet* string_data; /* not null terminated */
-		sqlrt_dt_scale  used_octets;
-		sqlrt_dt_scale  buff_octets;
-	} sqlrt_dt_label; /* an arbitrary sized UTF-8 character string, up to 4 gigabytes */
+    typedef unsigned char sqlrt_dt_flag; /* stores only two values: 0 (false) or 1 (true) */
+    typedef unsigned char sqlrt_dt_octet; /* a generic eight-bit value */
+    typedef unsigned int  sqlrt_dt_scale; /* a precise integer between 0 and +4,294,967,295 */
+    typedef struct {
+        sqlrt_dt_octet* string_data; /* not null terminated */
+        sqlrt_dt_scale  used_octets;
+        sqlrt_dt_scale  buff_octets;
+    } sqlrt_dt_label; /* an arbitrary sized UTF-8 character string, up to 4 gigabytes */
 
-	typedef enum { 
-		SQLRT_LITP_NUM_INT  , /* an exact integral or whole number/numeric */
-		SQLRT_LITP_NUM_EXA  , /* an exact decimal or fractional number/numeric */
-		SQLRT_LITP_NUM_APR  , /* an approximately represented number/numeric (eg: floating point) */
-		SQLRT_LITP_STR_BIT  , /* a string of bits or generic binary data (can store anything) */
-		SQLRT_LITP_STR_CHAR , /* a string of characters (encoding spec defined separately) */
-		SQLRT_LITP_BOOLEAN  , /* only two values: false or true */
-		SQLRT_LITP_DATM_FULL, /* a full datetime ('timestamp') having both YMD and HMS components */
-		SQLRT_LITP_DATM_DATE, /* a valid Gregorian (says the 2003,1999 standard) date having just YMD */
-		SQLRT_LITP_DATM_TIME, /* a valid time of day having just HMS components */
-		SQLRT_LITP_INTRVL_YM, /* a time duration having year-month (YM) intervals (year or month or both) */
-		SQLRT_LITP_INTRVL_DT  /* a time duration having day-time (DHMS) intervals (but not year or month) */
-	} sqlrt_dt_literal_type; 
+    typedef enum { 
+        SQLRT_LITP_NUM_INT  , /* an exact integral or whole number/numeric */
+        SQLRT_LITP_NUM_EXA  , /* an exact decimal or fractional number/numeric */
+        SQLRT_LITP_NUM_APR  , /* an approximately represented number/numeric (eg: floating point) */
+        SQLRT_LITP_STR_BIT  , /* a string of bits or generic binary data (can store anything) */
+        SQLRT_LITP_STR_CHAR , /* a string of characters (encoding spec defined separately) */
+        SQLRT_LITP_BOOLEAN  , /* only two values: false or true */
+        SQLRT_LITP_DATM_FULL, /* a full datetime ('timestamp') having both YMD and HMS components */
+        SQLRT_LITP_DATM_DATE, /* a valid Gregorian (says the 2003,1999 standard) date having just YMD */
+        SQLRT_LITP_DATM_TIME, /* a valid time of day having just HMS components */
+        SQLRT_LITP_INTRVL_YM, /* a time duration having year-month (YM) intervals (year or month or both) */
+        SQLRT_LITP_INTRVL_DT  /* a time duration having day-time (DHMS) intervals (but not year or month) */
+    } sqlrt_dt_literal_type; 
 
-	typedef enum { 
-		SQLRT_CHENTP_UTF8  , /* unicode UTF-8 (always byte-order preserving; no big/little endian, usually 1 octet) */
-		SQLRT_CHENTP_UTF16 , /* unicode UTF-16 (has big/little endian versions) */
-		SQLRT_CHENTP_UTF32 , /* unicode UTF-32 (has big/little endian versions) */
-		SQLRT_CHENTP_ASCII , /* 8-bit ascii */
-		SQLRT_CHENTP_EBSDIC  /* 8-bit ebsdic */
-		/* others will be added as appropriate */
-	} sqlrt_dt_char_enc_type; 
+    typedef enum { 
+        SQLRT_CHENTP_UTF8  , /* unicode UTF-8 (always byte-order preserving; no big/little endian, usually 1 octet) */
+        SQLRT_CHENTP_UTF16 , /* unicode UTF-16 (has big/little endian versions) */
+        SQLRT_CHENTP_UTF32 , /* unicode UTF-32 (has big/little endian versions) */
+        SQLRT_CHENTP_ASCII , /* 8-bit ascii */
+        SQLRT_CHENTP_EBSDIC  /* 8-bit ebsdic */
+        /* others will be added as appropriate */
+    } sqlrt_dt_char_enc_type; 
 
-	typedef struct {
-		sqlrt_dt_literal_type  literal_type ; /* says how to interpret other struct properties */
-		sqlrt_dt_scale         fixed_octets ; /* when literal is NUM_INT, NUM_APR; usu 1,2,4,8 */
-		sqlrt_dt_char_enc_type char_enc_type; /* when literal is a STR_CHAR, how it is encoded */
-		sqlrt_dt_octet*        literal_data ; /* not null terminated (or null part of trail junk) */
-			/* above never ref'd by mult structs; struct itself can be ref'd by multiple vars */
-		sqlrt_dt_scale         used_octets  ; /* doesn't include any trailing null with strings */
-		sqlrt_dt_scale         buff_octets  ; /* does include or surpass any trailing null */
-		/* other metadata may be added as appropriate; we may embed some fixed width type data */
-		sqlrt_dt_scale         malcvar_refs ; /* count of refs to this struct from malloc'd vars */
-	} sqlrt_dt_literal; 
+    typedef struct {
+        sqlrt_dt_literal_type  literal_type ; /* says how to interpret other struct properties */
+        sqlrt_dt_scale         fixed_octets ; /* when literal is NUM_INT, NUM_APR; usu 1,2,4,8 */
+        sqlrt_dt_char_enc_type char_enc_type; /* when literal is a STR_CHAR, how it is encoded */
+        sqlrt_dt_octet*        literal_data ; /* not null terminated (or null part of trail junk) */
+            /* above never ref'd by mult structs; struct itself can be ref'd by multiple vars */
+        sqlrt_dt_scale         used_octets  ; /* doesn't include any trailing null with strings */
+        sqlrt_dt_scale         buff_octets  ; /* does include or surpass any trailing null */
+        /* other metadata may be added as appropriate; we may embed some fixed width type data */
+        sqlrt_dt_scale         malcvar_refs ; /* count of refs to this struct from malloc'd vars */
+    } sqlrt_dt_literal; 
 
-	/************************************************************************/
-	/* define some simple data types here */
+    /************************************************************************/
+    /* define some simple data types here */
 
-	typedef enum {
-		SQLRT_ENST_FOO, /* replace with semi-long actual list of generic enumerated value sets */
-		SQLRT_ENST_BAR
-	} sqlrt_dt_enum_set;
+    typedef enum {
+        SQLRT_ENST_FOO, /* replace with semi-long actual list of generic enumerated value sets */
+        SQLRT_ENST_BAR
+    } sqlrt_dt_enum_set;
 
-	typedef enum {
-		SQLRT_ENIT_FOO, /* replace with long actual list of generic enumerated value set members */
-		SQLRT_ENIT_BAR  /* this enum may need repl w const list or ml en union, if sev key can't have same int */
-	} sqlrt_dt_enum_item;
+    typedef enum {
+        SQLRT_ENIT_FOO, /* replace with long actual list of generic enumerated value set members */
+        SQLRT_ENIT_BAR  /* this enum may need repl w const list or ml en union, if sev key can't have same int */
+    } sqlrt_dt_enum_item;
 
-	typedef enum {
-		SQLRT_NDTP_FOO, /* replace with semi-short actual list of Node Types */
-		SQLRT_NDTP_BAR
-	} sqlrt_dt_node_type;
+    typedef enum {
+        SQLRT_NDTP_FOO, /* replace with semi-short actual list of Node Types */
+        SQLRT_NDTP_BAR
+    } sqlrt_dt_node_type;
 
-	typedef enum {
-		SQLRT_NDATNM_FOO, /* replace with actual list of Node Attribute Names */
-		SQLRT_NDATNM_BAR  /* this enum may need repl w const list or ml en union, if sev key can't have same int */
-	} sqlrt_dt_node_atnm;
+    typedef enum {
+        SQLRT_NDATNM_FOO, /* replace with actual list of Node Attribute Names */
+        SQLRT_NDATNM_BAR  /* this enum may need repl w const list or ml en union, if sev key can't have same int */
+    } sqlrt_dt_node_atnm;
 
-	typedef struct {
-		sqlrt_dt_node_type  node_type       ; /* what type of Node this is */
-		sqlrt_dt_scale      node_id         ; /* uniq ident for Node within Container+Type */
-		sqlrt_dt_node*      pp_nref         ; /* (ref) primary-parent ('pp') Node attr */
-		sqlrt_dt_literal*   at_literals     ; /* (array) attrs of Node which are literals */
-		sqlrt_dt_enum_item* at_enums        ; /* (array) attrs of Node which are enumerated values */
-		sqlrt_dt_node*      at_nrefs        ; /* (array of ref) attrs of Node which are Nodes */
-			/* Note: if it would be better, we may combine all at* into one longer union list */
-		sqlrt_dt_container* container       ; /* (ref) what Container this Node lives in, if any */
-		sqlrt_dt_node_dll*  prim_child_nrefs; /* (list of refs) recipr to Nodes whose pp_nref ref to us */
-		sqlrt_dt_node_dll*  link_child_nrefs; /* (list of refs) recipr to Nodes whose at_nodes ref to us */
-	} sqlrt_dt_node;
+    typedef struct {
+        sqlrt_dt_node_type  node_type       ; /* what type of Node this is */
+        sqlrt_dt_scale      node_id         ; /* uniq ident for Node within Container+Type */
+        sqlrt_dt_node*      pp_nref         ; /* (ref) primary-parent ('pp') Node attr */
+        sqlrt_dt_literal*   at_literals     ; /* (array) attrs of Node which are literals */
+        sqlrt_dt_enum_item* at_enums        ; /* (array) attrs of Node which are enumerated values */
+        sqlrt_dt_node*      at_nrefs        ; /* (array of ref) attrs of Node which are Nodes */
+            /* Note: if it would be better, we may combine all at* into one longer union list */
+        sqlrt_dt_container* container       ; /* (ref) what Container this Node lives in, if any */
+        sqlrt_dt_node_dll*  prim_child_nrefs; /* (list of refs) recipr to Nodes whose pp_nref ref to us */
+        sqlrt_dt_node_dll*  link_child_nrefs; /* (list of refs) recipr to Nodes whose at_nodes ref to us */
+    } sqlrt_dt_node;
 
-	typedef struct {
-		sqlrt_dt_node*     item; /* the actual Node represented by this list item */
-		sqlrt_dt_node_dll* next; /* next Node in list, if any */
-		sqlrt_dt_node_dll* prev; /* previous Node in list, if any */
-	} sqlrt_dt_node_dll; /* doubly-linked-list; use when number of list items not known in advance */
+    typedef struct {
+        sqlrt_dt_node*     item; /* the actual Node represented by this list item */
+        sqlrt_dt_node_dll* next; /* next Node in list, if any */
+        sqlrt_dt_node_dll* prev; /* previous Node in list, if any */
+    } sqlrt_dt_node_dll; /* doubly-linked-list; use when number of list items not known in advance */
 
-	typedef struct {
-		sqlrt_dt_node_dll* all_nodes; /* (list of refs) all Nodes in this Container */
-	} sqlrt_dt_container;
+    typedef struct {
+        sqlrt_dt_node_dll* all_nodes; /* (list of refs) all Nodes in this Container */
+    } sqlrt_dt_container;
 
-	/************************************************************************/
-	/* define some accessor functions here */
+    /************************************************************************/
+    /* define some accessor functions here */
 
-	/************************************************************************/
+    /************************************************************************/
 
-	#endif /* _libSQLRT_h */
+    #endif /* _libSQLRT_h */
 
 =head1 SEE ALSO
 
 L<SQL::Routine> and the various other modules mentioned in its SEE ALSO.
+
+=head1 AUTHOR
+
+Darren R. Duncan (C<perl@DarrenDuncan.net>)
+
+=head1 LICENCE AND COPYRIGHT
+
+This file is part of the SQL::Routine database portability library.
+
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
+Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
+visit L<http://www.DarrenDuncan.net/> for more information.
+
+SQL::Routine is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License (GPL) as published by the Free
+Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
+(at your option) any later version.  You should have received a copy of the GPL
+as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
+to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
+02110-1301, USA.
+
+Linking SQL::Routine statically or dynamically with other modules is making a
+combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
+cover the whole combination.  As a special exception, the copyright holders of
+SQL::Routine give you permission to link SQL::Routine with independent modules,
+regardless of the license terms of these independent modules, and to copy and
+distribute the resulting combined work under terms of your choice, provided
+that every copy of the combined work is accompanied by a complete copy of the
+source code of SQL::Routine (the version of SQL::Routine used to produce the
+combined work), being distributed under the terms of the GPL plus this
+exception.  An independent module is a module which is not derived from or
+based on SQL::Routine, and which is fully useable when not linked to
+SQL::Routine in any form.
+
+Any versions of SQL::Routine that you modify and distribute must carry
+prominent notices stating that you changed the files and the date of any
+changes, in addition to preserving this original copyright notice and other
+credits. SQL::Routine is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+
+While it is by no means required, the copyright holders of SQL::Routine would
+appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a practical
+way of suggesting improvements to the standard version.
 
 =cut
