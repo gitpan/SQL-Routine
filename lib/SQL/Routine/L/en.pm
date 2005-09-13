@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine::L::en;
-use version; our $VERSION = qv('0.38.0');
+use version; our $VERSION = qv('0.38.1');
 
 ######################################################################
 
@@ -411,7 +411,7 @@ SQL::Routine::L::en - Localization of SQL::Routine for English
 
 =head1 VERSION
 
-This document describes SQL::Routine::L::en version 0.38.0.
+This document describes SQL::Routine::L::en version 0.38.1.
 
 =head1 SYNOPSIS
 
@@ -442,9 +442,10 @@ This document describes SQL::Routine::L::en version 0.38.0.
 The SQL::Routine::L::en Perl 5 module contains localization data for
 SQL::Routine.  It is designed to be interpreted by Locale::KeyedText.
 
-This class is optional and you can still use SQL::Routine effectively without 
-it, especially if you plan to either show users different error messages than this 
-class defines, or not show them anything because you are "handling it".
+This class is optional and you can still use SQL::Routine effectively
+without it, especially if you plan to either show users different error
+messages than this class defines, or not show them anything because you are
+"handling it".
 
 =head1 FUNCTIONS
 
@@ -452,19 +453,19 @@ class defines, or not show them anything because you are "handling it".
 
     my $user_text_template = SQL::Routine::L::en->get_text_by_key( 'foo' );
 
-This function takes a Message Key string in MSG_KEY and returns the associated
-user text template string, if there is one, or undef if not.
+This function takes a Message Key string in MSG_KEY and returns the
+associated user text template string, if there is one, or undef if not.
 
 =head1 DEPENDENCIES
 
 This module requires any version of Perl 5.x.y that is at least 5.8.1.
 
-It also requires the Perl module L<version>, which would
-conceptually be built-in to Perl, but isn't, so it is on CPAN instead.
+It also requires the Perl module L<version>, which would conceptually be
+built-in to Perl, but isn't, so it is on CPAN instead.
 
-This module has no enforced dependencies on L<Locale::KeyedText>, which is on 
-CPAN, or on L<SQL::Routine>, which is in the current distribution, 
-but it is designed to be used in conjunction with them.
+This module has no enforced dependencies on L<Locale::KeyedText>, which is
+on CPAN, or on L<SQL::Routine>, which is in the current distribution, but
+it is designed to be used in conjunction with them.
 
 =head1 INCOMPATIBILITIES
 
@@ -476,13 +477,13 @@ L<perl(1)>, L<Locale::KeyedText>, L<SQL::Routine>.
 
 =head1 BUGS AND LIMITATIONS
 
-The structure of this module is trivially simple and has no known bugs. 
+The structure of this module is trivially simple and has no known bugs.
 
 However, the locale data that this module contains may be subject to large
-changes in the future; you can determine the likeliness of this by examining the
-development status and/or BUGS AND LIMITATIONS documentation of the other module
-that this one is localizing; there tends to be a high correlation in the rate of 
-change between that module and this one.
+changes in the future; you can determine the likeliness of this by
+examining the development status and/or BUGS AND LIMITATIONS documentation
+of the other module that this one is localizing; there tends to be a high
+correlation in the rate of change between that module and this one.
 
 =head1 AUTHOR
 
@@ -492,41 +493,42 @@ Darren R. Duncan (C<perl@DarrenDuncan.net>)
 
 This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
-visit L<http://www.DarrenDuncan.net/> for more information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights
+reserved. Address comments, suggestions, and bug reports to
+C<perl@DarrenDuncan.net>, or visit L<http://www.DarrenDuncan.net/> for more
+information.
 
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
+SQL::Routine is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License (GPL) as published by the
+Free Software Foundation (L<http://www.fsf.org/>); either version 2 of the
+License, or (at your option) any later version.  You should have received a
+copy of the GPL as part of the SQL::Routine distribution, in the file named
+"GPL"; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
+Fifth Floor, Boston, MA 02110-1301, USA.
 
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
+Linking SQL::Routine statically or dynamically with other modules is making
+a combined work based on SQL::Routine.  Thus, the terms and conditions of
+the GPL cover the whole combination.  As a special exception, the copyright
+holders of SQL::Routine give you permission to link SQL::Routine with
+independent modules, regardless of the license terms of these independent
+modules, and to copy and distribute the resulting combined work under terms
+of your choice, provided that every copy of the combined work is
+accompanied by a complete copy of the source code of SQL::Routine (the
+version of SQL::Routine used to produce the combined work), being
+distributed under the terms of the GPL plus this exception.  An independent
+module is a module which is not derived from or based on SQL::Routine, and
+which is fully useable when not linked to SQL::Routine in any form.
 
 Any versions of SQL::Routine that you modify and distribute must carry
 prominent notices stating that you changed the files and the date of any
 changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+credits. SQL::Routine is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
+While it is by no means required, the copyright holders of SQL::Routine
+would appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a
+practical way of suggesting improvements to the standard version.
 
 =cut

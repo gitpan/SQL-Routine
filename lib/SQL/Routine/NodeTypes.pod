@@ -6,38 +6,43 @@ SQL::Routine::NodeTypes - What Node types are part of SQL::Routine's language or
 
 =head1 DESCRIPTION
 
-This POD file contains most of the details about the Node types that are part of
-SQL::Routine's language or grammar, including what attributes they have and what
-constraints or relationships they can be involved in.  You should read the
-summary introduction in L<SQL::Routine::Language> before this document.
+This POD file contains most of the details about the Node types that are
+part of SQL::Routine's language or grammar, including what attributes they
+have and what constraints or relationships they can be involved in.  You
+should read the summary introduction in L<SQL::Routine::Language> before
+this document.
 
 =head1 UNDERSTANDING NODE ATTRIBUTE DETAILS, CONSTRAINTS, AND RELATIONSHIPS
 
-This document details the Node types that SQL::Routine knows about; each one
-corresponds to a SQL::Routine concept.  A Node Ref attribute of a certain
-type will reference another Node of that Node Type.
+This document details the Node types that SQL::Routine knows about; each
+one corresponds to a SQL::Routine concept.  A Node Ref attribute of a
+certain type will reference another Node of that Node Type.
 
 Each Node Type description below includes the attributes that are valid for
-Nodes of that type.  For each attribute, it says what the attribute means, what
-major+minor type it is, and what kind of value constraints it must obey,
-including both independent and dependent constraints.  Some attribute value
-constraints are constantly applied, while many of them are deferrable.
+Nodes of that type.  For each attribute, it says what the attribute means,
+what major+minor type it is, and what kind of value constraints it must
+obey, including both independent and dependent constraints.  Some attribute
+value constraints are constantly applied, while many of them are
+deferrable.
 
-Each pseudo-Node also has a section that looks like one for a normal Node type;
-these sections are where certain details about Nodes that have pseudo-Node
-parents go, because those details are explained in terms of "child Nodes".
+Each pseudo-Node also has a section that looks like one for a normal Node
+type; these sections are where certain details about Nodes that have
+pseudo-Node parents go, because those details are explained in terms of
+"child Nodes".
 
 For each Node Type, there are several detail lists: B<Attribute List>,
 B<Exclusive Attribute Groups List>, B<Local Attribute Dependencies List>,
-B<Ancestor Attribute Correlation List>, B<Related Parent Enumerated Attributes
-List>, B<Remotely Addressable Types List>, B<Child Quantity List>, B<Distinct
-Child Groups List>, B<Mandatory Related Child Enumerated Attributes List>.
+B<Ancestor Attribute Correlation List>, B<Related Parent Enumerated
+Attributes List>, B<Remotely Addressable Types List>, B<Child Quantity
+List>, B<Distinct Child Groups List>, B<Mandatory Related Child Enumerated
+Attributes List>.
 
 =head2 Attribute List
 
-The B<Attribute List> says what all of the attributes are, in order, along with
-each one's major+minor type, an indicator of whether it is a primary parent
-node candidate, and a description.  Each list element is in this format:
+The B<Attribute List> says what all of the attributes are, in order, along
+with each one's major+minor type, an indicator of whether it is a primary
+parent node candidate, and a description.  Each list element is in this
+format:
 
     <attr> ::= <id-attr>|<pp-attr>|<si-attr>|<wrap-attr>|<detail-attr> - <description>
     <id-attr> ::= id - NODE_ID
@@ -54,115 +59,119 @@ node candidate, and a description.  Each list element is in this format:
     <mandatory-flag> ::= MA
 
 Every Node type's "id"/"NODE_ID" attribute is implicitly always-mandatory;
-moreover, that attribute is implicitly always-distinct between all Nodes in a
-Container.  There is usually just one node-type per nref-attr, but if there are
-several, then either there is an explicit comma-separated list, or an asterisk
-("*") appears to indicate that any Node type may be used.
+moreover, that attribute is implicitly always-distinct between all Nodes in
+a Container.  There is usually just one node-type per nref-attr, but if
+there are several, then either there is an explicit comma-separated list,
+or an asterisk ("*") appears to indicate that any Node type may be used.
 
-Every Node type has either a "pp" attribute or a pseudo-Node parent; the former
-is used to link the current Node to a "primary parent" Node.  When a Container
-(or subset of its Nodes) is converted to a tree-like representation (such as
-XML), each Node will be output beneath its primary parent.  Every Node type's
-"pp" attribute is implicitly always-mandatory.
+Every Node type has either a "pp" attribute or a pseudo-Node parent; the
+former is used to link the current Node to a "primary parent" Node.  When a
+Container (or subset of its Nodes) is converted to a tree-like
+representation (such as XML), each Node will be output beneath its primary
+parent.  Every Node type's "pp" attribute is implicitly always-mandatory.
 
 I<While there is no special code to draw attention to it, note that some
 primary-parent Node ref attributes are special in that they can be
-directly-recursive; they facilitate the construction of N-depth Node trees where
-all Nodes in the tree have the same Node type.  You can spot one of these by the
-fact that the "pp" attribute has the same minor type candidate as the Node type
-the attribute belongs to.  The most common such trees are made from
-"[view|routine]_expr" Nodes, but others are also possible.>
+directly-recursive; they facilitate the construction of N-depth Node trees
+where all Nodes in the tree have the same Node type.  You can spot one of
+these by the fact that the "pp" attribute has the same minor type candidate
+as the Node type the attribute belongs to.  The most common such trees are
+made from "[view|routine]_expr" Nodes, but others are also possible.>
 
 The surrogate-id-flag indicates that the attribute holds the surrogate
-identifier for the Node; this attribute's value is guaranteed to be distinct for
-all Nodes that have the same primary-parent Node, or that have a pseudo-Node
-parent, though the values for two Nodes with two different primary-parent Nodes
-can be the same.  Every Node type's surrogate id attribute is always implicitly
-mandatory.  For most Node types, the surrogate id attribute is called 'si_name'
-and is an "L.cstr" data type; their values correspond to the ANSI/ISO SQL:2003
-standard's impression of a SQL "identifier", specifically an un-qualified SQL
-identifier.  (Eg, a table's "si_name" is the table's "identifier".)  For a few
-Node types (eg, 'view_expr'), there is no distinct surrogate-id attribute; in
-situations where you want to use a "surrogate id" for all Node types, it is safe
-to use the normal Node id for that purpose in its place.
+identifier for the Node; this attribute's value is guaranteed to be
+distinct for all Nodes that have the same primary-parent Node, or that have
+a pseudo-Node parent, though the values for two Nodes with two different
+primary-parent Nodes can be the same.  Every Node type's surrogate id
+attribute is always implicitly mandatory.  For most Node types, the
+surrogate id attribute is called 'si_name' and is an "L.cstr" data type;
+their values correspond to the ANSI/ISO SQL:2003 standard's impression of a
+SQL "identifier", specifically an un-qualified SQL identifier.  (Eg, a
+table's "si_name" is the table's "identifier".)  For a few Node types (eg,
+'view_expr'), there is no distinct surrogate-id attribute; in situations
+where you want to use a "surrogate id" for all Node types, it is safe to
+use the normal Node id for that purpose in its place.
 
 The wrapper-flag indicates that the Node type containing this attribute is
-implemented mainly as a wrapper or alias for another Node type, where the Node
-in question is linked through this Node-ref attribute.  Certain activities that
-want to examine child Nodes of the linking Node can consider the children of the
-linked Node to be the linking Node's children.
+implemented mainly as a wrapper or alias for another Node type, where the
+Node in question is linked through this Node-ref attribute.  Certain
+activities that want to examine child Nodes of the linking Node can
+consider the children of the linked Node to be the linking Node's children.
 
-The mandatory-flag indicates that the attribute is always-mandatory, meaning
-the attribute must always be populated (not be null); in some cases, it means
-you explicitly provide a 'default' value such as zero.
+The mandatory-flag indicates that the attribute is always-mandatory,
+meaning the attribute must always be populated (not be null); in some
+cases, it means you explicitly provide a 'default' value such as zero.
 
-The "Attribute List" contains all details that pertain to constantly applied
-attribute value constraints.  One of these is that you can never set values of
-the wrong major+minor type to an attribute, guaranteeing they are type-correct
-at all times.  Another of these is that a Node's NODE_ID attribute must always
-be set, and have a distinct value relative to all other Nodes in the same
-Container.  Another of these is that any Node ref attributes (including the
-primary-parent) can only point to Nodes that are simultaneously in the same
-container.  As another, you can never set a primary parent for a Node which is a
-direct or indirect descendant of that Node (including the linking Node itself),
-so circular references are guaranteed to never exist.
+The "Attribute List" contains all details that pertain to constantly
+applied attribute value constraints.  One of these is that you can never
+set values of the wrong major+minor type to an attribute, guaranteeing they
+are type-correct at all times.  Another of these is that a Node's NODE_ID
+attribute must always be set, and have a distinct value relative to all
+other Nodes in the same Container.  Another of these is that any Node ref
+attributes (including the primary-parent) can only point to Nodes that are
+simultaneously in the same container.  As another, you can never set a
+primary parent for a Node which is a direct or indirect descendant of that
+Node (including the linking Node itself), so circular references are
+guaranteed to never exist.
 
 The "Attribute List" also contains a few details that pertain to deferrable
 constraints.  One deferrable constraint is that a Node's primary-parent
-attribute must be set, if the Node has one.  Another deferrable constraint is
-that any "SI" and "MA" attributes are populated.  Another deferrable constraint
-is that all Nodes sharing a common primary-parent have a distinct surrogate id
-value; moreover, if a given primary-parent Node is a "wrapper" for another Node,
-then the combined set of child Nodes between all of them must have distinct
-surrogate id values.
+attribute must be set, if the Node has one.  Another deferrable constraint
+is that any "SI" and "MA" attributes are populated.  Another deferrable
+constraint is that all Nodes sharing a common primary-parent have a
+distinct surrogate id value; moreover, if a given primary-parent Node is a
+"wrapper" for another Node, then the combined set of child Nodes between
+all of them must have distinct surrogate id values.
 
 =head2 Exclusive Attribute Groups List
 
-The B<Exclusive Attribute Groups List> says what groups of mutually exclusive
-attributes there are for a Node type; no more than one member of a group may
-have a set value at any given time.  Each list element is in this format:
+The B<Exclusive Attribute Groups List> says what groups of mutually
+exclusive attributes there are for a Node type; no more than one member of
+a group may have a set value at any given time.  Each list element is in
+this format:
 
     <mutex-name> - <attr-name>(,<attr-name>){1,}[ - <mandatory-flag>]
 
-For each mutex-name group, there are 2 or more attr-name which are members of
-the group; if mandatory-flag is present, which looks like "MA", then one member
-of the group must always be set; if mandatory-flag is not present, then it is
-fine for all group members to not be set.  All "Exclusive Attribute Groups
-List" constraints are deferrable.
+For each mutex-name group, there are 2 or more attr-name which are members
+of the group; if mandatory-flag is present, which looks like "MA", then one
+member of the group must always be set; if mandatory-flag is not present,
+then it is fine for all group members to not be set.  All "Exclusive
+Attribute Groups List" constraints are deferrable.
 
 =head2 Local Attribute Dependencies List
 
-The B<Local Attribute Dependencies List> says what Node type attributes have
-dependencies in other attributes of the same Node they are in, such that the
-dependent attributes can not be set unless the depended-on attributes are
-valued and/or have specific determined values.  Each list element
-is in this format:
+The B<Local Attribute Dependencies List> says what Node type attributes
+have dependencies in other attributes of the same Node they are in, such
+that the dependent attributes can not be set unless the depended-on
+attributes are valued and/or have specific determined values.  Each list
+element is in this format:
 
     <dep-on-attr-name>:
         <dep-attr-name>(,<dep-attr-name>){0,}[ - <dep-on-attr-val>(,<dep-on-attr-val>){0,}][ - <mandatory-flag>]
 
 For each distinct depended-on attribute, there can be one or more dependent
-attributes; the latter can be of any attribute type.  A dependent attribute may
-never be set unless its dependency is set, and, in the case of the depended-on
-attribute being an enumerated type, the depended-on attribute has the
-appropriate value; if mandatory-flag is present, then the dependent attribute
-must always be set when it may be set.  It is possible that more than one
-distinct depended-on attribute value will satisfy the same dependent attribute,
-though in most cases only one value will do.  If there are multiple dependent
-attributes shown on the same line (comma-delimited), then they are a
-mutual-exclusion group; only one of those may be set when the conditions say
-that any may be set.  All "Local Attribute Dependencies List" constraints are
-deferrable.
+attributes; the latter can be of any attribute type.  A dependent attribute
+may never be set unless its dependency is set, and, in the case of the
+depended-on attribute being an enumerated type, the depended-on attribute
+has the appropriate value; if mandatory-flag is present, then the dependent
+attribute must always be set when it may be set.  It is possible that more
+than one distinct depended-on attribute value will satisfy the same
+dependent attribute, though in most cases only one value will do.  If there
+are multiple dependent attributes shown on the same line (comma-delimited),
+then they are a mutual-exclusion group; only one of those may be set when
+the conditions say that any may be set.  All "Local Attribute Dependencies
+List" constraints are deferrable.
 
 =head2 Ancestor Attribute Correlation List
 
-The B<Ancestor Attribute Correlation List> says what Node ref attributes in a
-Node must correlate with what other Node ref attributes in one of its
+The B<Ancestor Attribute Correlation List> says what Node ref attributes in
+a Node must correlate with what other Node ref attributes in one of its
 primary-ancestor Nodes, such that the Node referenced by the current Node's
-attribute must be a child of the Node referenced by said ancestor's attribute. 
-For example, the si_row_field attribute of a table_field Node must point to a
-child Node of what the latter's parent "table" Node's row_data_type or
-row_domain attribute points to.  Each list element is in this format:
+attribute must be a child of the Node referenced by said ancestor's
+attribute. For example, the si_row_field attribute of a table_field Node
+must point to a child Node of what the latter's parent "table" Node's
+row_data_type or row_domain attribute points to.  Each list element is in
+this format:
 
     <correlation> ::= <dep-attr-name> - <step>(.<step>){0,} - <description>
     <step> ::= <self>|<primary-parent>|<root-of-type>|<primary-child>|<nref-attr>|<nref-attr-pick>
@@ -172,72 +181,76 @@ row_domain attribute points to.  Each list element is in this format:
     <primary-child> ::= C
     <nref-attr-pick> ::= <node-type>=<nref-attr>(,<node-type>=<nref-attr>){0,}
 
-For each correlated Node ref attribute (dep-attr-name), there is an ordered list
-of one or more movement steps that must be followed in order, where the result
-of one step sets up the context for the following step, such that the path
-starts at the Node containing the dependent attribute, and the path ends at a
-candidate Node that the dependent attribute should point to.  When there are no
-more steps in the path, then we should have matched the dependent attribute
-value, or there is a failure condition.  Each step is one of several movement
-types.  The nref-attr movement type means to examine the specified Node-ref
-attribute in the Node we are standing on and move to stand on the Node it points
-to.  The nref-attr-pick movement type is similar but that it may qualify a
-different attribute name (nref-attr) to move to depending on what the Node type
-(node-type) is of the Node we are standing on; moreover, if the standing Node's
-type is not mentioned in this list at all, we have an explicit failure
-condition.  The 'self' movement type is a no-op and is displayed only for easier
-documentation reading.  The primary-parent movement type means to stand on the
-primary-parent Node of the current one.  The root-of-type means to move to the
-current Node's primary-parent, recursively, if that Node is the same Node type
-as the current Node.  The primary-child movement is iterative and the subsequent
-steps will be followed for each child Node of the current Node, which is stepped
-on to, until one matches.  If a Node at the end of the above process has a WR
-field, it is implicitly followed in the same way as an nref-attr movement.  If
-'C' is used, search text must be array of degree N+1 where N is the number of
-'C', if the search text is to be un-ambiguous/fully-qualified under all
-circumstances; if the search text is a scalar value, then it only works if all
-cousin Nodes are distinct.  If 'C' is not used, search text is not an array /
-has one scalar value.  All "Ancestor Attribute Correlation List" constraints are
-deferrable.
+For each correlated Node ref attribute (dep-attr-name), there is an ordered
+list of one or more movement steps that must be followed in order, where
+the result of one step sets up the context for the following step, such
+that the path starts at the Node containing the dependent attribute, and
+the path ends at a candidate Node that the dependent attribute should point
+to.  When there are no more steps in the path, then we should have matched
+the dependent attribute value, or there is a failure condition.  Each step
+is one of several movement types.  The nref-attr movement type means to
+examine the specified Node-ref attribute in the Node we are standing on and
+move to stand on the Node it points to.  The nref-attr-pick movement type
+is similar but that it may qualify a different attribute name (nref-attr)
+to move to depending on what the Node type (node-type) is of the Node we
+are standing on; moreover, if the standing Node's type is not mentioned in
+this list at all, we have an explicit failure condition.  The 'self'
+movement type is a no-op and is displayed only for easier documentation
+reading.  The primary-parent movement type means to stand on the
+primary-parent Node of the current one.  The root-of-type means to move to
+the current Node's primary-parent, recursively, if that Node is the same
+Node type as the current Node.  The primary-child movement is iterative and
+the subsequent steps will be followed for each child Node of the current
+Node, which is stepped on to, until one matches.  If a Node at the end of
+the above process has a WR field, it is implicitly followed in the same way
+as an nref-attr movement.  If 'C' is used, search text must be array of
+degree N+1 where N is the number of 'C', if the search text is to be
+un-ambiguous/fully-qualified under all circumstances; if the search text is
+a scalar value, then it only works if all cousin Nodes are distinct.  If
+'C' is not used, search text is not an array / has one scalar value.  All
+"Ancestor Attribute Correlation List" constraints are deferrable.
 
 =head2 Remotely Addressable Types List
 
-The B<Remotely Addressable Types List> isn't actually a list per se, as it will
-only have a single line per Node type, if it is used.  This descriptor says
-whether or when a Node type can be visible to other Nodes for linking when it is
-not a sibling of one of their primary-parent Nodes (scope is implicit), and when
-it is not the child part of a correlation pair (scope defined by "Ancestor
-Attribute Correlation List").  The list element is in this format:
+The B<Remotely Addressable Types List> isn't actually a list per se, as it
+will only have a single line per Node type, if it is used.  This descriptor
+says whether or when a Node type can be visible to other Nodes for linking
+when it is not a sibling of one of their primary-parent Nodes (scope is
+implicit), and when it is not the child part of a correlation pair (scope
+defined by "Ancestor Attribute Correlation List").  The list element is in
+this format:
 
     <primary-ancestor-type>(,<primary-ancestor-type>){0,}
 
-Nodes of any Node type that specifies a primary-ancestor-type may be remotely
-addressed if they are primary-descendants of a Node whose type is specified by
-primary-ancestor-type.  One further constraint is that the Node being addressed
-may not have any primary-ancestor Nodes that are the same Node type as it is. 
-All "Remotely Addressable Types List" constraints are deferrable.
+Nodes of any Node type that specifies a primary-ancestor-type may be
+remotely addressed if they are primary-descendants of a Node whose type is
+specified by primary-ancestor-type.  One further constraint is that the
+Node being addressed may not have any primary-ancestor Nodes that are the
+same Node type as it is. All "Remotely Addressable Types List" constraints
+are deferrable.
 
 =head2 Related Parent Enumerated Attributes List
 
-The B<Related Parent Enumerated Attributes List> says what enumerated attributes
-in a Node must be related to what other enumerated attributes in its
-primary-primary Node, such that the current Node's attribute value must be a
-conceptual child of said parent's attribute value.  For example, the
-call_sroutine_arg attribute of a routine_expr Node must be a conceptual child of
-its parent routine_expr's valf_call_sroutine attribute.  Each list element is in
-this format:
+The B<Related Parent Enumerated Attributes List> says what enumerated
+attributes in a Node must be related to what other enumerated attributes in
+its primary-primary Node, such that the current Node's attribute value must
+be a conceptual child of said parent's attribute value.  For example, the
+call_sroutine_arg attribute of a routine_expr Node must be a conceptual
+child of its parent routine_expr's valf_call_sroutine attribute.  Each list
+element is in this format:
 
     <child-attr-name>:
         <parent-node-type> - <parent-attr-name>
 
-The dependent child Node enumerated attribute, child-attr-name, must be related
-to the depended-on parent Node enumerated attribute, parent-attr-name; moreover,
-when the child attribute is valued, it is mandatory for parent attribute to be
-valued (the child does not necessarily have to be valued when the parent is,
-however).  Given that the same child Node type may have more than one valid
-parent Node type (parent-node-type), whose relevant attribute name is distinct
-for the type, the parent-attr-name is specified separately for each.  All
-"Related Parent Enumerated Attributes List" constraints are deferrable.
+The dependent child Node enumerated attribute, child-attr-name, must be
+related to the depended-on parent Node enumerated attribute,
+parent-attr-name; moreover, when the child attribute is valued, it is
+mandatory for parent attribute to be valued (the child does not necessarily
+have to be valued when the parent is, however).  Given that the same child
+Node type may have more than one valid parent Node type (parent-node-type),
+whose relevant attribute name is distinct for the type, the
+parent-attr-name is specified separately for each.  All "Related Parent
+Enumerated Attributes List" constraints are deferrable.
 
 =head2 Child Quantity List
 
@@ -248,57 +261,59 @@ element is in this format:
     <child-node-type> - <range-min>[ - <range-max>]
 
 For each child-node-type, there can be a limit on how few or how many
-primary-child Nodes of that Node type are allowed.  A common range-min is 1,
-but if it is 0 then range-max will be valued.  All "Child Quantity List"
+primary-child Nodes of that Node type are allowed.  A common range-min is
+1, but if it is 0 then range-max will be valued.  All "Child Quantity List"
 constraints are deferrable.
 
 =head2 Distinct Child Groups List
 
 The B<Distinct Child Groups List> says what groups of mutually distinct
-primary-child Nodes there are for Nodes of a Node type; each member Node of a
-group must have distinct/unique values for particular attributes (usually
+primary-child Nodes there are for Nodes of a Node type; each member Node of
+a group must have distinct/unique values for particular attributes (usually
 "name") or attribute combinations.  Each list element is in this format:
 
     <mudi-name>:
         <child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
 
 For each mudi-name group there can be one or more Node attributes where the
-attribute value combination must be distinct, besides the constantly applied
-distinct NODE_ID/id constraint, and the deferrable distinct surrogate id
-constraint; a single child-attr-name on a line means only that one attribute is
-distinct within itself, where multiple child-attr-name indicate a combination to
-check.  If there are multiple lines under a mudi-name, then each one will have a
-different child-node-type; the attributes that line up vertically between
-different Node types are meant to correspond, and would be of the same
-major+minor attribute type; each corresponding line would also have the same
-number of child-attr-name.  For all comparisons, an undefined attribute value
-always counts as a distinct value; multiple undefined corresponding values will
-not violate the constraint (other constraints eliminate undefined values when
-they are a problem).  The implicit distinct-id constraints all have a mudi-name
-of 'primary'.  All "Distinct Child Groups List" constraints are deferrable.
+attribute value combination must be distinct, besides the constantly
+applied distinct NODE_ID/id constraint, and the deferrable distinct
+surrogate id constraint; a single child-attr-name on a line means only that
+one attribute is distinct within itself, where multiple child-attr-name
+indicate a combination to check.  If there are multiple lines under a
+mudi-name, then each one will have a different child-node-type; the
+attributes that line up vertically between different Node types are meant
+to correspond, and would be of the same major+minor attribute type; each
+corresponding line would also have the same number of child-attr-name.  For
+all comparisons, an undefined attribute value always counts as a distinct
+value; multiple undefined corresponding values will not violate the
+constraint (other constraints eliminate undefined values when they are a
+problem).  The implicit distinct-id constraints all have a mudi-name of
+'primary'.  All "Distinct Child Groups List" constraints are deferrable.
 
 =head2 Mandatory Related Child Enumerated Attributes List
 
-The B<Mandatory Related Child Enumerated Attributes List> is concerned with the
-same enumerated Node attribute pairs that the "Related Parent Enumerated
-Attributes List" does.  Operating from the point of view of the parent Node, it
-says which related child Node enumerated attribute values might be mandatory
-(depending on the exact values), such that the current Node must have a child
-Node for each of those values; moreover, no child Node may exist where the
-related attribute is empty, when the related parent/current Node attribute is
-set.  For example, when the call_sroutine attribute of a routine_stmt Node is
-'SELECT', there must be two child routine_expr Nodes whose call_sroutine_arg
-attributes are 'SELECT_DEFN' and 'INTO' respectively.  Each list element is in
-this format:
+The B<Mandatory Related Child Enumerated Attributes List> is concerned with
+the same enumerated Node attribute pairs that the "Related Parent
+Enumerated Attributes List" does.  Operating from the point of view of the
+parent Node, it says which related child Node enumerated attribute values
+might be mandatory (depending on the exact values), such that the current
+Node must have a child Node for each of those values; moreover, no child
+Node may exist where the related attribute is empty, when the related
+parent/current Node attribute is set.  For example, when the call_sroutine
+attribute of a routine_stmt Node is 'SELECT', there must be two child
+routine_expr Nodes whose call_sroutine_arg attributes are 'SELECT_DEFN' and
+'INTO' respectively.  Each list element is in this format:
 
     <parent-attr-name>:
         <child-node-type> - <child-attr-name>(,<child-attr-name>){0,}
 
-The depended-on parent Node enumerated attribute, parent-attr-name, requires
-that a dependent child-node-type child Node exists whose enumerated attribute,
-child-attr-name, is set.  If there are more than 1 child-attr-name, then they
-are mutually exclusive and exactly 1 of them must be set.  All "Mandatory
-Related Child Enumerated Attributes List" constraints are deferrable.
+The depended-on parent Node enumerated attribute, parent-attr-name,
+requires that a dependent child-node-type child Node exists whose
+enumerated attribute, child-attr-name, is set.  If there are more than 1
+child-attr-name, then they are mutually exclusive and exactly 1 of them
+must be set.  All "Mandatory Related Child Enumerated Attributes List"
+constraints are deferrable.
 
 =head1 PSEUDO-NODE TYPES
 
@@ -309,8 +324,8 @@ other 5 pseudo-Nodes: elements, blueprints, tools, sites, circumventions.
 
 =head2 elements
 
-This pseudo-Node has three child Node-types: scalar_data_type, row_data_type,
-external_cursor.
+This pseudo-Node has three child Node-types: scalar_data_type,
+row_data_type, external_cursor.
 
 =head2 blueprints
 
@@ -350,31 +365,33 @@ This pseudo-Node has one child Node-type: sql_fragment.
 =head2 scalar_data_type
 
 This type of Node describes a user-defined customization of a base
-simple_scalar_type, the latter of which SQL::Routine recognizes in code.  This
-customization encompases several things: 1. The scalar_data_type can be
-referenced by entities such as domain definitions, table column definitions,
-view column definitions, and routine variables, as their "data type"; 2. The
-scalar_data_type can impose restrictions within the base data type as to what
-values can be stored (eg: a STR_CHAR may only be 30 characters long, or a
-NUM_EXA may only be 5 digits wide with 2 digits on the right of the radix
-point); 3. The scalar_data_type can define simple pre or post processing of
-values, such as trimming of bounding whitespace or uppercasing its contents.
+simple_scalar_type, the latter of which SQL::Routine recognizes in code. 
+This customization encompases several things: 1. The scalar_data_type can
+be referenced by entities such as domain definitions, table column
+definitions, view column definitions, and routine variables, as their "data
+type"; 2. The scalar_data_type can impose restrictions within the base data
+type as to what values can be stored (eg: a STR_CHAR may only be 30
+characters long, or a NUM_EXA may only be 5 digits wide with 2 digits on
+the right of the radix point); 3. The scalar_data_type can define simple
+pre or post processing of values, such as trimming of bounding whitespace
+or uppercasing its contents.
 
 For example, the user may decide to create a custom data type called
-"currency", which is a decimal number of precision 15 and a scale of 2.  Or,
-they may want to have an "ip address" type, which is a string that can hold 15
-characters (how ips are normally displayed to humans).  Or, they may want a
-custom SIN or telephone-no or person-name type.  They can then refer to these
-custom types everywhere as if they were types built-in to the database.
+"currency", which is a decimal number of precision 15 and a scale of 2. 
+Or, they may want to have an "ip address" type, which is a string that can
+hold 15 characters (how ips are normally displayed to humans).  Or, they
+may want a custom SIN or telephone-no or person-name type.  They can then
+refer to these custom types everywhere as if they were types built-in to
+the database.
 
 Note that SQL::Routine does not support the antiquated notion of having
 separate fixed-width and variable-width character strings as being distinct
 base data types.  That is an implementation detail which database products
-should not expose in the user interface, or if they do, it should be demoted to
-an "optimization" feature used with a single character string type.  When you
-make a scalar_data_type using the STR_CHAR base_type, it will have the
-semantics of SQL's "VARCHAR" by default; you can make it like "CHAR" by setting
-the store_fixed attribute to true.
+should not expose in the user interface, or if they do, it should be
+demoted to an "optimization" feature used with a single character string
+type.  When you make a scalar_data_type using the STR_CHAR base_type, it
+will have the semantics of SQL's "VARCHAR" by default; you can make it like
+"CHAR" by setting the store_fixed attribute to true.
 
 Attribute List:
 
@@ -425,10 +442,10 @@ Local Attribute Dependencies List:
 =head2 scalar_data_type_opt
 
 When a "scalar_data_type" Node is meant to impose an enumerated list
-restriction, meaning that only a specific set of values may be stored, then you
-use a "scalar_data_type_opt" Node to define each enumerated value that is
-allowed.  Keep in mind that the SQL NULL (undefined) value is always distinct
-from anything in this option list.
+restriction, meaning that only a specific set of values may be stored, then
+you use a "scalar_data_type_opt" Node to define each enumerated value that
+is allowed.  Keep in mind that the SQL NULL (undefined) value is always
+distinct from anything in this option list.
 
 Attribute List:
 
@@ -438,15 +455,16 @@ Attribute List:
 
 =head2 row_data_type
 
-This type of Node describes the core of a row composite data type, one of which
-contains a list of named and typed scalar fields.  Each 'table' (base table)
-and 'view' (viewed table or query definition) Node has a single associated
-'row' Node that defines its "interface"; each 'table' and 'view' is composed of
-a set of rows (usually unordered) that all have the same type.  Any routine
-variable with a container type of 'ROW' is defined by an associated 'row' Node,
-as is any 'RW_ARY' variable, which is an ordered set (array) of rows of the
-same type.  Some database actions can act on a generic row as a single unit, 
-rather than having to specify each component field separately.
+This type of Node describes the core of a row composite data type, one of
+which contains a list of named and typed scalar fields.  Each 'table' (base
+table) and 'view' (viewed table or query definition) Node has a single
+associated 'row' Node that defines its "interface"; each 'table' and 'view'
+is composed of a set of rows (usually unordered) that all have the same
+type.  Any routine variable with a container type of 'ROW' is defined by an
+associated 'row' Node, as is any 'RW_ARY' variable, which is an ordered set
+(array) of rows of the same type.  Some database actions can act on a
+generic row as a single unit, rather than having to specify each component
+field separately.
 
 Attribute List:
 
@@ -459,8 +477,8 @@ Child Quantity List:
 
 =head2 row_data_type_field
 
-This type of Node describes a single field in a row data type, and has details
-that are specific to that field, primarily a name and data type.
+This type of Node describes a single field in a row data type, and has
+details that are specific to that field, primarily a name and data type.
 
 Attribute List:
 
@@ -471,13 +489,14 @@ Attribute List:
 
 =head2 external_cursor
 
-This type of Node is used as a common reference point for multiple routines that
-share the use of a single cursor handle and/or any routine which will return a
-cursor handle and/or any routine that will take one as an argument (context or
-normal).  Any of those routines can discover the main cursor-defining view
-definition by iterating this Node's link-child list until a routine_var Node is
-found that also links to the view in question; said Node would be in the routine
-that declares the cursor handle.  No useful details are stored inside this Node.
+This type of Node is used as a common reference point for multiple routines
+that share the use of a single cursor handle and/or any routine which will
+return a cursor handle and/or any routine that will take one as an argument
+(context or normal).  Any of those routines can discover the main
+cursor-defining view definition by iterating this Node's link-child list
+until a routine_var Node is found that also links to the view in question;
+said Node would be in the routine that declares the cursor handle.  No
+useful details are stored inside this Node.
 
 Attribute List:
 
@@ -488,18 +507,18 @@ Attribute List:
 
 =head2 catalog
 
-This type of Node describes a distinct unrealized "database" or "catalog" which
-contains everything else, both schema and users.  Often you will have just one
-"catalog" Node; however, the rationale for being able to describe
+This type of Node describes a distinct unrealized "database" or "catalog"
+which contains everything else, both schema and users.  Often you will have
+just one "catalog" Node; however, the rationale for being able to describe
 multiple databases in the same SQL::Routine is, for example, when one
 database wants to talk directly to another, or an application wants to use
-several.  This Node type does not describe an instance of a database; rather,
-it contains all the details that are common to a set of databases having
-identical schema; it is their template.  I<See also the "catalog_instance" Node
-type.>  Note that while "user" Nodes can be children of this, you should only
-define users here that either own a schema which is shared with multiple users
-or are otherwise universal in all instances of this blueprint; no 'normal'
-users should be here.
+several.  This Node type does not describe an instance of a database;
+rather, it contains all the details that are common to a set of databases
+having identical schema; it is their template.  I<See also the
+"catalog_instance" Node type.>  Note that while "user" Nodes can be
+children of this, you should only define users here that either own a
+schema which is shared with multiple users or are otherwise universal in
+all instances of this blueprint; no 'normal' users should be here.
 
 Attribute List:
 
@@ -511,18 +530,18 @@ Attribute List:
 
 This type of Node collects information that is specific to a database-using
 application but is not stored in a database.  Those details mainly are the
-unrealized catalog links that it uses and the SQL (all in routine form) that it
-executes.  Often you will have just one "application" Node; however,
-the rationale for being able to describe multiple applications in the same
-SQL::Routine is, for example, when you have several different applications
-that use the same database or database set.  This Node type does not describe
-an instance or installation of an application.  I<See also the
-"application_instance" Node type.>
+unrealized catalog links that it uses and the SQL (all in routine form)
+that it executes.  Often you will have just one "application" Node;
+however, the rationale for being able to describe multiple applications in
+the same SQL::Routine is, for example, when you have several different
+applications that use the same database or database set.  This Node type
+does not describe an instance or installation of an application.  I<See
+also the "application_instance" Node type.>
 
 Relating this to the SQL standard, an application is essentially a SQL:1999
-Call-Level Interface (CLI) client; each 'routine' it runs is a set of one or
-more SQL statements pushed over the command line, and even the 'attach' /
-'connect' is done this way.
+Call-Level Interface (CLI) client; each 'routine' it runs is a set of one
+or more SQL statements pushed over the command line, and even the 'attach'
+/ 'connect' is done this way.
 
 Attribute List:
 
@@ -531,11 +550,11 @@ Attribute List:
 
 =head2 owner
 
-This type of Node represents an unrealized user which owns a database catalog. 
-It is here for "schema" Nodes to reference as their owner.  A separate
-"user" Node will be matched with this "owner" Node on a per-catalog-instance
-basis; this allows each site to have different usernames or passwords for the
-schema owner.
+This type of Node represents an unrealized user which owns a database
+catalog. It is here for "schema" Nodes to reference as their owner.  A
+separate "user" Node will be matched with this "owner" Node on a
+per-catalog-instance basis; this allows each site to have different
+usernames or passwords for the schema owner.
 
 Attribute List:
 
@@ -545,26 +564,27 @@ Attribute List:
 
 =head2 catalog_link
 
-This type of Node represents a distinct "catalog link" or "data source" local
-name which SQL under a 'catalog' or 'application' Node
-refers to when it wants to talk to an external database catalog.  This Node is
-particularly necessary when either two instances of the same catalog
-want to communicate or an application wants to talk to two instances of the
-same catalog; SQL::Routine has no way to know which instance regular SQL is
+This type of Node represents a distinct "catalog link" or "data source"
+local name which SQL under a 'catalog' or 'application' Node refers to when
+it wants to talk to an external database catalog.  This Node is
+particularly necessary when either two instances of the same catalog want
+to communicate or an application wants to talk to two instances of the same
+catalog; SQL::Routine has no way to know which instance regular SQL is
 referring to except by referencing these catalog link Nodes.  The
-'catalog_link' Node just says what the remote 'catalog' is
-so local SQL knows what it can refer to; the 'catalog_link_instance' Node is
-required to say which specific catalog instance to talk to.  
+'catalog_link' Node just says what the remote 'catalog' is so local SQL
+knows what it can refer to; the 'catalog_link_instance' Node is required to
+say which specific catalog instance to talk to.
 
-Note that SQL does not have to mention a link if it either is referring to its
-own catalog instance or there is only one instance of a blueprint in the system;
-if all catalog instances are based on different blueprints, then no SQL has to 
-reference the links; the schema objects to reference are un-ambiguous.
+Note that SQL does not have to mention a link if it either is referring to
+its own catalog instance or there is only one instance of a blueprint in
+the system; if all catalog instances are based on different blueprints,
+then no SQL has to reference the links; the schema objects to reference are
+un-ambiguous.
 
-According to the SQL:1999 standard, a fully qualified schema object name has 3
-main parts: the catalog name (provided by this Node), the schema name, and the
-object's unqalified name; when leaving the catalog name out but using the
-schema name, one is using a partially qualified name.
+According to the SQL:1999 standard, a fully qualified schema object name
+has 3 main parts: the catalog name (provided by this Node), the schema
+name, and the object's unqalified name; when leaving the catalog name out
+but using the schema name, one is using a partially qualified name.
 
 Attribute List:
 
@@ -575,25 +595,25 @@ Attribute List:
 
 =head2 schema
 
-This type of Node describes a "schema" or "name space" into which your schema
-objects can be collected.  Some database products support multiple schemas per
-catalogue (and some don't); such support is specified by the SQL:1999 standard,
-which also says that each schema is owned by a single database user.  Often you
-will have just one "schema" Node, under which all of your schema objects are
-grouped.
+This type of Node describes a "schema" or "name space" into which your
+schema objects can be collected.  Some database products support multiple
+schemas per catalogue (and some don't); such support is specified by the
+SQL:1999 standard, which also says that each schema is owned by a single
+database user.  Often you will have just one "schema" Node, under which all
+of your schema objects are grouped.
 
-According to the SQL:1999 standard, a fully qualified schema object name has 3
-main parts: the catalog name, the schema name (provided by this Node), and the
-object's unqalified name; when leaving the catalog name out but using the
-schema name, one is using a partially qualified name.
+According to the SQL:1999 standard, a fully qualified schema object name
+has 3 main parts: the catalog name, the schema name (provided by this
+Node), and the object's unqalified name; when leaving the catalog name out
+but using the schema name, one is using a partially qualified name.
 
 SQL::Routine will let you define your schema objects (tables, views,
-routines, etc) as if multiple schemas were supported natively, and if you are
-deploying to a database product that doesn't, then SQL::Routine can put a
-common name prefix in front of all the schema objects (the schema/namespace
-name), to simulate the lacking functionality.  That said, it is better for you
-to design your schemas so different namespaces don't contain same-named objects
-anyway, if practical.
+routines, etc) as if multiple schemas were supported natively, and if you
+are deploying to a database product that doesn't, then SQL::Routine can put
+a common name prefix in front of all the schema objects (the
+schema/namespace name), to simulate the lacking functionality.  That said,
+it is better for you to design your schemas so different namespaces don't
+contain same-named objects anyway, if practical.
 
 Attribute List:
 
@@ -616,10 +636,10 @@ Attribute List:
 =head2 privilege_on
 
 This type of Node associates a role with some entity (usually a schema or
-schema object) on which it has some kind of privileges; privilege_on Nodes are
-children of role Nodes.  All users given that role will have these privileges. 
-Exactly what privileges on the entity the role has are defined by child
-privilege_for Nodes, which are children of the privilege_on Node.
+schema object) on which it has some kind of privileges; privilege_on Nodes
+are children of role Nodes.  All users given that role will have these
+privileges. Exactly what privileges on the entity the role has are defined
+by child privilege_for Nodes, which are children of the privilege_on Node.
 
 Attribute List:
 
@@ -629,8 +649,8 @@ Attribute List:
 
 =head2 privilege_for
 
-This type of Node details one privilege that a role has on some other entity
-that is defined by this Node's privilege_on parent Node.
+This type of Node details one privilege that a role has on some other
+entity that is defined by this Node's privilege_on parent Node.
 
 Attribute List:
 
@@ -676,10 +696,11 @@ Remotely Addressable Types List:
 =head2 sequence
 
 This type of Node describes a simple named sequence number generator, which
-will produce integers (normal purpose) but not fractional numbers.  Sequence
-generators are part of the SQL:2003 standard (see "4.21 Sequence generators"),
-and many database products have them; apparently they are not part of older SQL
-standards.  The standard says that only integers can be produced by sequences.
+will produce integers (normal purpose) but not fractional numbers. 
+Sequence generators are part of the SQL:2003 standard (see "4.21 Sequence
+generators"), and many database products have them; apparently they are not
+part of older SQL standards.  The standard says that only integers can be
+produced by sequences.
 
 Attribute List:
 
@@ -699,17 +720,17 @@ Remotely Addressable Types List:
 
 =head2 table
 
-This type of Node describes the core of a database table, which is the single
-core concept of any database; it is where the "data" that the database exists
-to store is kept.  Each table has one or more columns, which define its
-"interface", and one or more indexes or constraints for data integrity. 
-SQL:2003,1999 calls this a "base table".
+This type of Node describes the core of a database table, which is the
+single core concept of any database; it is where the "data" that the
+database exists to store is kept.  Each table has one or more columns,
+which define its "interface", and one or more indexes or constraints for
+data integrity. SQL:2003,1999 calls this a "base table".
 
-SQL::Routine supports the concept of temporary tables such that you say a table
-is temporary by putting it in the application space rather than the
-catalog-schema space.  This makes the most sense, since temporary tables only
-persist during an active database connection, and they do not exist in the same
-name-space of any database schema.
+SQL::Routine supports the concept of temporary tables such that you say a
+table is temporary by putting it in the application space rather than the
+catalog-schema space.  This makes the most sense, since temporary tables
+only persist during an active database connection, and they do not exist in
+the same name-space of any database schema.
 
 Attribute List:
 
@@ -752,9 +773,10 @@ Ancestor Attribute Correlation List:
 This type of Node describes a single table index, and has details that are
 specific to that index.
 
-Note that the primary key for a table is defined to be the first (by sequence)
-index_type=UNIQUE/UFOREIGN index where all of the index columns are required.  If
-no table indexes qualify then the table has no primary key.
+Note that the primary key for a table is defined to be the first (by
+sequence) index_type=UNIQUE/UFOREIGN index where all of the index columns
+are required.  If no table indexes qualify then the table has no primary
+key.
 
 Attribute List:
 
@@ -780,8 +802,8 @@ Distinct Child Groups List:
 
 =head2 table_index_field
 
-This type of Node intersects between a table_index and a table field/col; it
-says which table columns are involved in each table index.
+This type of Node intersects between a table_index and a table field/col;
+it says which table columns are involved in each table index.
 
 Attribute List:
 
@@ -799,63 +821,67 @@ Ancestor Attribute Correlation List:
 
 This type of Node describes the core (single cardinality) description of a
 database view or a SQL query; SQL::Routine uses the same set of Node Types
-to describe both as they are almost identical in structure.  The main way they
-differ is that stored views have a name and live as their own object in a
-database schema; SQL queries only exist either inside a routine or an
-application context, and usually don't have names.  Both types can have named
-or un-named sub-queries inside them which are the same format as the main
-view/query.  Views/queries are interfaces to one or more tables that are
-related in a specific way.  Each view looks outwardly like a table, in that it
-has rows or columns, but it does not describe how data is stored, but mainly
-just how it is retrieved.  Each view has a set of "columns", which is its
-public interface by which rows are retrieved like from a table.  You can also
-insert, update, or delete rows through some views/queries as with a table.
+to describe both as they are almost identical in structure.  The main way
+they differ is that stored views have a name and live as their own object
+in a database schema; SQL queries only exist either inside a routine or an
+application context, and usually don't have names.  Both types can have
+named or un-named sub-queries inside them which are the same format as the
+main view/query.  Views/queries are interfaces to one or more tables that
+are related in a specific way.  Each view looks outwardly like a table, in
+that it has rows or columns, but it does not describe how data is stored,
+but mainly just how it is retrieved.  Each view has a set of "columns",
+which is its public interface by which rows are retrieved like from a
+table.  You can also insert, update, or delete rows through some
+views/queries as with a table.
 
-Views are often fully defined using a set of multiple linked Nodes of varying
-Node Types, which makes them fully customizable.  However, a short-cut is
-available which allows a view to be defined entirely with as few as two Nodes,
-one "view" having type of ALIAS and one "view_src".  This short cut is mainly
-for use when we want to simulate full direct table access, which is needed for
-mass back-ups or restores of tables, or when implementing a utility that lets
-users make direct changes to a table.  Other part-way short cuts are available
-too.
+Views are often fully defined using a set of multiple linked Nodes of
+varying Node Types, which makes them fully customizable.  However, a
+short-cut is available which allows a view to be defined entirely with as
+few as two Nodes, one "view" having type of ALIAS and one "view_src".  This
+short cut is mainly for use when we want to simulate full direct table
+access, which is needed for mass back-ups or restores of tables, or when
+implementing a utility that lets users make direct changes to a table. 
+Other part-way short cuts are available too.
 
 The view_join[/_field] Nodes that belong to a "view" ("viewed table") Node,
-together with the view_src[/_field] Nodes that the former reference, define the
-single (recursive) "joined table" (see SQL:2003 Foundations 7.7, p312) that is
-the basis for the "viewed table".  In the joined table, every field value
-matches exactly a (or several identical) value in a source table or view. 
-Given that SQL::Routine does not directly support the concept of a "natural
-join" (but it is indirectly supported), the number of columns in the joined
-table is always the sum of the number of columns in all the joined source
-table/views.  Also, the number of joined table rows is at most equal to the
-product of the number of rows in each source (and as few as zero).  The other 
-parts of a query build on the joined table.  The where/group/having/window 
-clauses can reduce (but never increase) the number of result rows.  The 
-select-list clause can change (to more or fewer) the number of result columns.
+together with the view_src[/_field] Nodes that the former reference, define
+the single (recursive) "joined table" (see SQL:2003 Foundations 7.7, p312)
+that is the basis for the "viewed table".  In the joined table, every field
+value matches exactly a (or several identical) value in a source table or
+view. Given that SQL::Routine does not directly support the concept of a
+"natural join" (but it is indirectly supported), the number of columns in
+the joined table is always the sum of the number of columns in all the
+joined source table/views.  Also, the number of joined table rows is at
+most equal to the product of the number of rows in each source (and as few
+as zero).  The other parts of a query build on the joined table.  The
+where/group/having/window clauses can reduce (but never increase) the
+number of result rows.  The select-list clause can change (to more or
+fewer) the number of result columns.
 
-Since the ability to change database records is more complicated than simply
-viewing records, and usually requires more information to be available (such as
-primary keys for rows being updated), SQL::Routine allows you to store a
-hint with a view, called "may_write", that says whether or not you will even
-try to make updates against a view, so we will know in advance and save
-ourselves unnecessary work or complexity.  The flag defaults to false.
+Since the ability to change database records is more complicated than
+simply viewing records, and usually requires more information to be
+available (such as primary keys for rows being updated), SQL::Routine
+allows you to store a hint with a view, called "may_write", that says
+whether or not you will even try to make updates against a view, so we will
+know in advance and save ourselves unnecessary work or complexity.  The
+flag defaults to false.
 
 SQL::Routine also uses "views" to describe editing DML operations, such as
 Insert, Update, Delete operations.  The view definition says what the
-conditions for each DML operation is, namely what rows they will affect.  With
-Update and Delete operations, all rows that would be returned by the view will
-be correspondingly updated or deleted.  An Insert (single or multiple row)
-won't affect the existing rows, but will add to what the view sees after the
-Insert happens.  The frequent case in such situations, though, is that said
-view is only matching one row, since a user typically just edits or deletes or
-inserts one row at a time.  However, in such situation where your conceptual
-view is selecting more rows than you intend to edit the same way afterwards,
-you would want to make a second view which uses the first as its source, and
-the second/outer view would have a more restrictive 'where' clause that limits
-to the rows being changed.
+conditions for each DML operation is, namely what rows they will affect. 
+With Update and Delete operations, all rows that would be returned by the
+view will be correspondingly updated or deleted.  An Insert (single or
+multiple row) won't affect the existing rows, but will add to what the view
+sees after the Insert happens.  The frequent case in such situations,
+though, is that said view is only matching one row, since a user typically
+just edits or deletes or inserts one row at a time.  However, in such
+situation where your conceptual view is selecting more rows than you intend
+to edit the same way afterwards, you would want to make a second view which
+uses the first as its source, and the second/outer view would have a more
+restrictive 'where' clause that limits to the rows being changed.
 
-You can "create temporary view" by storing the view in an application space.
+You can "create temporary view" by storing the view in an application
+space.
 
 Attribute List:
 
@@ -885,9 +911,9 @@ Local Attribute Dependencies List:
         distinct_rows - JOINED,GROUPED,COMPOUND
         may_write - ALIAS,JOINED,GROUPED,COMPOUND
         ins_p_routine_item - INSERT - MA
- 
+
     Note: Not expressable yet; recursive can be set only when pp is a view (unless main can be correlated).
-     Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine_stmt.
+    Note: Not expressable yet; view_type can be [INSERT,UPDATE,DELETE] only when pp is a routine_stmt.
 
 Remotely Addressable Types List:
 
@@ -908,26 +934,28 @@ Distinct Child Groups List:
 
 =head2 view_arg
 
-When this view is a correlated query (either a subquery of any view or a main
-query that is correlated, such as a cursor), then it takes one or more arguments
-to define its operating context; each "view_arg" Node you attach to a "view"
-Node names an argument declaration.  This Node type is not used for anything
-else; it is not like a routine arg that doubles for an app host param.
+When this view is a correlated query (either a subquery of any view or a
+main query that is correlated, such as a cursor), then it takes one or more
+arguments to define its operating context; each "view_arg" Node you attach
+to a "view" Node names an argument declaration.  This Node type is not used
+for anything else; it is not like a routine arg that doubles for an app
+host param.
 
 The presence or absense of arguments in a view (assuming they are not
-'constant') determines whether the view is correlated or uncorrelated when used
-as a subquery (named or embedded) in another query.  Uncorrelated subqueries,
-having no arguments, are simpler and can fire exactly once, fully prior to the
-outer query; this kind can be implemented easily, or emulated simply with
-temporary tables and multiple queries.  Correlated subqueries, having 1 or more
-arguments, are more complicated and can fire multiple (or zero) times for each
-execution of the outer query; it executes during the outer query (after it
-starts and before it ends) because it uses one or more values generated by the
-outer query (for example, it may fire once per each row either examined or
-returned by the outer query); this kind is more complicated to implement or
-emulate.  The term "correlated" is the standard term for this differentiation. 
-The difference between correlated vs un- is analogous to a routine that takes
-or does not take any arguments.
+'constant') determines whether the view is correlated or uncorrelated when
+used as a subquery (named or embedded) in another query.  Uncorrelated
+subqueries, having no arguments, are simpler and can fire exactly once,
+fully prior to the outer query; this kind can be implemented easily, or
+emulated simply with temporary tables and multiple queries.  Correlated
+subqueries, having 1 or more arguments, are more complicated and can fire
+multiple (or zero) times for each execution of the outer query; it executes
+during the outer query (after it starts and before it ends) because it uses
+one or more values generated by the outer query (for example, it may fire
+once per each row either examined or returned by the outer query); this
+kind is more complicated to implement or emulate.  The term "correlated" is
+the standard term for this differentiation. The difference between
+correlated vs un- is analogous to a routine that takes or does not take any
+arguments.
 
 Attribute List:
 
@@ -952,10 +980,10 @@ Local Attribute Dependencies List:
 
 =head2 view_src
 
-This type of Node describes a source table or view that is used by this view.
-Specifically it applies only to the "from" clause in the generated SQL, where
-applicable.  A table or view may be used for multiple sources, each of which
-would be a unique alias for it.
+This type of Node describes a source table or view that is used by this
+view. Specifically it applies only to the "from" clause in the generated
+SQL, where applicable.  A table or view may be used for multiple sources,
+each of which would be a unique alias for it.
 
 Attribute List:
 
@@ -972,9 +1000,9 @@ Attribute List:
 =head2 view_src_arg
 
 When a view_src matches a named correlated subquery (has arguments), a
-view_src_arg Node is used to correlate a subquery view_arg for the view that
-uses the view_src.  This allows such named subqueries to be passed argument
-values when used in a "from" clause.
+view_src_arg Node is used to correlate a subquery view_arg for the view
+that uses the view_src.  This allows such named subqueries to be passed
+argument values when used in a "from" clause.
 
 Attribute List:
 
@@ -984,8 +1012,8 @@ Attribute List:
 
 =head2 view_src_field
 
-This type of Node describes a column in a source table or view that is used by
-this view, as specified in the view_src table.
+This type of Node describes a column in a source table or view that is used
+by this view, as specified in the view_src table.
 
 Attribute List:
 
@@ -1000,8 +1028,8 @@ Ancestor Attribute Correlation List:
 =head2 view_field
 
 This type of Node describes a single view column public interface, and has
-details that are specific to that column; the view column implementation (where
-the data comes from or goes to) is not described here.
+details that are specific to that column; the view column implementation
+(where the data comes from or goes to) is not described here.
 
 Attribute List:
 
@@ -1050,11 +1078,12 @@ Distinct Child Groups List:
 
 =head2 view_join_field
 
-This type of Node intersects between a view_src and a table/view/var field/col;
-it says which table or view columns are involved in each view join.  Each Node
-of this Node Type uniquely corresponds to part of a join operation being done
-between two sources in the same view.  There is one Node for each pair of
-source columns (one from each source) that are being matched.
+This type of Node intersects between a view_src and a table/view/var
+field/col; it says which table or view columns are involved in each view
+join.  Each Node of this Node Type uniquely corresponds to part of a join
+operation being done between two sources in the same view.  There is one
+Node for each pair of source columns (one from each source) that are being
+matched.
 
 Attribute List:
 
@@ -1080,29 +1109,29 @@ Attribute List:
 
 =head2 view_expr
 
-This type of Node is intended to describe most of the parts of a SQL "select"
-which is the basis for a view definition.  The parts described here
-correspond to these SQL terms: "result list", "where", "group by", "having",
-"order by". All of these parts are optional, and often mutually exclusive. 
-However, "having" can only be used with "group by".
+This type of Node is intended to describe most of the parts of a SQL
+"select" which is the basis for a view definition.  The parts described
+here correspond to these SQL terms: "result list", "where", "group by",
+"having", "order by". All of these parts are optional, and often mutually
+exclusive. However, "having" can only be used with "group by".
 
-The main parts that are not described here are the joined table definitions,
-most related parts of the "from" clause (except for invoked 'with' subquery
-arguments), compound operations (such as "union"), and any hierarchical
-operations.  See the other view_* tables for those.
+The main parts that are not described here are the joined table
+definitions, most related parts of the "from" clause (except for invoked
+'with' subquery arguments), compound operations (such as "union"), and any
+hierarchical operations.  See the other view_* tables for those.
 
 This type of Node describes a sub-expression that is part of one of several
 optional main/root expressions in a view definition.  All of these
-sub-expressions form a hierarchy where children are "arguments" to their parent
-expressions.  There can only be one root expression for a "where" and a
-"having" part, and that is expected to return a boolean value.  The "group by"
-and "order by" parts can each have multiple root expressions, each of which is
-part of an ordered list of "columns" arranged in the priority that they are
-applied.
+sub-expressions form a hierarchy where children are "arguments" to their
+parent expressions.  There can only be one root expression for a "where"
+and a "having" part, and that is expected to return a boolean value.  The
+"group by" and "order by" parts can each have multiple root expressions,
+each of which is part of an ordered list of "columns" arranged in the
+priority that they are applied.
 
-This type of Node also describes details that would only be used in Inserts or 
-Updates, where applicable; this allows you to set values based on expressions 
-or function calls, and not just literal values.
+This type of Node also describes details that would only be used in Inserts
+or Updates, where applicable; this allows you to set values based on
+expressions or function calls, and not just literal values.
 
 Attribute List:
 
@@ -1180,14 +1209,14 @@ Mandatory Related Child Enumerated Attributes List:
 =head2 routine
 
 This type of Node describes the core (single cardinality) description of a
-database routine, such as a user defined function, stored procedure, trigger,
-or un-named block; SQL::Routine uses the same set of Node Types to describe
-them as they are almost identical in structure.  Un-named blocks normally just
-appear in application-space; the others normally appear in database schemas or
-as sub-routines inside other routines.  
+database routine, such as a user defined function, stored procedure,
+trigger, or un-named block; SQL::Routine uses the same set of Node Types to
+describe them as they are almost identical in structure.  Un-named blocks
+normally just appear in application-space; the others normally appear in
+database schemas or as sub-routines inside other routines.
 
-For the present we are also representing Oracle's "package" as a routine, though 
-that may change soon.
+For the present we are also representing Oracle's "package" as a routine,
+though that may change soon.
 
 Attribute List:
 
@@ -1253,7 +1282,8 @@ Local Attribute Dependencies List:
 
 =head2 routine_arg
 
-This type of Node describes an input and/or output argument variable to a routine.
+This type of Node describes an input and/or output argument variable to a
+routine.
 
 Attribute List:
 
@@ -1276,12 +1306,12 @@ Local Attribute Dependencies List:
 
 =head2 routine_var
 
-This type of Node describes a variable within the scope of a routine; it can be
-used by that routine and by any child routines, where applicable. If the
-current routine is a package, these are package-level variables.
+This type of Node describes a variable within the scope of a routine; it
+can be used by that routine and by any child routines, where applicable. If
+the current routine is a package, these are package-level variables.
 
-If this routine variable declares a cursor, then the cursor-defining view is a 
-child Node of the routine_var.
+If this routine variable declares a cursor, then the cursor-defining view
+is a child Node of the routine_var.
 
 Attribute List:
 
@@ -1318,11 +1348,11 @@ Child Quantity List:
 
 This type of Node describes a statement or logic control or line within a
 routine, which includes such operations as variable assignment or reading a
-cursor or executing a DML operation.  Often, most details for a statement are
-in child expression Nodes.
+cursor or executing a DML operation.  Often, most details for a statement
+are in child expression Nodes.
 
-If this routine statement is a SELECT or DML operation, the view defining that
-operation is a child Node of the routine_var.
+If this routine statement is a SELECT or DML operation, the view defining
+that operation is a child Node of the routine_var.
 
 Attribute List:
 
@@ -1373,11 +1403,11 @@ Mandatory Related Child Enumerated Attributes List:
 =head2 routine_expr
 
 This type of Node describes a sub-expression that is part of a main/root
-expression which is the right hand side of a variable assignment statement in a
-routine.  All of these sub-expressions form a hierarchy where children are
-"arguments" to their parent expressions.  The root expression is expected to
-return a value that can be stored in the routine variable on the left side of
-the statement.
+expression which is the right hand side of a variable assignment statement
+in a routine.  All of these sub-expressions form a hierarchy where children
+are "arguments" to their parent expressions.  The root expression is
+expected to return a value that can be stored in the routine variable on
+the left side of the statement.
 
 Attribute List:
 
@@ -1442,10 +1472,11 @@ Mandatory Related Child Enumerated Attributes List:
 =head2 data_storage_product
 
 This type of Node describes a distinct data storage product (database) that
-someone can use to implement a database in, such as Oracle 9i or PostgreSQL 7.4
-or SQLite 2.8.12.  Details of how you connect to said product are generally not
-considered here as, for example, the SQL you generate usually doesn't depend on
-the connection method, but just the SQL processor at the end of the line.
+someone can use to implement a database in, such as Oracle 9i or PostgreSQL
+7.4 or SQLite 2.8.12.  Details of how you connect to said product are
+generally not considered here as, for example, the SQL you generate usually
+doesn't depend on the connection method, but just the SQL processor at the
+end of the line.
 
 The attributes in this Node mainly just have meaning to external code that
 mediates between a SQL::Routine and the native drivers for database
@@ -1471,12 +1502,13 @@ Exclusive Attribute Groups List:
 
 =head2 data_link_product
 
-This type of Node describes a distinct data link product that someone can use
-to connect to a data storage product, such as ODBC 2 or OCI8 or a proxy.  Your
-choice here doesn't necessarily reflect on what data storage product you are
-using as the link product may abstract its details away.  That said, while a
-catalog blueprint typically just needs to know its storage product, an
-application linking to one should know a link product and possibly a storage.
+This type of Node describes a distinct data link product that someone can
+use to connect to a data storage product, such as ODBC 2 or OCI8 or a
+proxy.  Your choice here doesn't necessarily reflect on what data storage
+product you are using as the link product may abstract its details away. 
+That said, while a catalog blueprint typically just needs to know its
+storage product, an application linking to one should know a link product
+and possibly a storage.
 
 The attributes in this Node mainly just have meaning to external code that
 mediates between a SQL::Routine and the native drivers for database
@@ -1498,20 +1530,20 @@ Attribute List:
 =head2 catalog_instance
 
 This type of Node describes a distinct "database instance" or "server" or
-"host" which is described by an "catalog".  This is what an
-application "connects to" when it will use a database.  What often happens in
-real life is that you make a database/catalog design and then instantiate
-multiple copies; for example, one may contain data for testers of your
-application, while another has clean data for marketers to show off, while
-various others are installed at customer sites.  Since there can be in real
-life multiple copies of a database design within communications range of each
+"host" which is described by an "catalog".  This is what an application
+"connects to" when it will use a database.  What often happens in real life
+is that you make a database/catalog design and then instantiate multiple
+copies; for example, one may contain data for testers of your application,
+while another has clean data for marketers to show off, while various
+others are installed at customer sites.  Since there can be in real life
+multiple copies of a database design within communications range of each
 other, such that a client can 'pick one', or when you want to clone data
-between them, SQL::Routine lets you model this by having separate
-"catalog" and "catalog_instance" Nodes.  The 'instance' Node stores
-the instance specific details like server IP address or domain name.  Most of
-your "user" Nodes should be children of this, since they are usually different
-between installations; only those that own a shared schema can't be, but normal
-users shouldn't log in as those.
+between them, SQL::Routine lets you model this by having separate "catalog"
+and "catalog_instance" Nodes.  The 'instance' Node stores the instance
+specific details like server IP address or domain name.  Most of your
+"user" Nodes should be children of this, since they are usually different
+between installations; only those that own a shared schema can't be, but
+normal users shouldn't log in as those.
 
 Attribute List:
 
@@ -1537,20 +1569,22 @@ The attributes in catalog_instance_opt Nodes mainly just have meaning to
 external code that is associated with the storage product you are using to
 implement this current catalog_instance.  (Each one is like an associative
 array element, having a distinct key name and a value.)  These Nodes are
-intended for use in such situations where information in the model can be lost
-or be made more ambiguous when it is realized by an implementing product.
+intended for use in such situations where information in the model can be
+lost or be made more ambiguous when it is realized by an implementing
+product.
 
 For example, an opt Node could say what to do with a storage product that
 doesn't support multiple schemas in the same catalog; eg: does it implement
 using a separate catalog for each schema (where catalog names have a common
 prefix), or does it combine the multiple schemas into a single schema where
-each schema object has a common name prefix.  Such information is said to be
-lost because, for example, if one were to scan an existing such database,
-second case, to build a new model, all it could do is create a single schema
-containing all of the longer-name objects, unless it was explicitly told
-through external data like these Nodes to treat the first parts of each
-implemented object name as a schema name and hence put multiple schemas in the
-model.  Or in the first case, whether multiple catalogs should get combined.
+each schema object has a common name prefix.  Such information is said to
+be lost because, for example, if one were to scan an existing such
+database, second case, to build a new model, all it could do is create a
+single schema containing all of the longer-name objects, unless it was
+explicitly told through external data like these Nodes to treat the first
+parts of each implemented object name as a schema name and hence put
+multiple schemas in the model.  Or in the first case, whether multiple
+catalogs should get combined.
 
 Attribute List:
 
@@ -1561,10 +1595,10 @@ Attribute List:
 
 =head2 application_instance
 
-This type of Node describes a distinct instance of an "application".  
-Mainly it just resolves the application's potential catalog links to actual ones; 
-it says which specific database instances we talk to, while the blueprint only 
-knows about the blueprint for said instances.
+This type of Node describes a distinct instance of an "application". Mainly
+it just resolves the application's potential catalog links to actual ones;
+it says which specific database instances we talk to, while the blueprint
+only knows about the blueprint for said instances.
 
 Attribute List:
 
@@ -1581,12 +1615,12 @@ Distinct Child Groups List:
 
 =head2 catalog_link_instance
 
-This type of Node describes a distinct instance of an 'catalog_link'.
-This mainly holds client install specific details, like what catalog instance
-to talk to, what its local DSN is, such as would be registered with ODBC or in
-tsnames.ora, or would be a filename, or stuff like that.  Also connect string
-details perhaps, such as username and password, lest they be run-time arguments
-instead.
+This type of Node describes a distinct instance of an 'catalog_link'. This
+mainly holds client install specific details, like what catalog instance to
+talk to, what its local DSN is, such as would be registered with ODBC or in
+tsnames.ora, or would be a filename, or stuff like that.  Also connect
+string details perhaps, such as username and password, lest they be
+run-time arguments instead.
 
 Note: There can only be a single catalog_link_instance per distinct
 catalog_link + [catalog|application]_instance, so it is safe for the
@@ -1594,16 +1628,17 @@ CATALOG_*() built-in standard functions to use catalog_link as arguments or
 return values; a program can always determine what catalog_link_instance
 actually gets used given the 1:1 relationship.
 
-In situations where proxys are involved, and the proxy is transparent such that
-the proxy lets a client tell it what it is to be a proxy for at runtime, you
-would normally have an extra catalog_link_instance Node in the client space to
-specify details of that for each proxy added; eg: no proxies means one link,
-one proxy means two.  In SQL::Routine, if one catalog_link_instance Node is
-the child of another, then the parent is what the application invokes to talk
-to the proxy, and the child says what to tell the proxy to connect to.  On the
-other hand, if a proxy is opaque such as for example an application can't
-control what it is a proxy for at runtime, then only one catalog_link_instance
-Node gets used, which points to the address of the proxy.
+In situations where proxys are involved, and the proxy is transparent such
+that the proxy lets a client tell it what it is to be a proxy for at
+runtime, you would normally have an extra catalog_link_instance Node in the
+client space to specify details of that for each proxy added; eg: no
+proxies means one link, one proxy means two.  In SQL::Routine, if one
+catalog_link_instance Node is the child of another, then the parent is what
+the application invokes to talk to the proxy, and the child says what to
+tell the proxy to connect to.  On the other hand, if a proxy is opaque such
+as for example an application can't control what it is a proxy for at
+runtime, then only one catalog_link_instance Node gets used, which points
+to the address of the proxy.
 
 Attribute List:
 
@@ -1629,12 +1664,12 @@ Child Quantity List:
 
 =head2 catalog_link_instance_opt
 
-The attributes in catalog_link_instance_opt Nodes mainly just have meaning to
-external code that is associated with the link product you are using to
-implement this current catalog_link_instance.  (Each one is like an associative
-array element, having a distinct key name and a value.)  These Nodes are
-intended for use in customizing how the link product is used for this link, in
-ways other than what the dsn and login name/pass are.
+The attributes in catalog_link_instance_opt Nodes mainly just have meaning
+to external code that is associated with the link product you are using to
+implement this current catalog_link_instance.  (Each one is like an
+associative array element, having a distinct key name and a value.)  These
+Nodes are intended for use in customizing how the link product is used for
+this link, in ways other than what the dsn and login name/pass are.
 
 Attribute List:
 
@@ -1645,26 +1680,27 @@ Attribute List:
 
 =head2 user
 
-This type of Node describes a "user" who would connect to and/or has privileges
-in a database/catalog.  Most database products support multiple users per
-catalog, though some only support one.  Each database schema may/must be owned
-by exactly one user (according to the SQL:1999 spec) but it may be used by
-several.  With some products like Oracle, a "user" and a "schema" are one and
-the same entity (the schema may not have any objects, though); however,
-SQL::Routine is designed such that they are separate, and one user may own
-multiple schemas.
+This type of Node describes a "user" who would connect to and/or has
+privileges in a database/catalog.  Most database products support multiple
+users per catalog, though some only support one.  Each database schema
+may/must be owned by exactly one user (according to the SQL:1999 spec) but
+it may be used by several.  With some products like Oracle, a "user" and a
+"schema" are one and the same entity (the schema may not have any objects,
+though); however, SQL::Routine is designed such that they are separate, and
+one user may own multiple schemas.
 
-Most database products have a granular security system where each user must be
-explicitly granted the rights to do certain kinds of tasks there, such as read
-data or write data or edit a schema or even connect to the database.  In
-SQL::Routine, you create "role" Nodes and assign them privileges (roles are
-named groups of privileges); you then allocate roles to the users that may have
-the privileges they group.
+Most database products have a granular security system where each user must
+be explicitly granted the rights to do certain kinds of tasks there, such
+as read data or write data or edit a schema or even connect to the
+database.  In SQL::Routine, you create "role" Nodes and assign them
+privileges (roles are named groups of privileges); you then allocate roles
+to the users that may have the privileges they group.
 
 Note that, in the best interests of security, it is recommended that the
-database user which your application connects as for normal use should not be
-the same as one that owns any schemas; if your application creates its own
-schema, then it should have an additional database user for that purpose.
+database user which your application connects as for normal use should not
+be the same as one that owns any schemas; if your application creates its
+own schema, then it should have an additional database user for that
+purpose.
 
 Attribute List:
 
@@ -1708,8 +1744,9 @@ Ancestor Attribute Correlation List:
 
 =head2 sql_fragment
 
-This type of Node holds literal SQL fragments that you can inject into SQL that
-is generated from SQL::Routine Nodes.  I<Details may be changed later.>
+This type of Node holds literal SQL fragments that you can inject into SQL
+that is generated from SQL::Routine Nodes.  I<Details may be changed
+later.>
 
 Attribute List:
 
@@ -1737,41 +1774,42 @@ Darren R. Duncan (C<perl@DarrenDuncan.net>)
 
 This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
-visit L<http://www.DarrenDuncan.net/> for more information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights
+reserved. Address comments, suggestions, and bug reports to
+C<perl@DarrenDuncan.net>, or visit L<http://www.DarrenDuncan.net/> for more
+information.
 
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
+SQL::Routine is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License (GPL) as published by the
+Free Software Foundation (L<http://www.fsf.org/>); either version 2 of the
+License, or (at your option) any later version.  You should have received a
+copy of the GPL as part of the SQL::Routine distribution, in the file named
+"GPL"; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
+Fifth Floor, Boston, MA 02110-1301, USA.
 
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
+Linking SQL::Routine statically or dynamically with other modules is making
+a combined work based on SQL::Routine.  Thus, the terms and conditions of
+the GPL cover the whole combination.  As a special exception, the copyright
+holders of SQL::Routine give you permission to link SQL::Routine with
+independent modules, regardless of the license terms of these independent
+modules, and to copy and distribute the resulting combined work under terms
+of your choice, provided that every copy of the combined work is
+accompanied by a complete copy of the source code of SQL::Routine (the
+version of SQL::Routine used to produce the combined work), being
+distributed under the terms of the GPL plus this exception.  An independent
+module is a module which is not derived from or based on SQL::Routine, and
+which is fully useable when not linked to SQL::Routine in any form.
 
 Any versions of SQL::Routine that you modify and distribute must carry
 prominent notices stating that you changed the files and the date of any
 changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+credits. SQL::Routine is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
+While it is by no means required, the copyright holders of SQL::Routine
+would appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a
+practical way of suggesting improvements to the standard version.
 
 =cut

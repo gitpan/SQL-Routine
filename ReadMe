@@ -14,32 +14,33 @@ CONTENTS
 
 PREFACE
 
-This distribution features the Perl 5 module named "SQL::Routine"; see the files
-lib/SQL/Routine.pm and lib/SQL/Routine/Language.pod for the roots of the main
-documentation, which is in POD format.  The distribution also includes a
-ChangeLog file to say what changes already happened, and a TODO file to say what
-changes have yet to happen.  The file INSTALL should help with installation
-issues.  Read below for how to get support or keep up to date, know this
-distribution's dependencies, or read the credits or copyright and license.
+This distribution features the Perl 5 module named "SQL::Routine"; see the
+files lib/SQL/Routine.pm and lib/SQL/Routine/Language.pod for the roots of
+the main documentation, which is in POD format.  The distribution also
+includes a ChangeLog file to say what changes already happened, and a TODO
+file to say what changes have yet to happen.  The file INSTALL should help
+with installation issues.  Read below for how to get support or keep up to
+date, know this distribution's dependencies, or read the credits or
+copyright and license.
 
 KEEPING UP TO DATE
 
-My module set is constantly under development.  The canonical copies are all
-linked to through my website, "http://www.DarrenDuncan.net/", on the page called
-"Perl Libraries I Made" (name subject to change).
+My module set is constantly under development.  The canonical copies are
+all linked to through my website, "http://www.DarrenDuncan.net/", on the
+page called "Perl Libraries I Made" (name subject to change).
 
-For those of you that are interested in the bleeding edge, I now have a public
-Subversion repository at "http://svn.utsl.gen.nz/trunk/Rosetta/"; this
-repository contains all of my newer modules (whose problem domain is databases),
-but not my older modules (which are not about databases).
+For those of you that are interested in the bleeding edge, I now have a
+public Subversion repository at "http://svn.utsl.gen.nz/trunk/Rosetta/";
+this repository contains all of my newer modules (whose problem domain is
+databases), but not my older modules (which are not about databases).
 
-You can download slightly older but more stable versions of all of my modules in
-standard tarred and gzipped distributions, either from the public CPAN archives,
-"http://www.cpan.org/authors/id/D/DU/DUNCAND/", or from my own web server,
-"http://www.DarrenDuncan.net/d/perl/".
+You can download slightly older but more stable versions of all of my
+modules in standard tarred and gzipped distributions, either from the
+public CPAN archives, "http://www.cpan.org/authors/id/D/DU/DUNCAND/", or
+from my own web server, "http://www.DarrenDuncan.net/d/perl/".
 
-CPAN also extracts the POD from modules and maintains that documentation in an
-organized and searchable fashion.  Their main search site is
+CPAN also extracts the POD from modules and maintains that documentation in
+an organized and searchable fashion.  Their main search site is
 "http://search.cpan.org/", and my own DUNCAND author page is
 "http://search.cpan.org/~duncand/"; distributions are also there.
 
@@ -49,85 +50,90 @@ server, at "http://www.DarrenDuncan.net/d/perl/archives/".
 
 DEPENDENCIES
 
-This distribution requires any version of Perl 5.x.y that is at least 5.8.1.
+This distribution requires any version of Perl 5.x.y that is at least
+5.8.1.
 
 It also requires the Perl modules 'version' and 'only', which would
 conceptually be built-in to Perl, but aren't, so they are on CPAN instead.
 
-It also requires the Perl module Scalar::Util, 
-which would conceptually be built-in to Perl, but is bundled with it instead.
+It also requires the Perl module Scalar::Util, which would conceptually be
+built-in to Perl, but is bundled with it instead.
 
 It also requires these modules that are on CPAN:
 
     Locale::KeyedText 1.6.0 (for error messages)
 
-This distribution also requires Test::More for its test suite, and that module
-is bundled with Perl.
+This distribution also requires Test::More for its test suite, and that
+module is bundled with Perl.
 
 SUPPORT
 
-Currently I don't have any support arranged with other people, lists, newsgroups,
-or otherwise.  Feel free to ask me if you can't figure things out on your own, or
-another person whom you know has used this.  I may start a mailing list for 
-support issues later, so that users of my modules can help each other with them.
+Currently I don't have any support arranged with other people, lists,
+newsgroups, or otherwise.  Feel free to ask me if you can't figure things
+out on your own, or another person whom you know has used this.  I may
+start a mailing list for support issues later, so that users of my modules
+can help each other with them.
 
 LICENCE AND COPYRIGHT
 
 This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to perl@DarrenDuncan.net, or
-visit http://www.DarrenDuncan.net/ for more information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights
+reserved. Address comments, suggestions, and bug reports to
+perl@DarrenDuncan.net, or visit http://www.DarrenDuncan.net/ for more
+information.
 
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (http://www.fsf.org/); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
+SQL::Routine is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License (GPL) as published by the
+Free Software Foundation (http://www.fsf.org/); either version 2 of the
+License, or (at your option) any later version.  You should have received a
+copy of the GPL as part of the SQL::Routine distribution, in the file named
+"GPL"; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
+Fifth Floor, Boston, MA 02110-1301, USA.
 
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
+Linking SQL::Routine statically or dynamically with other modules is making
+a combined work based on SQL::Routine.  Thus, the terms and conditions of
+the GPL cover the whole combination.  As a special exception, the copyright
+holders of SQL::Routine give you permission to link SQL::Routine with
+independent modules, regardless of the license terms of these independent
+modules, and to copy and distribute the resulting combined work under terms
+of your choice, provided that every copy of the combined work is
+accompanied by a complete copy of the source code of SQL::Routine (the
+version of SQL::Routine used to produce the combined work), being
+distributed under the terms of the GPL plus this exception.  An independent
+module is a module which is not derived from or based on SQL::Routine, and
+which is fully useable when not linked to SQL::Routine in any form.
 
 Any versions of SQL::Routine that you modify and distribute must carry
 prominent notices stating that you changed the files and the date of any
 changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+credits. SQL::Routine is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
+While it is by no means required, the copyright holders of SQL::Routine
+would appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a
+practical way of suggesting improvements to the standard version.
 
 ACKNOWLEDGEMENTS
 
 Besides myself as the creator ...
 
-* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu) for
-inspiring me to add some concrete SYNOPSIS documentation examples to this
-module, which demonstrate actual SQL statements that can be generated from parts
-of a model, when he wrote me asking for examples of how to use this module.
+* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu)
+for inspiring me to add some concrete SYNOPSIS documentation examples to
+this module, which demonstrate actual SQL statements that can be generated
+from parts of a model, when he wrote me asking for examples of how to use
+this module.
 
-* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
-towards improving this module's documentation, particularly towards using a much
-shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
-a glance, and not be intimidated by large amounts of detailed information.  Also
-thanks to Stevan for introducing me to Scalar::Util::weaken(); by using it,
-SQL::Routine objects can be garbage collected normally despite containing
-circular references, and users no longer need to invoke destructor methods.
+* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for
+feedback towards improving this module's documentation, particularly
+towards using a much shorter SYNOPSIS, so that it is easier for newcomers
+to understand the module at a glance, and not be intimidated by large
+amounts of detailed information.  Also thanks to Stevan for introducing me
+to Scalar::Util::weaken(); by using it, SQL::Routine objects can be garbage
+collected normally despite containing circular references, and users no
+longer need to invoke destructor methods.
 
 FIN
 

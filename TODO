@@ -1,10 +1,11 @@
 TODO
 
-* Update the white space of this distribution to follow some best practices.
-This includes having code lines (and POD lines, presumably) not be longer than
-80 or 78 characters.  Also run the works through perltidy for the first time as
-well (though I was very consistent before), which may alter a few other things
-towards best practices.
+* Update the white space of this distribution to follow some best
+practices.  This includes having code lines not be longer than 75
+characters (like the POD lines).  This and other changes will be
+accomplished by running all the code files through perltidy (the first time
+I ever use that program, though I was a very consistent formatter before),
+which may alter a few other things towards best practices.
 
 * Convert all class objects to be of the inside-out variety rather than
 hash-based, so to gain rigorous protection against external code directly
@@ -12,21 +13,23 @@ accessing our object attributes, and to avoid related maintenance problems.
 
 * Redo the input validation architecture to throw exceptions that are more
 helpful.  Do what Carp does to determine where in the caller code we were
-invoked badly, and cite the problem as occurring there, possibly with a stack
-trace from that point upward.  Do not name the invoked method and offending
-method arg in the core error message any more; they can be part of the caller
-line or trace info.  All the work should be doable in a single _throw* function
-that knows its context as Carp does.  State errors based on what is attempted,
-rather than tying it to args; eg, "can't set Node attribute 'foo' to an
-undefined value".
+invoked badly, and cite the problem as occurring there, possibly with a
+stack trace from that point upward.  Do not name the invoked method and
+offending method arg in the core error message any more; they can be part
+of the caller line or trace info.  All the work should be doable in a
+single _throw* function that knows its context as Carp does.  State errors
+based on what is attempted, rather than tying it to args; eg, "can't set
+Node attribute 'foo' to an undefined value".
 
-* Data dictionary update to make routine definitions more Pascal-like, such that
-function return values are defined like out-args, and you assign to said arg
-prior to exiting in order to return a value; then, 'return' takes no arguments.
+* Data dictionary update to make routine definitions more Pascal-like, such
+that function return values are defined like out-args, and you assign to
+said arg prior to exiting in order to return a value; then, 'return' takes
+no arguments.
 
 * Finish implementing the new Group class enough that write-blocks work.
 
-* Once the above are done, announce Rosetta/SQL::Routine Developer Release #3.
+* Once the above are done, announce Rosetta/SQL::Routine Developer Release
+#4.
 
 * Implement the in-model transactional features and Node mutexes.
 
@@ -34,24 +37,26 @@ prior to exiting in order to return a value; then, 'return' takes no arguments.
 
 * Add more deferred constraints to reduce erroneous models.
 
-* Add another container_type that is analagous to a cursor except it represents
-a handle for a large scalar value (LOB); external code can then define that they
-won't try to hold them entirely in RAM at once like ordinary scalars.
+* Add another container_type that is analagous to a cursor except it
+represents a handle for a large scalar value (LOB); external code can then
+define that they won't try to hold them entirely in RAM at once like
+ordinary scalars.
 
-* Add support for arguments to cursors that are shared between multiple routines
-and that are either opened more than once and/or opened in a different routine
-than where the cursor is declared (that holds the cursor-defining view).  In the 
-mean time, cursor definitions can only take arguments that are provided in the 
-same routine where they are declared, as part of the cursor-defining view.
+* Add support for arguments to cursors that are shared between multiple
+routines and that are either opened more than once and/or opened in a
+different routine than where the cursor is declared (that holds the
+cursor-defining view).  In the mean time, cursor definitions can only take
+arguments that are provided in the same routine where they are declared, as
+part of the cursor-defining view.
 
-* Find some efficient way to maintain an index of surrogate ids for Nodes so
-that using them isn't as expensive.  Currently, the code is optimized for those
-people that don't use surrogate ids, and there is no overhead for index
-maintenance.  After the change, index maintenance itself should have a very low
-overhead or they may be more trouble than they're worth.  The use of them should
-perhaps be controlled by a boolean Container property.
+* Find some efficient way to maintain an index of surrogate ids for Nodes
+so that using them isn't as expensive.  Currently, the code is optimized
+for those people that don't use surrogate ids, and there is no overhead for
+index maintenance.  After the change, index maintenance itself should have
+a very low overhead or they may be more trouble than they're worth.  The
+use of them should perhaps be controlled by a boolean Container property.
 
-* Keep watch on the separately released "Rosetta" framework modules and ensure
-we continue to meet their needs.
+* Keep watch on the separately released "Rosetta" framework modules and
+ensure we continue to meet their needs.
 
 * Strive for complete code coverage in the tests.

@@ -2,7 +2,7 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 package SQL::Routine;
-use version; our $VERSION = qv('0.70.0');
+use version; our $VERSION = qv('0.70.1');
 
 use Scalar::Util;
 use only 'Locale::KeyedText' => '1.6.0-';
@@ -4447,15 +4447,15 @@ SQL::Routine - Specify all database tasks with SQL routines
 
 =head1 VERSION
 
-This document describes SQL::Routine version 0.70.0.
+This document describes SQL::Routine version 0.70.1.
 
 =head1 SYNOPSIS
 
 =head2 Perl Code That Builds A SQL::Routine Model
 
 This executable code example shows how to define some simple database tasks
-with SQL::Routine; it only shows a tiny fraction of what the module is capable
-of, since more advanced features are not shown for brevity.
+with SQL::Routine; it only shows a tiny fraction of what the module is
+capable of, since more advanced features are not shown for brevity.
 
     use SQL::Routine;
 
@@ -4709,15 +4709,17 @@ of, since more advanced features are not shown for brevity.
         return $message; # if this isn't the right kind of object
     }
 
-Note that one key feature of SQL::Routine is that all of a model's pieces are
-linked by references rather than by name as in SQL itself.  For example, the
-name of the 'person' table is only stored once internally; if, after executing
-all of the above code, you were to run "$tb_person->set_attribute(
-'si_name', 'The Huddled Masses' );", then all of the other parts of the model
-that referred to the table would not break, and an XML dump would show that all
-the references now say 'The Huddled Masses'.
+Note that one key feature of SQL::Routine is that all of a model's pieces
+are linked by references rather than by name as in SQL itself.  For
+example, the name of the 'person' table is only stored once internally; if,
+after executing all of the above code, you were to run
+"$tb_person->set_attribute( 'si_name', 'The Huddled Masses' );", then all
+of the other parts of the model that referred to the table would not break,
+and an XML dump would show that all the references now say 'The Huddled
+Masses'.
 
-I<For some more (older) examples of SQL::Routine in use, see its test suite code.>
+I<For some more (older) examples of SQL::Routine in use, see its test suite
+code.>
 
 =head2 An XML Representation of That Model
 
@@ -4899,16 +4901,17 @@ This is the XML that the above get_all_properties_as_xml_str() prints out:
 
 =head2 String SQL That Can Be Made From the Model
 
-This section has examples of string-SQL that can be generated from the above
-model.  The examples are conformant by default to the SQL:2003 standard flavor,
-but will vary from there to make illustration simpler; some examples may contain
-a hodge-podge of database vendor extensions and as a whole won't execute as is
-on some database products.
+This section has examples of string-SQL that can be generated from the
+above model.  The examples are conformant by default to the SQL:2003
+standard flavor, but will vary from there to make illustration simpler;
+some examples may contain a hodge-podge of database vendor extensions and
+as a whole won't execute as is on some database products.
 
-These two examples for creating the same TABLE schema object, separated by a
-blank line, demonstrate SQL for a database that supports DOMAIN schema objects
-and SQL for a database that does not.  They both assume that uniqueness and
-foreign key constraints are only enforced on not-null values.
+These two examples for creating the same TABLE schema object, separated by
+a blank line, demonstrate SQL for a database that supports DOMAIN schema
+objects and SQL for a database that does not.  They both assume that
+uniqueness and foreign key constraints are only enforced on not-null
+values.
 
     CREATE DOMAIN entity_id AS INTEGER(9);
     CREATE DOMAIN alt_id AS VARCHAR(20);
@@ -4964,8 +4967,8 @@ Then it could be invoked elsewhere like this:
 
     my_rec = get_person( '3' );
 
-If the same routine were implemented as an application-side routine, then it 
-might look like this (not actual DBI syntax):
+If the same routine were implemented as an application-side routine, then
+it might look like this (not actual DBI syntax):
 
     my $sth = $dbh->prepare( "SELECT * FROM person AS s WHERE s.person_id = :arg_person_id" );
     $sth->bind_param( 'arg_person_id', 'INTEGER(9)' );
@@ -4983,100 +4986,109 @@ database schema objects:
     DROP VIEW person_with_parents;
     DROP FUNCTION get_person;
 
-I<See also the separately distributed SQL::Routine::SQLBuilder module, which is
-a reference implementation of a SQL:2003 (and more) generator for SQL::Routine.>
+I<See also the separately distributed SQL::Routine::SQLBuilder module,
+which is a reference implementation of a SQL:2003 (and more) generator for
+SQL::Routine.>
 
 =head1 DESCRIPTION
 
-The SQL::Routine (SRT) Perl 5 module provides a container object that allows
-you to create specifications for any type of database task or activity (eg:
-queries, DML, DDL, connection management) that look like ordinary routines
-(procedures or functions) to your programs; all routine arguments are named.
+The SQL::Routine (SRT) Perl 5 module provides a container object that
+allows you to create specifications for any type of database task or
+activity (eg: queries, DML, DDL, connection management) that look like
+ordinary routines (procedures or functions) to your programs; all routine
+arguments are named.
 
-SQL::Routine is trivially easy to install, since it is written in pure Perl and
-it has few external dependencies.
+SQL::Routine is trivially easy to install, since it is written in pure Perl
+and it has few external dependencies.
 
 Typical usage of this module involves creating or loading a single
 SQL::Routine::Container object when your program starts up; this Container
-would hold a complete representation of each database catalog that your program
-uses (including details of all schema objects), plus complete representations
-of all database invocations by your program; your program then typically just
-reads from the Container while active to help determine its actions.
+would hold a complete representation of each database catalog that your
+program uses (including details of all schema objects), plus complete
+representations of all database invocations by your program; your program
+then typically just reads from the Container while active to help determine
+its actions.
 
 SQL::Routine can broadly represent, as an abstract syntax tree (a
-cross-referenced hierarchy of nodes), code for any programming language, but
-many of its concepts are only applicable to relational databases, particularly
-SQL understanding databases.  It is reasonable to expect that a SQL:2003
-compliant database should be able to implement nearly all SQL::Routine concepts
-in its SQL stored procedures and functions, though SQL:2003 specifies some of
-these concepts as optional features rather than core features.
+cross-referenced hierarchy of nodes), code for any programming language,
+but many of its concepts are only applicable to relational databases,
+particularly SQL understanding databases.  It is reasonable to expect that
+a SQL:2003 compliant database should be able to implement nearly all
+SQL::Routine concepts in its SQL stored procedures and functions, though
+SQL:2003 specifies some of these concepts as optional features rather than
+core features.
 
-This module has a multi-layered API that lets you choose between writing fairly
-verbose code that performs faster, or fairly terse code that performs slower.
+This module has a multi-layered API that lets you choose between writing
+fairly verbose code that performs faster, or fairly terse code that
+performs slower.
 
-SQL::Routine is intended to be used by an application in place of using actual
-SQL strings (including support for placeholders).  You define any desired
-actions by stuffing atomic values into SQL::Routine objects, and then pass
-those objects to a compatible bridging engine that will compile and execute
-those objects against one or more actual databases.  Said bridge would be
-responsible for generating any SQL or Perl code necessary to implement the
-given SRT routine specification, and returning the result of its execution. 
+SQL::Routine is intended to be used by an application in place of using
+actual SQL strings (including support for placeholders).  You define any
+desired actions by stuffing atomic values into SQL::Routine objects, and
+then pass those objects to a compatible bridging engine that will compile
+and execute those objects against one or more actual databases.  Said
+bridge would be responsible for generating any SQL or Perl code necessary
+to implement the given SRT routine specification, and returning the result
+of its execution.
 
 The 'Rosetta' database portability library (a Perl 5 module) is a database
-bridge that takes its instructions as SQL::Routine objects.  There may be other
-modules that use SQL::Routine for that or other purposes.
+bridge that takes its instructions as SQL::Routine objects.  There may be
+other modules that use SQL::Routine for that or other purposes.
 
-SQL::Routine is also intended to be used as an intermediate representation of
-schema definitions or other SQL that is being translated from one database
-product to another.
+SQL::Routine is also intended to be used as an intermediate representation
+of schema definitions or other SQL that is being translated from one
+database product to another.
 
-This module is loosely similar to SQL::Statement, and is intended to be used in
-all of the same ways.  But SQL::Routine is a lot more powerful and capable than
-that module, as I most recently understand it, and is suitable for many uses
-that the other module isn't.
+This module is loosely similar to SQL::Statement, and is intended to be
+used in all of the same ways.  But SQL::Routine is a lot more powerful and
+capable than that module, as I most recently understand it, and is suitable
+for many uses that the other module isn't.
 
-SQL::Routine does not parse or generate any code on its own, nor does it talk
-to any databases; it is up to external code that uses it to do this.
+SQL::Routine does not parse or generate any code on its own, nor does it
+talk to any databases; it is up to external code that uses it to do this.
 
-I<To cut down on the size of the SQL::Routine module itself, most of the POD
-documentation is in these other files: L<SQL::Routine::Details>,
+I<To cut down on the size of the SQL::Routine module itself, most of the
+POD documentation is in these other files: L<SQL::Routine::Details>,
 L<SQL::Routine::Language>, L<SQL::Routine::EnumTypes>,
 L<SQL::Routine::NodeTypes>.>
 
 =head1 CLASSES IN THIS MODULE
 
-This module is implemented by several object-oriented Perl 5 packages, each of
-which is referred to as a class.  They are: B<SQL::Routine> (the module's
-name-sake), B<SQL::Routine::Container> (aka B<Container>, aka B<Model>),
-B<SQL::Routine::Node> (aka B<Node>), and B<SQL::Routine::Group> (aka B<Group>). 
-This module also has 2 private classes named B<SQL::Routine::ContainerStorage>
-and B<SQL::Routine::NodeStorage>, which help to implement Container and Node
-respectively; each of the latter is a wrapper for one of the former.
+This module is implemented by several object-oriented Perl 5 packages, each
+of which is referred to as a class.  They are: B<SQL::Routine> (the
+module's name-sake), B<SQL::Routine::Container> (aka B<Container>, aka
+B<Model>), B<SQL::Routine::Node> (aka B<Node>), and B<SQL::Routine::Group>
+(aka B<Group>). This module also has 2 private classes named
+B<SQL::Routine::ContainerStorage> and B<SQL::Routine::NodeStorage>, which
+help to implement Container and Node respectively; each of the latter is a
+wrapper for one of the former.
 
 I<While all 6 of the above classes are implemented in one module for
-convenience, you should consider all 6 names as being "in use"; do not create
-any modules or packages yourself that have the same names.>
+convenience, you should consider all 6 names as being "in use"; do not
+create any modules or packages yourself that have the same names.>
 
-The Container and Node and Group classes do most of the work and are what you
-mainly use.  The name-sake class mainly exists to guide CPAN in indexing the
-whole module, but it also provides a set of stateless utility methods and
-constants that the other two classes inherit, and it provides a few wrapper
-functions over the other classes for your convenience; you never instantiate an
-object of SQL::Routine itself.
+The Container and Node and Group classes do most of the work and are what
+you mainly use.  The name-sake class mainly exists to guide CPAN in
+indexing the whole module, but it also provides a set of stateless utility
+methods and constants that the other two classes inherit, and it provides a
+few wrapper functions over the other classes for your convenience; you
+never instantiate an object of SQL::Routine itself.
 
 Most of the SQL::Routine documentation you will see simply uses the terms
 'Container' and 'Node' to refer to the pair of classes or objects which
-implements each as a single unit, even if said documentation is specific to the
-'Storage' variants thereof, because someone using this module shouldn't need to
-know the difference.  This said, some documentation will specify a pair member
-by appending the terms 'interface' and 'Storage'; "Container interface" refers
-to ::Container, "ContainerStorage" refers to ::ContainerStorage, "Node
-interface" refers to ::Node, "NodeStorage" refers to ::NodeStorage.
+implements each as a single unit, even if said documentation is specific to
+the 'Storage' variants thereof, because someone using this module shouldn't
+need to know the difference.  This said, some documentation will specify a
+pair member by appending the terms 'interface' and 'Storage'; "Container
+interface" refers to ::Container, "ContainerStorage" refers to
+::ContainerStorage, "Node interface" refers to ::Node, "NodeStorage" refers
+to ::NodeStorage.
 
 =head1 BRIEF FUNCTION AND METHOD LIST
 
-Here is a compact list of this module's functions and methods along with their 
-arguments.  For full details on each one, please see L<SQL::Routine::Details>.
+Here is a compact list of this module's functions and methods along with
+their arguments.  For full details on each one, please see
+L<SQL::Routine::Details>.
 
 CONSTRUCTOR WRAPPER FUNCTIONS:
 
@@ -5181,8 +5193,8 @@ This module requires any version of Perl 5.x.y that is at least 5.8.1.
 It also requires the Perl modules L<version> and L<only>, which would
 conceptually be built-in to Perl, but aren't, so they are on CPAN instead.
 
-It also requires the Perl module L<Scalar::Util>, 
-which would conceptually be built-in to Perl, but is bundled with it instead.
+It also requires the Perl module L<Scalar::Util>, which would conceptually
+be built-in to Perl, but is bundled with it instead.
 
 It also requires these modules that are on CPAN:
 
@@ -5202,31 +5214,31 @@ L<Rosetta::Engine::Generic>, L<Rosetta::Emulator::DBI>, L<DBI>,
 L<SQL::Statement>, L<SQL::Parser>, L<SQL::Translator>, L<SQL::YASP>,
 L<SQL::Generator>, L<SQL::Schema>, L<SQL::Abstract>, L<SQL::Snippet>,
 L<SQL::Catalog>, L<DB::Ent>, L<DBIx::Abstract>, L<DBIx::AnyDBD>,
-L<DBIx::DBSchema>, L<DBIx::Namespace>, L<DBIx::SearchBuilder>, L<TripleStore>,
-L<Data::Table>, and various other modules.
+L<DBIx::DBSchema>, L<DBIx::Namespace>, L<DBIx::SearchBuilder>,
+L<TripleStore>, L<Data::Table>, and various other modules.
 
 =head1 BUGS AND LIMITATIONS
 
-This module is currently in alpha development status, meaning that some parts of
-it will be changed in the near future, some perhaps in incompatible ways;
-however, I believe that any further incompatible changes will be small.  The
-current state is analogous to 'developer releases' of operating systems; it is
-reasonable to being writing code that uses this module now, but you should be
-prepared to maintain it later in keeping with API changes.  This module also
-does not yet have full code coverage in its tests, though the most commonly used
-areas are covered.
+This module is currently in alpha development status, meaning that some
+parts of it will be changed in the near future, some perhaps in
+incompatible ways; however, I believe that any further incompatible changes
+will be small.  The current state is analogous to 'developer releases' of
+operating systems; it is reasonable to being writing code that uses this
+module now, but you should be prepared to maintain it later in keeping with
+API changes.  This module also does not yet have full code coverage in its
+tests, though the most commonly used areas are covered.
 
 You can not use surrogate id values that look like valid Node ids (that are
-positive integers) since some methods won't do what you expect when given such
-values.  Nodes having such surrogate id values won't be matched by values
-passed to set_attribute(), directly or indirectly.  That method only
-tries to lookup a Node by its surrogate id if its argument doesn't look like a
-Node ref or a Node id.  Similarly, the build*() methods will decide whether to
-interpret a defined but non-Node-ref ATTRS argument as a Node id or a surrogate
-id based on its looking like a valid Node id or not.  You should rarely
-encounter this caveat, though, since you would never use a number as a "SQL
-identifier" in normal cases, and that is only technically possible with a
-"delimited SQL identifier".
+positive integers) since some methods won't do what you expect when given
+such values.  Nodes having such surrogate id values won't be matched by
+values passed to set_attribute(), directly or indirectly.  That method only
+tries to lookup a Node by its surrogate id if its argument doesn't look
+like a Node ref or a Node id.  Similarly, the build*() methods will decide
+whether to interpret a defined but non-Node-ref ATTRS argument as a Node id
+or a surrogate id based on its looking like a valid Node id or not.  You
+should rarely encounter this caveat, though, since you would never use a
+number as a "SQL identifier" in normal cases, and that is only technically
+possible with a "delimited SQL identifier".
 
 =head1 AUTHOR
 
@@ -5236,58 +5248,61 @@ Darren R. Duncan (C<perl@DarrenDuncan.net>)
 
 This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
-visit L<http://www.DarrenDuncan.net/> for more information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights
+reserved. Address comments, suggestions, and bug reports to
+C<perl@DarrenDuncan.net>, or visit L<http://www.DarrenDuncan.net/> for more
+information.
 
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
+SQL::Routine is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License (GPL) as published by the
+Free Software Foundation (L<http://www.fsf.org/>); either version 2 of the
+License, or (at your option) any later version.  You should have received a
+copy of the GPL as part of the SQL::Routine distribution, in the file named
+"GPL"; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
+Fifth Floor, Boston, MA 02110-1301, USA.
 
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
+Linking SQL::Routine statically or dynamically with other modules is making
+a combined work based on SQL::Routine.  Thus, the terms and conditions of
+the GPL cover the whole combination.  As a special exception, the copyright
+holders of SQL::Routine give you permission to link SQL::Routine with
+independent modules, regardless of the license terms of these independent
+modules, and to copy and distribute the resulting combined work under terms
+of your choice, provided that every copy of the combined work is
+accompanied by a complete copy of the source code of SQL::Routine (the
+version of SQL::Routine used to produce the combined work), being
+distributed under the terms of the GPL plus this exception.  An independent
+module is a module which is not derived from or based on SQL::Routine, and
+which is fully useable when not linked to SQL::Routine in any form.
 
 Any versions of SQL::Routine that you modify and distribute must carry
 prominent notices stating that you changed the files and the date of any
 changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+credits. SQL::Routine is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
+While it is by no means required, the copyright holders of SQL::Routine
+would appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a
+practical way of suggesting improvements to the standard version.
 
 =head1 ACKNOWLEDGEMENTS
 
 Besides myself as the creator ...
 
-* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu) for
-inspiring me to add some concrete SYNOPSIS documentation examples to this
-module, which demonstrate actual SQL statements that can be generated from parts
-of a model, when he wrote me asking for examples of how to use this module.
+* 2004.05.20 - Thanks to Jarrell Dunson (jarrell_dunson@asburyseminary.edu)
+for inspiring me to add some concrete SYNOPSIS documentation examples to
+this module, which demonstrate actual SQL statements that can be generated
+from parts of a model, when he wrote me asking for examples of how to use
+this module.
 
-* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for feedback
-towards improving this module's documentation, particularly towards using a much
-shorter SYNOPSIS, so that it is easier for newcomers to understand the module at
-a glance, and not be intimidated by large amounts of detailed information.  Also
-thanks to Stevan for introducing me to Scalar::Util::weaken(); by using it,
-SQL::Routine objects can be garbage collected normally despite containing
-circular references, and users no longer need to invoke destructor methods.
+* 2005.03.21 - Thanks to Stevan Little (stevan@iinteractive.com) for
+feedback towards improving this module's documentation, particularly
+towards using a much shorter SYNOPSIS, so that it is easier for newcomers
+to understand the module at a glance, and not be intimidated by large
+amounts of detailed information.  Also thanks to Stevan for introducing me
+to Scalar::Util::weaken(); by using it, SQL::Routine objects can be garbage
+collected normally despite containing circular references, and users no
+longer need to invoke destructor methods.
 
 =cut

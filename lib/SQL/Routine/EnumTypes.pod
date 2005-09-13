@@ -6,9 +6,9 @@ SQL::Routine::EnumTypes - What enumerated types are part of SQL::Routine's langu
 
 =head1 DESCRIPTION
 
-This POD file contains most of the details about the enumerated types that are
-part of SQL::Routine's language or grammar.  You should read the summary
-introduction in L<SQL::Routine::Language> before this document.
+This POD file contains most of the details about the enumerated types that
+are part of SQL::Routine's language or grammar.  You should read the
+summary introduction in L<SQL::Routine::Language> before this document.
 
 =head1 ENUMERATED TYPES
 
@@ -16,11 +16,11 @@ This document details the enumerated types that SQL::Routine knows about.
 
 =head2 container_type
 
-These are high level structures that can represent contexts in which standard
-built-in routines execute, and they can represent general variable types that
-routine arguments, variables, or return types, or intermediate values of
-expressions can be.  Note that all table and view column values have an
-implicit container_type of SCALAR.
+These are high level structures that can represent contexts in which
+standard built-in routines execute, and they can represent general variable
+types that routine arguments, variables, or return types, or intermediate
+values of expressions can be.  Note that all table and view column values
+have an implicit container_type of SCALAR.
 
     ERROR  - an error message object (a message key, named list of values)
     SCALAR - a typed scalar variable, such as a boolean or number or cstring or bstring
@@ -51,13 +51,14 @@ enumerated type.
 =head2 exception_type
 
 These represent the basic types of exception objects which both standard
-built-in routines and user-defined routines can throw if they fail; they can
-also be caught by user-defined routines.  If stored in a routine variable, they
-have a container_type of ERROR.  
+built-in routines and user-defined routines can throw if they fail; they
+can also be caught by user-defined routines.  If stored in a routine
+variable, they have a container_type of ERROR.
 
-I<Note: The SQL:2003 Standard says to use the keyword 'CONDITION' rather than 'EXCEPTION' 
-to refer to this sort of thing; it has deprecated the use of the latter keyword as 
-an alias for the former; see SQL:2003 Foundation p1171.>
+I<Note: The SQL:2003 Standard says to use the keyword 'CONDITION' rather
+than 'EXCEPTION' to refer to this sort of thing; it has deprecated the use
+of the latter keyword as an alias for the former; see SQL:2003 Foundation
+p1171.>
 
     SRTX_NO_ENVI_LOAD_FAILED
         - If data link product failed to load, from non-existence or missing dependencies.
@@ -72,25 +73,28 @@ an alias for the former; see SQL:2003 Foundation p1171.>
 
 =head2 standard_routine, standard_routine_context, standard_routine_arg
 
-These represent the basic types of actions that a database engine or database
-client can perform, and are the "built-in" functions of the SQL::Routine
-virtual database language.  The action types include: connection and
-transaction management, queries and cursors, DML and DDL, user and privilege
-management, and error handling.  You always invoke these within user-defined
-routines, sometimes directly as routine statements, and sometimes indirectly
-when they form parts of user-defined view or query definitions.
+These represent the basic types of actions that a database engine or
+database client can perform, and are the "built-in" functions of the
+SQL::Routine virtual database language.  The action types include:
+connection and transaction management, queries and cursors, DML and DDL,
+user and privilege management, and error handling.  You always invoke these
+within user-defined routines, sometimes directly as routine statements, and
+sometimes indirectly when they form parts of user-defined view or query
+definitions.
 
-Each standard routine may take arguments and/or return a value.  All arguments
-are named, as with user-defined routines; likewise, there is exactly one
-un-named return value, if any.  Where [routine_stmt, routine_expr, view_expr]
-SRT Nodes can have a 'standard_routine' attribute set, only child
-[routine_expr, view_expr] Nodes can have a 'standard_routine_arg' attribute
-set.  Each standard routine will throw an exception (container_type is ERROR)
-if it fails, instead of returning a value; any standard routine may throw more
-than one type of exception depending on the circumstance.
+Each standard routine may take arguments and/or return a value.  All
+arguments are named, as with user-defined routines; likewise, there is
+exactly one un-named return value, if any.  Where [routine_stmt,
+routine_expr, view_expr] SRT Nodes can have a 'standard_routine' attribute
+set, only child [routine_expr, view_expr] Nodes can have a
+'standard_routine_arg' attribute set.  Each standard routine will throw an
+exception (container_type is ERROR) if it fails, instead of returning a
+value; any standard routine may throw more than one type of exception
+depending on the circumstance.
 
-Beneath each routine name is up to 6 kinds of information, having the following
-labels; for brevity, a label won't be shown if its value would be 'none':
+Beneath each routine name is up to 6 kinds of information, having the
+following labels; for brevity, a label won't be shown if its value would be
+'none':
 
     purpose: what the routine does that validates its existence
     context: what context type the routine must be called within; it is a special argument
@@ -100,12 +104,12 @@ labels; for brevity, a label won't be shown if its value would be 'none':
     throws: what types of exceptions are thrown if routine fails
 
 Most arguments take one value each, and are indicated with the "(1)"; some
-arguments take a list of one or more similarly used elements, indicated by a
-"(N)".  For view_expr or routine_expr Nodes that have call_sroutine_arg valued,
-the expr_type will always be LIST with "(N)" arguments (the child exprs are the
-elements); with "(1)" arguments, the expr Nodes are ordinary; this allows a set
-of expr Nodes to guarantee distinct call_sroutine_arg values under a
-call_sroutine.
+arguments take a list of one or more similarly used elements, indicated by
+a "(N)".  For view_expr or routine_expr Nodes that have call_sroutine_arg
+valued, the expr_type will always be LIST with "(N)" arguments (the child
+exprs are the elements); with "(1)" arguments, the expr Nodes are ordinary;
+this allows a set of expr Nodes to guarantee distinct call_sroutine_arg
+values under a call_sroutine.
 
 This set of connection management built-ins may only be invoked in a
 client-side routine, usually with 'routine_stmt' Nodes.
@@ -274,8 +278,9 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
         throws:
             - SRTX_NO_CONN_ACTIVE_LOST
 
-This set of schema management or data definition built-ins may only be invoked in a
-routine, client or database side, usually with 'routine_stmt' Nodes.
+This set of schema management or data definition built-ins may only be
+invoked in a routine, client or database side, usually with 'routine_stmt'
+Nodes.
 
     SCHEMA_LIST()         - fetches a list of schemas of open db instance
     SCHEMA_INFO(schema)   - fetches some detailed info about a schemas
@@ -333,9 +338,9 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
     USER_GRANT(user)   - grants a db privilege to a db user
     USER_REVOKE(user)  - revokes a db privilege from a db user
 
-This set of data management or logic or program flow control or miscellaneous
-built-ins may only be invoked in a routine, client or database side, usually
-with 'routine_stmt' Nodes.
+This set of data management or logic or program flow control or
+miscellaneous built-ins may only be invoked in a routine, client or
+database side, usually with 'routine_stmt' Nodes.
 
     REC_FETCH(view)   - fetches records from a table or view of multiple tables
     REC_VERIFY(view)  - compares a provided set of records to stored ones
@@ -605,13 +610,13 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 
 =head2 simple_scalar_type
 
-These represent the basic scalar data value types that can be used to further
-qualify variables (or literals) whose container_type is SCALAR.  The 1999 SQL
-standard indicates 5 classes of simple (Predefined) data types: Numeric,
-String, Boolean, Datetime, Interval; all of the data types in those classes are
-represented by at least one of the following enumerated values.  The 2003 SQL
-standard adds a 6th one, XML, but we will ignore that one for the moment; you 
-can store XML in a STR_CHAR.
+These represent the basic scalar data value types that can be used to
+further qualify variables (or literals) whose container_type is SCALAR. 
+The 1999 SQL standard indicates 5 classes of simple (Predefined) data
+types: Numeric, String, Boolean, Datetime, Interval; all of the data types
+in those classes are represented by at least one of the following
+enumerated values.  The 2003 SQL standard adds a 6th one, XML, but we will
+ignore that one for the moment; you can store XML in a STR_CHAR.
 
     NUM_INT   - an exact integral or whole number/numeric
     NUM_EXA   - an exact decimal or fractional number/numeric
@@ -627,11 +632,11 @@ can store XML in a STR_CHAR.
 
 =head2 char_enc_type
 
-These represent the set of known character string encodings or named sets of
-characters (character repertoires) that can be used by character data, with
-Unicode (or UTF-8 specifically) being the recommended one to use when possible,
-and with Ascii being the most common legacy encoding. Encodings are only
-applicable to data whose simple_scalar_type is STR_CHAR.
+These represent the set of known character string encodings or named sets
+of characters (character repertoires) that can be used by character data,
+with Unicode (or UTF-8 specifically) being the recommended one to use when
+possible, and with Ascii being the most common legacy encoding. Encodings
+are only applicable to data whose simple_scalar_type is STR_CHAR.
 
     UTF8   - unicode UTF-8  (always byte-order preserving; no big/little endian, usually 1 octet)
     UTF16  - unicode UTF-16 (has big/little endian versions)
@@ -645,12 +650,13 @@ applicable to data whose simple_scalar_type is STR_CHAR.
 
 =head2 calendar
 
-These represent the set of known calendars which a date and time (data) can be
-relative to and counted with.  For each, year zero could be at a different
-event, and other differences like what months or other yearly divisions there
-are would also distinguish the calendars.  Use "absolute" if you don't want to
-pick any calendar in particular.  These are only applicable to data whose
-simple_scalar_type is DATM_FULL or DATM_DATE (or perhaps DATM_TIME also).
+These represent the set of known calendars which a date and time (data) can
+be relative to and counted with.  For each, year zero could be at a
+different event, and other differences like what months or other yearly
+divisions there are would also distinguish the calendars.  Use "absolute"
+if you don't want to pick any calendar in particular.  These are only
+applicable to data whose simple_scalar_type is DATM_FULL or DATM_DATE (or
+perhaps DATM_TIME also).
 
     ABS - "absolute", for non-calendar-specific dates and times
     GRE - the Gregorian calendar
@@ -664,8 +670,8 @@ simple_scalar_type is DATM_FULL or DATM_DATE (or perhaps DATM_TIME also).
 
 =head2 privilege_type
 
-These represent the basic types of privileges that database roles can be granted, and
-that by extension users granted those roles can have.
+These represent the basic types of privileges that database roles can be
+granted, and that by extension users granted those roles can have.
 
     ALL - user/role has all privileges possible for the associated object
     SELECT - user may select rows from a table
@@ -673,8 +679,8 @@ that by extension users granted those roles can have.
     INSERT - user may insert rows into a table
     UPDATE - user may update rows in a table
 
-The above options are understood.  These next options I'm less sure about, and 
-most of them aren't mentioned in section 12.3 (p739) of SQL:2003.
+The above options are understood.  These next options I'm less sure about,
+and most of them aren't mentioned in section 12.3 (p739) of SQL:2003.
 
     CONNECT - user may connect/open/attach to the catalog that is the parent of the role
     EXECUTE - user may execute a routine
@@ -682,16 +688,16 @@ most of them aren't mentioned in section 12.3 (p739) of SQL:2003.
     ALTER - user may alter objects in a schema
     DROP - user may drop objects in a schema
 
-Aside from ALL, SELECT, DELETE, INSERT, UPDATE, the SQL:2003 standard also 
-defines REFERENCES, USAGE, TRIGGER, UNDER, EXECUTE, but I don't yet understand 
-what most of these mean.
+Aside from ALL, SELECT, DELETE, INSERT, UPDATE, the SQL:2003 standard also
+defines REFERENCES, USAGE, TRIGGER, UNDER, EXECUTE, but I don't yet
+understand what most of these mean.
 
 =head2 table_index_type
 
-These represent the basic index types that database tables can have applied to them;
-each instance of these can apply to multiple columns at once.  All indexes are
-intended to make accessing table data faster, but some also will impose
-constraints on what data can be put in the columns.
+These represent the basic index types that database tables can have applied
+to them; each instance of these can apply to multiple columns at once.  All
+indexes are intended to make accessing table data faster, but some also
+will impose constraints on what data can be put in the columns.
 
     ATOMIC   - "normal" index makes comparisons against col value as a whole faster, no constraints
     FULLTEXT - index makes searches for words within a col value faster (and weighted), no constraints
@@ -705,10 +711,10 @@ constraints on what data can be put in the columns.
 
 =head2 view_type
 
-These represent the basic types that a database view or SQL query can be.  All types 
-of views are very similar in structure, but they are not the same; by setting the 
-view_type of a view, you are saying which differences apply to that view and 
-possibly any child views.  
+These represent the basic types that a database view or SQL query can be. 
+All types of views are very similar in structure, but they are not the
+same; by setting the view_type of a view, you are saying which differences
+apply to that view and possibly any child views.
 
     ALIAS    - view is an alias for a single other view, or a table, or a ROW/RW_ARY routine var/arg
     JOINED   - view is a non-grouped query having >= 1 other views joined together
@@ -720,13 +726,14 @@ possibly any child views.
 
 =head2 compound_operator
 
-These represent the standard ways that rows returned from multiple compatible
-views/queries can be merged into a single result set, where all of the input
-rows have the same set of columns as the the output rows, and each single
-output row matches a distinct input row.  A union is the most common such
-operation.  Each of these compound operators is by definition ambiguous as to
-whether the output set includes all allowed input rows or just distinct ones;
-you must keep an associated "set quantifier" value to specify ALL or DISTINCT.
+These represent the standard ways that rows returned from multiple
+compatible views/queries can be merged into a single result set, where all
+of the input rows have the same set of columns as the the output rows, and
+each single output row matches a distinct input row.  A union is the most
+common such operation.  Each of these compound operators is by definition
+ambiguous as to whether the output set includes all allowed input rows or
+just distinct ones; you must keep an associated "set quantifier" value to
+specify ALL or DISTINCT.
 
     UNION        - all rows that are each in at least one input set (logical 'or' or 'plus')
     DIFFERENCE   - all rows from one input set that are not in the others ('except','minus')
@@ -737,11 +744,11 @@ you must keep an associated "set quantifier" value to specify ALL or DISTINCT.
 
 =head2 join_operator
 
-These represent the standard ways that columns from two tables or views can be joined
-side by side into a single row set, where all values in each output column are
-from exactly one input, and values in columns from separate sources are aligned
-into common rows on related row values.  This is the most common way of
-"relating" data in relational databases.
+These represent the standard ways that columns from two tables or views can
+be joined side by side into a single row set, where all values in each
+output column are from exactly one input, and values in columns from
+separate sources are aligned into common rows on related row values.  This
+is the most common way of "relating" data in relational databases.
 
     CROSS - a cross-join; a cartesian product; every combination of first and second rows kept
     INNER - an inner/equal-join; only rows with related entries in both sources are kept
@@ -755,8 +762,8 @@ into common rows on related row values.  This is the most common way of
 
 =head2 view_part
 
-These represent the standard parts of a view/query definition that are not in the
-"from" part.  
+These represent the standard parts of a view/query definition that are not
+in the "from" part.
 
     RESULT - the SQL "select list" part; one item per view column/field
     SET    - when outermost view is an "update statement", this is the "set" part
@@ -786,20 +793,20 @@ These represent the standard parts of a view/query definition that are not in th
 =head2 routine_type
 
 These represent the basic types that a routine can be, since SQL::Routine
-"routines" are generic enough that each of the following can be represented by
-them: stored procedures and functions, triggers, and packages containing stored
-procedures and functions; all of the previous can also have nested stored
-procedures and functions; all of the previous can have nested un-named routines
-as well, called BLOCK.  
+"routines" are generic enough that each of the following can be represented
+by them: stored procedures and functions, triggers, and packages containing
+stored procedures and functions; all of the previous can also have nested
+stored procedures and functions; all of the previous can have nested
+un-named routines as well, called BLOCK.
 
-All routine types (except packages?) can incorporate a series of statements plus
-conditionals or iterators, and all kinds can declare or use local variables,
-and they can all contain other routines of certain types.  As such, routines
-arranged in a hierarchy of parents and children, where a root routine is one that
-is not contained in another.  All routine types can take arguments of some sort,
-but your choice of type can severely limit what kinds of arguments you can
-take.  Only some routine types, functions mainly, can return a value.  Only some
-routine types have names.
+All routine types (except packages?) can incorporate a series of statements
+plus conditionals or iterators, and all kinds can declare or use local
+variables, and they can all contain other routines of certain types.  As
+such, routines arranged in a hierarchy of parents and children, where a
+root routine is one that is not contained in another.  All routine types
+can take arguments of some sort, but your choice of type can severely limit
+what kinds of arguments you can take.  Only some routine types, functions
+mainly, can return a value.  Only some routine types have names.
 
     PACKAGE   - an Oracle package; a namespace beneath a schema for related funcs and procs
     TRIGGER   - a trigger on a table or schema view
@@ -811,7 +818,8 @@ routine types have names.
 
 =head2 basic_trigger_event
 
-These represent the basic event types that can cause a trigger routine to execute.
+These represent the basic event types that can cause a trigger routine to
+execute.
 
     BEFR_INS - before insert
     AFTR_INS - after insert
@@ -852,41 +860,42 @@ Darren R. Duncan (C<perl@DarrenDuncan.net>)
 
 This file is part of the SQL::Routine database portability library.
 
-SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights reserved.
-Address comments, suggestions, and bug reports to C<perl@DarrenDuncan.net>, or
-visit L<http://www.DarrenDuncan.net/> for more information.
+SQL::Routine is Copyright (c) 2002-2005, Darren R. Duncan.  All rights
+reserved. Address comments, suggestions, and bug reports to
+C<perl@DarrenDuncan.net>, or visit L<http://www.DarrenDuncan.net/> for more
+information.
 
-SQL::Routine is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License (GPL) as published by the Free
-Software Foundation (L<http://www.fsf.org/>); either version 2 of the License, or
-(at your option) any later version.  You should have received a copy of the GPL
-as part of the SQL::Routine distribution, in the file named "GPL"; if not, write
-to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 
-02110-1301, USA.
+SQL::Routine is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License (GPL) as published by the
+Free Software Foundation (L<http://www.fsf.org/>); either version 2 of the
+License, or (at your option) any later version.  You should have received a
+copy of the GPL as part of the SQL::Routine distribution, in the file named
+"GPL"; if not, write to the Free Software Foundation, Inc., 51 Franklin St,
+Fifth Floor, Boston, MA 02110-1301, USA.
 
-Linking SQL::Routine statically or dynamically with other modules is making a
-combined work based on SQL::Routine.  Thus, the terms and conditions of the GPL
-cover the whole combination.  As a special exception, the copyright holders of
-SQL::Routine give you permission to link SQL::Routine with independent modules,
-regardless of the license terms of these independent modules, and to copy and
-distribute the resulting combined work under terms of your choice, provided
-that every copy of the combined work is accompanied by a complete copy of the
-source code of SQL::Routine (the version of SQL::Routine used to produce the
-combined work), being distributed under the terms of the GPL plus this
-exception.  An independent module is a module which is not derived from or
-based on SQL::Routine, and which is fully useable when not linked to
-SQL::Routine in any form.
+Linking SQL::Routine statically or dynamically with other modules is making
+a combined work based on SQL::Routine.  Thus, the terms and conditions of
+the GPL cover the whole combination.  As a special exception, the copyright
+holders of SQL::Routine give you permission to link SQL::Routine with
+independent modules, regardless of the license terms of these independent
+modules, and to copy and distribute the resulting combined work under terms
+of your choice, provided that every copy of the combined work is
+accompanied by a complete copy of the source code of SQL::Routine (the
+version of SQL::Routine used to produce the combined work), being
+distributed under the terms of the GPL plus this exception.  An independent
+module is a module which is not derived from or based on SQL::Routine, and
+which is fully useable when not linked to SQL::Routine in any form.
 
 Any versions of SQL::Routine that you modify and distribute must carry
 prominent notices stating that you changed the files and the date of any
 changes, in addition to preserving this original copyright notice and other
-credits. SQL::Routine is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+credits. SQL::Routine is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-While it is by no means required, the copyright holders of SQL::Routine would
-appreciate being informed any time you create a modified version of
-SQL::Routine that you are willing to distribute, because that is a practical
-way of suggesting improvements to the standard version.
+While it is by no means required, the copyright holders of SQL::Routine
+would appreciate being informed any time you create a modified version of
+SQL::Routine that you are willing to distribute, because that is a
+practical way of suggesting improvements to the standard version.
 
 =cut

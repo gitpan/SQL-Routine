@@ -1,937 +1,49 @@
                              SQL-Routine
 ----------------------------------------------------------------------
 
+2005-09-12   Darren Duncan <perl@DarrenDuncan.net>
+
+    * SQL-Routine Release 0.70.1 (SVN r808).
+
+    * New code file versions are: Routine.pm 0.70.1 and en.pm 0.38.1.
+
+    * Updated all POD-containing files to re-wrap any non-indented POD
+    paragraphs to a 75 character width, which is 5 less than the 80
+    character width they were wrapped to before.  This change should make
+    it easier to copy and paste a diff or patch of this documentation into
+    an email message, where it is quoted at least once, without any line
+    wrapping occurring.  Likewise, these standard documentation files were
+    re-wrapped to 75 characters: ReadMe, INSTALL, LGPL|GPL, Changes, TODO.
+
+    * Revised this Changes file to replace all detail entries for releases
+    0.59 thru 0.70.0 with a significant release list for the same period;
+    also added references to when all 'Rosetta developer release' (#s 1-3)
+    were.
+
 2005-09-08   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.70.0.
+    * SQL-Routine Release 0.70.0 (SVN r787), containing SQL::Routine
+    0.70.0, was released on CPAN.  This is the first release of this
+    distribution and its modules for which they had 3-part version numbers,
+    rather than floating point version numbers.
 
-    * New code file versions are: Routine.pm v0.70.0 and en.pm v0.38.0.
-
-    * Updated external dependencies on Locale::KeyedText to v1.6.0.
-
-    * From now on, if the minimum Perl version that this distribution depends on
-    (currently 5.008001) comes bundled with a satisfactory version of a module
-    that we have a dependency on, then we will no longer specify any version
-    number when referring to said module.  An example of such is Test::More.
-
-    * Updated the DESCRIPTION paragraph of KeyedText.pm that refers to how easy
-    to install the module is; it now says the module has few external
-    dependencies, rather than specifying one.
-
-    * Converted every distribution file to use indentations composed of space 
-    characters (4 spaces per indentation level) rather than tab characters.
-
-    * Updated the 2 Routine.pm private methods _serialize_as_[perl|xml]() to
-    indent their output using spaces (4 per level) rather than tabs.
-
-    * Updated all files containing POD (*.pm, *.pod) to re-order some POD
-    sections.  Now all of the POD is after all of the code, rather than that
-    being mostly true but for a bit of POD before most of the code.  The 'NAME'
-    POD has been moved to just above the 'SYNOPSIS'. The 'DEPENDENCIES' has been
-    moved to just above the 'SEE ALSO'.  Any 'BUGS' and 'CAVEATS' have been
-    moved to just below the 'SEE ALSO'.  The 'COPYRIGHT AND LICENSE' has been
-    moved to the very end of the file, except that any 'CREDITS' have been moved
-    below that.  Also updated the ReadMe file to move the 'CREDITS' below the
-    'COPYRIGHT AND LICENSE'.  There were zero changes to the content of any POD 
-    sections, and no new POD sections were added or existing ones removed,
-    except for those explicitly listed below.
-
-    * Updated all files containing POD:  Deleted the 'SYNTAX' section, whose
-    value was dubious, from any files that had one.  Renamed 'COPYRIGHT AND
-    LICENSE' to 'LICENCE AND COPYRIGHT', and added a new 'AUTHOR' section just
-    above it.  Renamed 'CREDITS' to 'ACKNOWLEDGEMENTS' in any files that had
-    one.  COPYRIGHT and CREDITS were likewise renamed in the ReadMe file.
-
-    * Updated the POD in all *.pm files:  Added a new 'VERSION' section, which
-    appears just below the 'NAME'.  Added a new 'INCOMPATIBILITIES' section,
-    which appears just below 'DEPENDENCIES'.  Renamed and/or merged any 'BUGS'
-    and 'CAVEATS' sections into a single 'BUGS AND LIMITATIONS' section, and
-    added that section to any files lacking its predecessors.  Rewrote the
-    'DEPENDENCIES' into a new paragraph-resembling format that specifies where
-    each dependency is, such as bundled with perl, or bundled with the current
-    distribution, or available on CPAN; also rewrote the ReadMe file version.
-
-    * Updated all *.pm files to add a new external dependency on the 'version'
-    module, which has core-like functionality but isn't yet bundled with Perl;
-    all 'our $VERSION' declarations were changed to qv-wrapped three-part format
-    from floating point format; likewise, updated the *_00_Compile.t file to use
-    'version', and also changed the tests for expected module versions to be
-    performed by is() rather than cmp_ok().
-
-    * Updated Routine.pm to add a new external dependency on the 'only' 
-    module, which has core-like functionality but isn't yet bundled with Perl;
-    all "use Foo N.NN" statements were changed to three-part format and now look 
-    like "use only 'Foo' => 'N.N.N-'".
+    * These were the current versions cited by the public announcement for
+    Rosetta/SQL-Routine developer release #3.
 
 2005-09-01   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.69.
-
-    * New code file versions are: Routine.pm v0.69 and en.pm v0.37.
-
-    * Removed a long-standing erroneous "=head1" in the ReadMe file, which
-    caused the search.cpan.org documentation maker to mis-format that file.
-
-    * Corresponding changes in Routine.pm, Details.pod, en.pm:  Merged the 18
-    Node interface methods named
-    [get|clear|set]_[literal|enumerated|node_ref]_attribute[|s]() into the
-    pre-existing 6 Node interface methods named [get|clear_set]_attribute[|s]();
-    the newly size-reduced API of SQL::Routine should hopefully be less daunting
-    to programmers than the old API, even though it is now a bit less
-    self-documenting.  As part of this change, the 6 en.pm user text messages
-    'SRT_N_METH_ARG_NO_[LIT|ENUM|NREF]_AT_NM' and
-    'SRT_N_SET_[LIT|ENUM|NREF]_AT_NO_ARG_VAL' were merged into the pre-existing
-    2 messages 'SRT_N_METH_ARG_NO_AT_NM' and 'SRT_N_SET_AT_NO_ARG_VAL'.  There
-    were also 11 other en.pm messages altered, that were used by private methods
-    which the old 24 public methods had invoked.  There were also 4 en.pm
-    messages moved upward in the file to just below the PP messages.  In
-    Routine.pm, 9 NodeStorage private methods were slightly altered to use the
-    aforementioned altered en.pm messages,
-    _clear_[literal|enumerated|node_ref]_attribute[|s]() and
-    _set_[literal|enumerated|node_ref]_attribute().  Besides the above, there 
-    were a few trivial related documentation updates in Routine.pm, Details.pod.
-
-    * Updated the 2 test suite files t_SRT_Verbose.pm and SRT_10_Identity.t to
-    replace invocations of the removed methods with invocations of their shorter
-    counterparts; SRT_10_Identity.t also had a net 2 test blocks removed.
-
-2005-09-01   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.68.
-
-    * New code file versions are: Routine.pm v0.68 and en.pm v0.36.
-
-    * Added a new main title to this Changes file that matches the ReadMe file.
-
-    * Rewrote the documentation section KEEPING UP TO DATE in the ReadMe file.
-
-    * Corresponding changes in Routine.pm, Details.pod, en.pm:  Deleted the
-    boolean property "is read only" from the ContainerStorage class, along with
-    its accessor method is_read_only(); this will be replaced with alternate
-    functionality called "access controls".  Also updated the Routine.pm code
-    for these 21 methods to remove references to the property:
-    auto_assert_deferrable_constraints(), auto_set_node_ids(),
-    may_match_surrogate_node_ids(), Container.delete_node_tree(),
-    ContainerStorage._new(), move_before_sibling(), NodeStorage._new(),
-    _delete_node[|_tree](), _set_node_id(),
-    _[clear|set]_primary_parent_attribute(),
-    _clear_[literal|enumerated|node_ref]_attribute[|s](),
-    _set_[literal|enumerated|node_ref]_attribute().  Also removed the 2 en.pm
-    user text messages 'SRT_[C|N]_METH_ASS_READ_ONLY'.
-
-    * Deleted test file t/SRT_10_ReadOnly.t, which is no longer applicable.
-
-    * Corresponding changes in Routine.pm, Details.pod, en.pm:  Moved these 3
-    boolean properties from the ContainerStorage class to the Container
-    interface class: "auto assert deferrable constraints", "auto set node ids",
-    "may match surrogate node ids"; from now on, setting any of these 3
-    properties to true will only affect program actions done through their own
-    Container interface (or child Node interfaces), and not those done through
-    other interfaces.  Updated the Routine.pm code and Details.pod documentation
-    of the corresponding 3 property accessor methods.  Updated the Routine.pm
-    code for these 6 methods that reference those properties: Container.new(),
-    new_interface(), _build_node_is_child_or_not(), ContainerStorage._new(),
-    Node.new(), _set_node_ref_attribute().  Also updated the 2 en.pm user text 
-    messages 'SRT_N_NEW_NODE_NO_ARG_ID' and 'SRT_N_SET_NREF_AT_NO_ALLOW_SID'.
-
-    * Large update to Details.pod:  Added new main documentation section FAULT
-    TOLERANCE, DATA INTEGRITY, AND CONCURRENCY; it has 4 sub-sections named
-    "Structural Matters", "Function or Method Types and Exceptions", "Input
-    Validation", and "Multiple Thread Concurrency".  Removed main documentation
-    section FAULT TOLERANCE AND MULTI-THREADING SUPPORT; all of its contents
-    have been moved into the aforementioned new main section, comprising a
-    majority of all the former's sub-sections except for "Input Validation". 
-    Removed all but the first SYNTAX paragraph; all of that content has been
-    moved into the aforementioned new main section, mostly becoming "Input
-    Validation".  FAULT ... has a small amount of new material also.
-
-    * Updated Routine.pm to fix a bug in _delete_node_tree() and
-    _delete_node_tree__add_to_candidates(); Perl 5 hashes always stringify their
-    keys, so we can't use the keys of %candidates as objects; updated
-    %candidates to store the actual NodeStorage ref in the hash value, and
-    updated use code to iterate values instead of keys.
-
-    * Corresponding minor bug fix in the SYNOPSIS of Routine.pm and the code of
-    t_SRT_Synopsis.pm: corrected 3 syntax errors where members of 3 key/value
-    pairs were separated from their partners by ',' rather than '=>'.
-
-    * Added new test file t/SRT_10_Identity.t, to test the new_interface() and
-    get_self_id() functions that were added in release 0.66, plus other aspects
-    of that all Node fetches generate new Node interface objects.  It has 22
-    blocks of tests, where the first 10 are written and the last 12 are not yet
-    written; those will come in some future release; however, the existing
-    blocks 5 thru 10 of the present ones are like the missing ones, where the
-    truly unique ones, 1-4, are done already.
-
-    * Corresponding changes in Routine.pm, Details.pod, en.pm:  Added new core
-    class SQL::Routine::Group (Group), objects of which are associated with
-    Container interface objects and provide convenient means to address a group
-    of Nodes as a unit, mainly in regards to defining access controls.  In
-    Details.pod, added new main documentation section "ABOUT NODE GROUPS", and
-    in Routine.pm, updated the "CLASSES IN THIS MODULE" documentation.  In the
-    code of Routine.pm, added the Group class declaration (with 2 default
-    properties, 'container' and 'member_nsrefs'), which has its own new()
-    constructor function, but which currently has no other methods (some were
-    started, but they're commented out); also added new SQL::Routine wrapper
-    function new_group(). Added documentation for those 2 new constructor
-    functions in Details.pod. Added 2 new en.pm user text messages for
-    Group.new(), 'SRT_G_NEW_GROUP_[NO_ARG|BAD]_CONT'.
-
-    * Corresponding changes in Routine.pm, Details.pod, en.pm:  Added the
-    beginnings of some new core features, such as shared and exclusive locks on
-    Nodes, transactions and near-ACID compliance.  In Details.pod, added 2 new
-    sub-sections of FAULT TOLERANCE, "ACID Compliance and Transactions" and
-    "Access Controls and Reentrancy"; they outline and describe how these
-    features are intended to be once complete.  In the code of Routine.pm, added
-    new properties to 3 classes; Container interface gained 2, 'explicit_groups'
-    and 'default_group'; NodeStorage gained 4,
-    'att_[write|pc_add|lc_add]_blocks' and 'att_mutex'; Group gained 4,
-    'is_[write|pc_add|lc_add]_block' and 'is_mutex'; none of them have accessor
-    methods, as of yet or ever.  Also updated the Routine.pm code for these 20
-    methods to add references to the new properties: Container.new(),
-    Container.new_interface(), Container.delete_node_tree(),
-    move_before_sibling(), NodeStorage._new(), _delete_node[|_tree](),
-    _set_node_id(), _[clear|set]_primary_parent_attribute(),
-    _clear_[literal|enumerated|node_ref]_attribute[|s](),
-    _set_[literal|enumerated|node_ref]_attribute(), Group.new().  Also added the
-    4 en.pm user text messages 'SRT_[C|N]_METH_VIOL_WRITE_BLOCKS' and
-    'SRT_N_METH_VIOL_[P|L]C_ADD_BLOCKS'.
-
-2005-07-16   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.67.
-
-    * New code file versions are: Routine.pm v0.67.
-
-    * This release is entirely dedicated to refactoring the functions and
-    methods of Routine.pm (there were zero changes to the property lists and
-    object lists); all other distribution core files had zero changes, and there
-    was only a single non-version-check line changed in the test suite.  The
-    public API is exactly the same, save that some thrown exceptions are now
-    declared to be thrown by different methods than before.  The total function
-    + method count (public and private) is now 144, up from 121 of the previous
-    release.  All *Storage functions/methods are private, and most * interface 
-    methods are public.
-
-    * Split the wrapper functions new_[container|node]() into themselves and
-    _new_[con|nod]stor(); all 4 belong to the 'Rosetta' superclass.  Split both
-    [Container|Node].new() constructors into themselves and
-    [Container|Node]Storage._new().  Split each [Container|Node]._ns_to_ni()
-    private method into itself and [Container|Node]._ns_to_ni_item().
-
-    * Renamed Container private method _assert_deferrable_constraints() to 
-    _assert_child_deferrable_constraints().
-
-    * Moved these 1 private methods from Container to ContainerStorage: 
-    _assert_child_deferrable_constraints().
-
-    * Split these 3 public Container methods each 2-ways into themselves and
-    _*() private methods, which live in ContainerStorage:
-    find_child_node_by_surrogate_id(), assert_deferrable_constraints(),
-    get_all_properties().
-
-    * Moved these 20 private methods from Node to NodeStorage:
-    _delete_node_tree__add_to_candidates(), _get_primary_parent_attribute(),
-    _clear_primary_parent_attribute(), _set_primary_parent_attribute(),
-    _get_literal_attribute(), _clear_literal_attribute(),
-    _set_literal_attribute(), _get_enumerated_attribute(),
-    _clear_enumerated_attribute(), _set_enumerated_attribute(),
-    _get_node_ref_attribute(), _clear_node_ref_attribute(),
-    _set_node_ref_attribute(), _find_node_by_surrogate_id_remotely(),
-    _find_node_by_surrogate_id_remotely_below_here(),
-    _find_node_by_surrogate_id_within_layers(),
-    _find_node_by_surrogate_id_using_path(),
-    _assert_in_node_deferrable_constraints(),
-    _assert_parent_ref_scope_deferrable_constraints(),
-    _assert_child_comp_deferrable_constraints().
-
-    * Split these 14 public Node methods each 2-ways into themselves and _*()
-    private methods, which live in NodeStorage: delete_node(),
-    delete_node_tree(), get_node_id(), set_node_id(),
-    clear_literal_attributes(), clear_enumerated_attributes(),
-    clear_node_ref_attributes(), get_surrogate_id_attribute(),
-    get_surrogate_id_chain(), find_node_by_surrogate_id(),
-    find_child_node_by_surrogate_id(), get_relative_surrogate_id(),
-    assert_deferrable_constraints(), get_all_properties().
-
-    * A 'SRT_[C|N]_METH_ASS_READ_ONLY' exception is now only thrown in about
-    half of the places it used to be (the count was 41 and is now 20); the
-    removed ones were higher-level functions that always (sans other exceptions)
-    invoked lower level functions that threw those same exceptions.  The effect
-    of this change is that some of these exceptions will claim to be thrown by
-    different methods than they used to, under the same user invocation.  With 
-    the remaining exception instances, they are also now thrown by the private 
-    part of a method pair, rather than the public part.
-
-    * Updated the last test in SRT_10_ReadOnly.t to expect a
-    'SRT_C_METH_ASS_READ_ONLY' exception rather than a
-    'SRT_N_METH_ASS_READ_ONLY' exception; this was an exactly 1 letter change.
-
-2005-07-12   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.66.
-
-    * New code file versions are: Routine.pm v0.66 and en.pm v0.35.
-
-    * Corresponding data dictionary update in NodeTypes.pod, Routine.pm, en.pm:
-    Added "Distinct Child Groups List" constraint on the 'tools' pseudo-Node
-    that constrains the 'product_code' attribute of
-    'data_[storage|link]_product' Nodes.  This means that external code can be
-    confident that every one of those Nodes represents a distinct product
-    without having to compare their 'product_code' attributes.  Also updated
-    Routine.pm's _assert_child_comp_deferrable_constraints() method to split up
-    a couple assertions into variants for Node vs pseudo-Node parents (the
-    pseudo-Node version was omitted before as it was known to not be in use);
-    correspondingly, these 2 en.pm user text messages were each split in 2:
-    'SRT_N_ASDC_CH_N_TOO_MANY_SET' and 'SRT_N_ASDC_MUDI_NON_DISTINCT' became 
-    themselves plus '*_PSN' variants.
-
-    * Minor Details.pod and Routine.pm update so that any Perl subs which were
-    referred to as "function/method" etc are now simply "function".
-
-    * The private method _normalize_primary_parent_or_node_ref_attribute_value()
-    was removed; its functionality was added to _set_primary_parent_attribute()
-    and _set_node_ref_attribute(), which were its only invokers before.  While
-    the change introduces a small amount of duplicated functionality, the system
-    should be more maintainable overall.  No corresponding en.pm changes.
-
-    * This release primarily serves to split up the two SQL::Routine::* classes
-    into 2 tightly bound classes each, ::Container into itself and
-    ::ContainerStorage, and ::Node into itself and ::NodeStorage.  With of this
-    release, the 2 'Storage' classes contain all of the old properties and the 2
-    suffix-less (interface) classes contain all of the old methods.  Each
-    'Storage' class is an inner class of its corresponding interface class, and
-    external code can only access the former by way of the latter.  Each
-    interface object has a single Storage object as its sole (almost) property.
-    For all intents and purposes, the 2 'Storage' classes are the same as the
-    old 2 classes, in that their own properties only refer to each other and not
-    to any interface classes.  The interface objects are loosely bound, and
-    multiples of them can now exist for the same Storage objects.  The result of
-    this change is fully backwards compatible but for one thing; you can no
-    longer reliably do a straight comparison between 2 Container or Node
-    interface objects to test that they are the same object (eg, like "$foo_node
-    eq $bar_node").  Instead, you must now invoke the newly added get_self_id()
-    method on both interface objects you wish to compare; its character string
-    return value is reliable for this purpose of determing that 2 objects are
-    the same aka have a Storage object in common.  Also added new private method
-    _ns_to_ni() to each interface class, and they are invoked in 45 places; the
-    list of other methods and functions is unchanged from before.  Except for
-    adding new_interface() and get_self_id() to the method documentation in
-    Details.pod and adding a new RELATING INTERFACE AND STORAGE CLASSES section
-    there, the entirety of changes for this release item are in Rosetta.pm
-    itself, and almost entirely in the code.  A side benefit of this update is
-    you can once again keep a SQL::Routine model in existence by holding a
-    reference to a Container or a Node, but this time no strong circular
-    references are in use.
-
-    * Added some TODO file items.
-
-2005-06-17   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.65.
-
-    * New code file versions are: Routine.pm v0.65 and en.pm v0.34.
-
-    * Updated external dependencies on Locale::KeyedText to v1.05.
-
-    * Updated all files in this distribution that display the physical address
-    of the Free Software Foundation, Inc. so it uses their current address of
-    "51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA" rather than their
-    previous address of "59 Temple Place, Suite 330, Boston, MA 02111-1307 USA";
-    this affects every COPYRIGHT AND LICENSE statement in the core files and the
-    'ReadMe' file, plus any 'GPL' or 'LGPL' license file.
-
-    * Updated the INSTALL file so that it is more generic, and all of my
-    distributions now use an identical copy of it.
-
-    * Updated the main heading in the ReadMe file to state the distribution's
-    name rather than a terse description of it.
-
-    * Updated Routine.pm and Details.pod to split the Container property
-    'def_con_tested' into itself and 'edit_count'; where the old property was a
-    boolean, the two new ones are both integers.  The new 'edit_count' property
-    exists to track that changes were made to a Container's Node set; it is
-    incremented each time a Node is edited, added, or deleted; its actual value
-    isn't important, only that two arbitrary samplings of it will be different
-    if an edit happened between them.  This feature is designed to assist
-    external code that caches information derived from a SQL::Routine model,
-    such as generated SQL strings or Perl closures, so that it can easily tell
-    when the cache may have become stale (leading to a cache flush).  The new
-    'def_con_tested' stores a sampled copy of 'edit_count'.  Within Routine.pm
-    itself, every line of code that used to set 'def_con_tested' to false now
-    increments 'edit_count' instead; the single code line that used to set
-    'def_con_tested' to true now copies the value of 'edit_count' to it instead;
-    the 2 lines of code that used to read the old 'def_con_tested' value now
-    compare its value to 'edit_count' instead.  Added new read-accessor method
-    for 'edit_count' named get_edit_count().  Updated the POD documentation for
-    deferrable_constraints_are_tested() and
-    Container.assert_deferrable_constraints(); but their behaviour is unchanged.
-
-    * In Details.pod, updated get_next_free_node_id() POD; no behaviour changes.
-
-    * Updated data dictionary in Routine.pm and NodeTypes.pod and Language.pod:
-    Now 'view' Nodes can no longer be primary-children of 'routine' Nodes;
-    instead, they can now be primary-children of either 'routine_var' or
-    'routine_stmt' Nodes; do the first with all cursor definitions (only where
-    the cursor is to be declared, not for any other routine_var that may hold it
-    later), and do the second usually with SELECT or DML statement definitions. 
-    A result of this change is that the Node tree for a routine now looks more
-    natural when compared to the routine string-SQL that would be generated from
-    it; moreover, one no longer has to concern themselves to ensure that the
-    relevant 'view' Node si_names are distinct relative to all variable etc
-    names in the routine, which was an artificial constraint to begin with.
-
-    * Updated data dictionary in Routine.pm and NodeTypes.pod and Language.pod
-    (with mention also in Details.pod):  Added new Node type 'external_cursor'
-    which lives under 'elements'; it contains no attributes of importance and
-    exists simply as a common point to be referred to by all routines that share
-    a cursor (one of those pointing to it will hold the cursor definition); also
-    renamed all 3 'curs_view' attributes (in 'routine_[context|arg|var]' Nodes)
-    to 'curs_ext', and they all point to an 'external_cursor' Node now instead
-    of a 'view' Node.
-
-    * Updated data dictionary in Routine.pm and NodeTypes.pod:  Added 2 new
-    'routine' Node attributes, 'return_conn_link' and 'return_curs_ext', plus
-    related constraints; these are used in the same way as the 'conn_link' and
-    'curs_ext' attributes of the 'routine_context' and 'routine_arg' Nodes.
-
-    * Updated the SYNOPSIS documentation of Routine.pm to adjust for all the
-    abovementioned data dictionary updates.  Likewise updated all 4 core
-    t_SRT_*.pm test files to remain compatible with the changes.  Mostly this
-    involved rearranging the order of Nodes; but in Terse|Abstract there were
-    also 4 new external_cursor Nodes added plus corresponding 'routine' attrs.
-
-    * The documentation file API_C.pod no longer exists as its own entity; all
-    of its distinct content was merged into the file Details.pod, occupying a
-    new main documentation section at its end named OLDER DOCUMENTATION.  Since
-    any possibility of making a C version won't be realized for a long time,
-    with a Parrot-based version more imminent, I've decided to de-emphasize (but
-    not discard) the C-specific details; the lack of their own file makes these
-    details a lot less visible.
-
-    * Added TODO file item about adding better support for arguments to cursors
-    that are shared between multiple routines.
-
-    * The core files en.pm and EnumTypes.pod had zero changes aside from the FSF
-    address update.
-
-2005-06-10   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.64.
-
-    * New code file versions are: Routine.pm v0.64 and en.pm v0.33.
-
-    * Updated Routine.pm and Details.pod to change the semantics of a
-    Container's "deferrable constraints are tested" property such that it is
-    always set false by default on a new Container (rather than true) since a
-    Container completely devoid of Nodes may violate a deferrable constraint;
-    aside from the initial valuation change made in Container.new() and related
-    documentation updates by the property's declaration and the
-    deferrable_constraints_are_tested() method, there were no other changes
-    concerning this property.
-
-    * Updated Routine.pm, Details.pod, en.pm:  Added new Routine.pm Node public
-    method delete_node_tree(), which will remove a Node plus all of its direct
-    descendant Nodes.  This method is mainly intended for use by long-lived
-    applications that continuously generate database commands at run-time and
-    only use each one once, such as a naive interactive SQL shell (or a naive
-    DBI module emulator, which ties this function's use to a $sth destruction),
-    so to save on memory use.  Also added new en.pm user text message
-    'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD' which is used by it.  Also added new
-    private helper method _delete_node_tree__add_to_candidates().  Also added
-    new Container method delete_node_tree() which deletes all Nodes in a
-    Container.  Also made an execution speed optimization to delete_node(), and
-    updated its 'SRT_N_DEL_NODE_HAS_CHILD' message to give more details.
-
-    * Corresponding updates in NodeTypes.pm, Routine.pm to correct a small data
-    dictionary design flaw concerning the "Ancestor Attribute Correlation List",
-    which affects view_expr and routine_expr Nodes.  The flaw is summarized that
-    certain steps while navigating a Node tree are assumed to always result in
-    the observer sitting on a Node of a specific type, whereas they may
-    sometimes be sitting on a different type instead; any subsequent steps would
-    then be invalid.  The fix involves making such subsequent steps conditional
-    on the current Node's type.  Updated data dictionary entries for 5 view_expr
-    (3) and routine_expr (2) Node attributes to be conditional.  Added a few
-    code lines to the _find_node_by_surrogate_id_using_path() method which
-    implements the added conditional logic.
-
-    * Corresponding updates in NodeTypes.pm, Routine.pm, en.pm to add a new
-    "Related Parent Enumerated Attributes List" deferrable constraint.  Its main
-    purpose is to assert that any arguments given to invocations of standard
-    routines have correct names; previously, an argument name that was valid for
-    any single standard routine could be passed to any other standard routine
-    without being flagged; now, only argument names specifically for the routine
-    being invoked are allowed.  Updated the data dictionary entries for
-    view_expr and routine_expr Nodes to use this new constraint.  Added new
-    global constant hash %P_C_REL_ENUMS in Routine.pm, which specifies the valid
-    relations between pairs of enumerated type values.  Also added a new code
-    block to the _assert_parent_ref_scope_deferrable_constraints() method which
-    implements the new constraint assertion; also added 4 related new
-    'SRT_N_ASDC_REL_ENUM_[BAD_P_NTYPE|NO_P|P_NEVER_P|P_C_NOT_REL]' user text
-    messages to en.pm.
-
-    * Corresponding updates in NodeTypes.pm, Routine.pm, en.pm to add a new
-    "Mandatory Related Child Enumerated Attributes List" deferrable constraint.
-    Its main purpose is to assert that all invocations of standard routines have
-    with them a complete set of standard routine arguments (and context), and
-    that no extra child Nodes exist for the invocation Node that don't provide
-    args/context; previously, missing arguments were not flagged.  Updated the
-    data dictionary entries for view_expr and routine_stmt and routine_expr
-    Nodes to use this new constraint.  Added new global constant hash
-    %OPT_P_C_REL_ENUMS in Routine.pm, which specifies which arguments in
-    %P_C_REL_ENUMS are optional.  Also added a new code block to the
-    _assert_child_comp_deferrable_constraints() method which implements the new
-    constraint assertion; also added 3 related new
-    'SRT_N_ASDC_MA_REL_ENUM_[TOO_MANY_SET|ZERO_SET|MISSING_VALUES]' user text
-    messages to en.pm.  Also updated _build_node_is_child_or_not() to catch the
-    new 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES' exceptions when auto-asserting
-    deferrable constraints.
-
-    * Updated all 4 main t_SRT_*.pm files to perform bug fixes for input errors
-    that were flagged by the new "Mandatory ..." constraint (no fixes were made
-    concerning the other new or corrected constraints, as the tests already
-    obeyed them); also updated the corresponding expected XML strings.  In
-    t_SRT_Synopsis.pm, modified 2 Node definitions; also made identical
-    corrections in the SYNOPSIS of Routine.pm, which that test mirrors.  In
-    t_SRT_Verbose.pm, modified 4 Node definitions.  In each of t_SRT_Terse.pm
-    and t_SRT_Abstract.pm, added 9 Node definitions, deleted 1 other, and
-    modified 10 others; also did some code reformatting.
-
-    * A few trivial updates to a few Node.assert_deferrable_constraints()
-    methods in Routine.pm.  Changed any error message arguments that interpolate
-    arrays into strings so they pass an array ref instead (which is later
-    interpolated in a different way).  Corrected any code comments to refer to
-    NodeTypes.pod rather than Language.pod.  Updated some other code comments.
-
-    * Zero changes to these core files: Language.pod, EnumTypes.pod, API_C.pod.
-
-2005-06-01   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.63.
-
-    * New code file versions are: Routine.pm v0.63 and en.pm v0.32.
-
-    * In summary, this release primarily serves to improve the ease of use and
-    reliability of the build_*() methods, such that their allowed argument
-    options are now more consistent and predictable.  The allowed argument
-    formats are now more terse and user-friendly than before.  The
-    get_all_properties() methods will now return the more terse format as well.
-    Finally, the number of static error messages has been greatly reduced,
-    replaced with a much smaller number of dynamic ones, so the total is easier
-    to work with.
-
-    * Refactored a lot of user text messages in en.pm by combining 46
-    method-specific messages into 9 method-generic messages taking more
-    variables (an 80% compression rate); in the process, en.pm became 22%
-    (7K/33K) smaller.  Routine.pm also had its corresponding methods updated to
-    use the replacement messages.  The 1 'SRT_C_METH_ARG_UNDEF' replaced these
-    2: 'SRT_C_FIND_[NODE_BY_ID_NO_ARG_ID|CH_ND_BY_SID_NO_ARG_VAL]'.  The 1
-    'SRT_N_METH_ARG_UNDEF' replaced these 24:
-    'SRT_N_SET_[NODE_ID_NO_ARGS|PP_AT_NO_ARG_VAL]',
-    'SRT_N_[GET|CLEAR|SET]_[LIT|ENUM|NREF]_AT_NO_ARGS',
-    'SRT_N_SET_[LIT|ENUM|NREF]_ATS_NO_ARGS', 'SRT_N_SET_SI_AT_NO_ARGS',
-    'SRT_N_[GET|CLEAR|SET]_AT_NO_ARGS', 'SRT_N_SET_ATS_NO_ARGS',
-    'SRT_N_MOVE_PRE_SIB_NO_S_ARG', 'SRT_N_ADD_CH_NODE_NO_ARGS',
-    'SRT_N_FIND_[ND_BY_SID_NO_ARGS|CH_ND_BY_SID_NO_ARG_VAL]'
-    'SRT_N_GET_REL_SID_NO_ARGS'.  The 1 'SRT_N_METH_ARG_NO_HASH' replaced these
-    4: 'SRT_N_SET_[LIT|ENUM|NREF]_ATS_BAD_ARGS', 'SRT_N_SET_ATS_BAD_ARGS'.  The
-    1 'SRT_N_METH_ARG_NO_NODE' replaced these 3:
-    'SRT_N_MOVE_PRE_SIB_BAD_[S|P]_ARG', 'SRT_N_ADD_CH_NODE_BAD_ARG'.  The 1
-    'SRT_N_METH_NO_PP_AT' replaced these 3:
-    'SRT_N_[GET|CLEAR|SET]_PP_AT_NO_PP_AT'.  The 2
-    'SRT_N_METH_ARG_NO_[LIT|ENUM]_AT_NM' replaced these 6:
-    'SRT_N_[GET|CLEAR|SET]_[LIT|ENUM]_AT_INVAL_NM'.  The 1
-    'SRT_N_METH_ARG_NO_NREF_AT_NM' replaced these 5:
-    'SRT_N_[GET|CLEAR|SET]_NREF_AT_INVAL_NM',
-    'SRT_N_[FIND_ND_BY|GET_REL]_SID_INVAL_NM'.  The 1 'SRT_N_METH_ARG_NO_AT_NM'
-    replaced these 3: 'SRT_N_[GET|CLEAR|SET]_AT_INVAL_NM'.
-
-    * In Routine.pm, refactored Container.build_child_node_tree() to inline what
-    build_child_node() does rather than invoking it; corresponding to this,
-    en.pm saw the user text message 'SRT_C_BUILD_CH_ND_NO_PSND' split into
-    itself and 'SRT_C_BUILD_CH_ND_TR_NO_PSND'.  Node.build_child_node_tree() was
-    likewise refactored to inline build_child_node(), and Node.build_node() to
-    inline Container.build_node(), but for both there were no en.pm messages
-    affected by this.
-
-    * Minor _build_node_is_child_or_not() correction to invoke user text message
-    'SRT_N_NEW_NODE_NO_ARG_TYPE' rather than 'SRT_N_NEW_NODE_NO_ARGS'.
-
-    * Updated Routine.pm and Details.pod to rename all LIST arguments to
-    CHILDREN, which affects these methods: add_child_nodes(),
-    build_child_node[|_tree]s(), build_container().  Also renamed
-    add_child_node() argument from NEW_CHILD to CHILD.
-
-    * Corresponding updates in Routine.pm, Details.pod, en.pm that remove global
-    support for the alternate method input format of "named arguments in a
-    single hash-ref argument"; all of the [Container|Node].build_*() methods
-    were affected, with these 6 being the ones edited: build_node(),
-    build_child_node(), build_child_node_tree().
-
-    * Updated Routine.pm, Details.pod, en.pm so that it is now mandatory for any
-    defined CHILDREN arguments to be array refs where each element is an array
-    ref having the details for one child or child tree (mapping to
-    build[_child]_node() positional arguments).  It was previously possible to
-    pass just the details for a single child Node in place of the first array
-    ref, but that is no longer valid.  A further change is that, for the
-    build_child_nod[e_tree]s() methods, the CHILDREN argument is now enforced
-    mandatory; previously those methods would no-op if it was undefined, which
-    permitted other methods to invoke them regardless of the passed argument
-    being valued.  Updated these methods to only invoke the aforementioned if
-    they have defined CHILDREN to pass: build_child_node_tree(),
-    build_container().  Added these 6 new method-generic user text messages to
-    en.pm, which are used by the newly updated 4 build_*s() methods:
-    'SRT_[C|N]_METH_ARG_NO_ARY', 'SRT_[C|N]_METH_ARG_ARY_ELEM_[UNDEF|NO_ARY]'.
-
-    * Updated the populate_model() functions in t_SRT_[Terse|Abstract].pm to
-    invoke the build_*() methods with the same argument formats that
-    t_SRT_Synopsis.pm has already been using, since they are now the only valid
-    build_*() input formats following the above-mentioned Routine.pm changes; 
-    the expected XML output strings are identical to before.  Following the 
-    changes, each of those test suite files is 4K smaller than before.
-
-    * Updated Routine.pm and Details.pod to alter the data format that
-    get_all_properties() and get_all_properties_as_perl_str() return, such that
-    each Node is represented by a 3-element array-ref, rather than a 3-element
-    hash-ref; the get_all_properties_as_xml_str() method's return values did not
-    change at all, however.  To implement this, the only methods that actually
-    saw a code change were: [Container|Node].get_all_properties(),
-    _serialize_as_perl(), _serialize_as_xml().
-
-    * Updated the SRT_50_Cloning.t test script so it invokes build_container() 
-    with an array ref wrapped around the get_all_properties() return value.
-
-    * There were zero data dictionary updates in this release, and zero changes 
-    to the Verbose and Synopsis test suites, and no other documentation changes.
-
-2005-05-13   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.62.
-
-    * New code file versions are: Routine.pm v0.62 and en.pm v0.31.
-
-    * Updated external dependencies on Locale::KeyedText to v1.04.
-
-    * Updated every instance of the COPYRIGHT AND LICENSE documentation in this
-    distribution to correct the declared date range in which the core
-    SQL::Routine files were created.  The new dates are 2002 thru 2005, which is
-    when I actually committed documentation describing or code implementing what
-    became the SQL::Routine core.  The old dates were 1999 thru 2005, which goes
-    back to the time that I started conceiving a larger project which the
-    aforementioned module started out being related to; however, those earlier
-    years did not contain any work on what specifically became the
-    aforementioned module, so they are now excluded.
-
-    * Updated every instance of the COPYRIGHT AND LICENSE documentation in this
-    distribution so that you may now choose between licensing it under the GPL
-    version 2 or any later GPL version, rather than only under version 2.
-
-    * Renamed the "LICENSE" file to "GPL", and correspondingly updated all
-    references to it in this distribution, most of them being in COPYRIGHT AND
-    LICENSE statements.  This change was made to reduce user confusion in
-    situations where files from this distribution may be aggregated with other
-    files that have different licenses; the old name was too generic.
-
-    * Updated every instance of the COPYRIGHT AND LICENSE documentation in this
-    distribution to remove the parenthetical references to "libSQLRT"; there
-    are no references left to a possible C library's name except in API_C.pod.
-
-    * Updated SRT_00_Compile.t to add 14 tests, bringing the total to 22; the
-    new tests are all can_ok(), one for each of the test suite modules' methods.
-
-    * Updated data dictionary in Routine.pm, EnumTypes.pm, NodeTypes.pm: Updated
-    standard-routines CURSOR_FETCH() and SELECT() to add a new INTO argument to
-    each, which takes a ROW or RW_ARY variable to put the query result in; added
-    corresponding routine_expr Node attribute 'query_dest' to use when the
-    Node's call_sroutine_arg is 'INTO'.  Removed 'view' Node attribute
-    'set_p_routine_item', which is how the 'into' information used to be stored
-    in a model.  This change was made so that cursors can be used more easily,
-    such as when you want different cursor-fetch calls to put their results in
-    different variables, or you want to open a cursor in one routine while
-    fetching from it in another.  Updated the Routine.pm SYNOPSIS code/XML and
-    the test file t_SRT_Verbose.pm to remain compatible with the changes.
-
-    * Added 2 new test suite files, t/lib/t_SRT_Synopsis.pm and
-    t/SRT_43_Synopsis.t, which mirror the Routine.pm SYNOPSIS code/XML and makes
-    sure it works; this adds 6 numbered tests.  Updated SRT_00_Compile.t to test
-    that the new test module compiles; this adds 5 numbered tests.
-
-    * Updated data dictionary in Routine.pm, NodeTypes.pm: Updated the
-    'assign_dest' attribute of routine_stmt Nodes so that 'routine_context' is
-    no longer a valid Node type to refer to; it does not make sense to assign to
-    a routine's context, which is analagous to $self.
-
-    * Small documentation updates in EnumTypes.pm concerning standard-routines.
-
-    * Updated every t/SRT_*.t file except 00_Compile to remove its explicit "use
-    SQL::Routine::L::en;" line, which is redundant with what LKT does.
-
-2005-04-27   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.61.
-
-    * New code file versions are: Routine.pm v0.61 and en.pm v0.30.
-
-    * This release saw a large reorganization of the test suite.  The file
-    t/SQL_Routine.t was split-up into these 6 parts (numbers in parens are the
-    portion of the original 35 numbered tests that each part got):
-    t/lib/t_SRT_Util.pm (zero), t/SRT_11_Circular.t (2), t/SRT_40_Verbose.t (6),
-    t/SRT_41_Terse.t (6), t/SRT_42_Abstract.t (6), t/SRT_50_Cloning.t (15).  The
-    test utility module t_SRT_Util.pm contains the message() and
-    error_to_string() functions used by most of the other test scripts; the
-    message() function also received a minor update such that its output is
-    prefixed with '#' rather than '--', like Test::More does for comments.
-
-    * Added new test script t/SRT_00_Compile.t which contains 8 brand new
-    numbered tests; 6 of these use Test::More's use_ok() function to cleanly
-    test that the 2 core modules and 4 test modules will load without errors; 2
-    of these test, with cmp_ok(), that the 2 core modules are of the correct
-    versions.  This new script runs prior to all of the others.  Before this
-    change, the original test script would simply die without any ok/not ok.
-
-    * Updated Routine.pm and Details.pod and en.pm:  Added new boolean Container
-    property, "is read only", plus an accessor method named is_read_only(); any
-    attempt to modify or add/remove the Container's Nodes or most of its other
-    properties will throw an exception when the property is true.  Updated 8
-    Container methods plus 31 Node methods to perform the assertions; also added
-    2 related user text messages to en.pm, 'SRT_[C|N]_METH_ASS_READ_ONLY', which
-    are shared by all the methods.
-
-    * Added new test script t/SRT_10_ReadOnly.t, which has 17 numbered tests, 
-    to test the new read-only functionality.
-
-    * Updated the FAULT TOLERANCE AND MULTI-THREADING SUPPORT main documentation
-    section of Details.pod, concerning types of input validation.
-
-    * Updated the MANIFEST for the 8 added files and 1 removed file.  Also
-    updated the INSTALL file.
-
-    * There were zero changes to all 4 of the other /lib/SQL/Routine/* files and
-    all 3 of the other /t/lib/t_SRT_*.pm files.
-
-2005-04-25   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.60.
-
-    * New code file versions are: Routine.pm v0.60 and en.pm v0.29.
-
-    * The primary purpose of this release is the removal of the long-standing
-    feature where a SQL::Routine Node is valid to exist either on its own or
-    inside a Container; these 2 states of a Node were referred to as "alone" and
-    "well known" respectively; as of this release, there is only a single valid
-    state, which corresponds to the old "well known".  One result of this change
-    is that the SQL::Routine code can be greatly simplified, and it probably
-    executes faster too.  Note that this constitutes an API change, but the only
-    external code that would be affected is that which directly invokes these
-    low-level functions and methods: new_node(), Node.new(), clear_node_id(),
-    put_in_container(), take_from_container(), build_lonely_node().  Any code
-    not invoking these, such as because they use the other high-level build*()
-    functions instead (including all of the SYNOPSIS code), will not break.
-
-    * All changes in this release are restricted to just the following 3 files
-    unless otherwise explicitly mentioned: Routine.pm and Details.pod and en.pm.
-
-    * Reversed the change in release 0.59 that removed the Node.delete_node()
-    method; its concept is useful after all.
-
-    * It is now the case that every Node's "container" and "node id" properties
-    are always set and never empty, from the moment the Node object is created
-    and up to its destruction.  Any branch conditionals that tested those
-    properties for definedness were reduced to just the result of the 'yes'
-    branch; this includes the removal of many throwable exceptions.
-
-    * In Details.pod, deleted the entire NODE EVOLUTION STATES main
-    documentation section, since there is no longer a multiplicity of Node
-    states as it describes.  Many other small bits of POD documentation and code
-    comments were updated to remove any references to 'alone' or 'well known';
-    any documentation that described an either/or scenario pair was reduced to
-    one always-true scenario.
-
-    * Changed the declaration order of a Node's "container" property so it
-    appears just above "node type"; also moved the method get_container()
-    upwards to just above get_node_type().
-
-    * Merged the method put_in_container(), plus a copy of set_node_id(), into
-    Node.new(); the post-merge new() now creates a Node that lives in a
-    Container and has a set Node Id; it does not create links with any other
-    Nodes, but only the pseudo-Node parent; it now takes 3 arguments: a
-    Container, a Node Type, and a Node Id.  The merged method has 7 associated
-    user text messages in en.pm, down from the 9 its 2 main constituents had. 
-    Updated the new_node() wrapper function to match the new 3 arg signature.
-
-    * Merged the method take_from_container() into delete_node(); the post-merge
-    delete_node() unlinks the invocant Node from everything else and then gets
-    it garbage collected.  The merged method has 1 user text message in en.pm,
-    down from the 2 its constituents had.  Updated the method 
-    Container.build_child_node() to invoke it rather than take_from_container().
-
-    * Deleted method clear_node_id(), along with its single en.pm message.  Also
-    removed its invocation from clear_attributes(), and updated the invocations
-    in clear_surrogate_id_attribute() and clear_attribute() to throw an
-    exception where they had used to invoke it; also added 2 new '*_MAND_NID'
-    en.pm messages to go with those last 2 methods.
-
-    * Updated _normalize_primary_parent_or_node_ref_attribute_value() and en.pm
-    to remove 2 assertions and 4 associated exception messages that will no
-    longer be triggered, SRT_N_SET_[PP|NREF]_AT_[ONE_CONT|MISS_NID].
-
-    * Updated these 4 methods so that they always run their payload rather than
-    only doing so if the nref-attr value (that was or to be) is an object
-    reference: _[clear|set]_[primary_parent|node_ref]_attribute().
-
-    * Removed function build_lonely_node().  Then merged private function
-    _build_node_normalize_attrs() into its only remaining invoker, private
-    method _build_node_is_child_or_not().
-
-    * Updated private method _assert_in_node_deferrable_constraints() so that it 
-    no longer tests for the Node Id being defined; that is now redundant.  Also, 
-    a related piece of documentation in NodeTypes.pod was updated, to say that 
-    the 'id' attribute now has a constantly applied mandatory constraint.
-
-    * Fixed a bug in _build_node_is_child_or_not() where it only trapped
-    SRT_N_ASDC_CH_N_TOO_FEW_SET exceptions and not the similar
-    SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN exceptions.
-
-    * Fixed a bug in _assert_child_comp_deferrable_constraints() where the 
-    SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN exception was missing a variable value.
-
-    * Updated _build_node_is_child_or_not() so that it always sets the new
-    Node's surrogate id attribute prior to any other non-id/pp attribute; this
-    ensures that if any other attribute settings fail, the error messages are
-    more user friendly.
-
-    * Updated the following 7 methods to not assert their invocant Node is in a
-    Container, and removed their corresponding '*_NOT_IN_CONT' en.pm messages:
-    move_before_sibling(), get_surrogate_id_chain(),
-    find[|_child]_node_by_surrogate_id(), get_relative_surrogate_id(),
-    build[|_child]_node().  Also updated all 15 Node methods that conditionally
-    (based on the Container's presence) set the 'deferrable constraints tested'
-    property to false so they don't test.
-
-    * Merged _get_surrogate_id_chain() into get_surrogate_id_chain().
-
-    * Merged each _get_all_properties() into its partner get_all_properties().
-
-    * Updated the UNDERSTANDING NODE ATTRIBUTE ... section of NodeTypes.pod to
-    remove references to Node states and to say that the mandatory constraint
-    Node Ids is now constantly enforced rather than being deferrable.
-
-    * In Routine.pm, deleted the second CAVEATS paragraph, concerning Nodes that 
-    outlive their host Container; deleted a similar section in the TODO file.
-
-    * Updated the sqlrt_dt_node struct definition in API_C.pod so that the
-    'pp_nref' and 'at_nrefs' members are plain refs/pointers and not unions of
-    pointers and unsigned integers.  This corresponds to the Routine.pm changes.
-
-    * Small test suite update: Updated the 2 make_a_[|child_]node small utility
-    functions in t_SRT_Verbose.pm; folded the set_node_id() and
-    put_in_container() invocations into the new_node() invocation.  No changes
-    in SQL_Routine.t besides the usual upping of the 'used' module versions.
-
-    * These core files had exactly zero changes: EnumTypes.pod, Language.pod,
-    t_SRT_Terse.pm, t_SRT_Abstract.pm.
-
-    * Following all of the above changes, the disk space for all 7 core /lib/SQL
-    files in release 0.60 is 430K, which is 16K (or 4%) less than the 446K used
-    by the same files in release 0.59.  Specifically with the executable
-    function+method code (including spaces and dividers and f+m code comments)
-    in Routine.pm, 0.60 is 82K, which is 7K (or 9%) less than the 89K for 0.59;
-    by line count, 0.60 is 2092 f+m code lines, which is 162 (or 7%) lines less
-    than the 2254 lines of 0.59.
-
-    * For speed comparisions between 0.60 and 0.59, based on 100 iterations of
-    most of the test suite; as we can see, 0.60 performs a bit faster by up to
-    15% or so:
-
-        Version 0.60:
-
-        Benchmark: timing 100 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
-        A_AssDefCon: 13 wallclock secs (12.72 usr +  0.00 sys = 12.72 CPU) @  7.86/s (n=100)
-        A_ConvertToXML_NID:  2 wallclock secs ( 2.38 usr +  0.02 sys =  2.40 CPU) @ 41.67/s (n=100)
-        A_ConvertToXML_SID:  6 wallclock secs ( 6.20 usr +  0.04 sys =  6.24 CPU) @ 16.03/s (n=100)
-        A_MakeAndBreak: 14 wallclock secs (13.35 usr +  0.01 sys = 13.36 CPU) @  7.49/s (n=100)
-        T_AssDefCon: 12 wallclock secs (12.81 usr +  0.01 sys = 12.82 CPU) @  7.80/s (n=100)
-        T_ConvertToXML_NID:  2 wallclock secs ( 2.51 usr +  0.02 sys =  2.53 CPU) @ 39.53/s (n=100)
-        T_ConvertToXML_SID:  7 wallclock secs ( 6.41 usr +  0.03 sys =  6.44 CPU) @ 15.53/s (n=100)
-        T_MakeAndBreak:  7 wallclock secs ( 7.88 usr +  0.00 sys =  7.88 CPU) @ 12.69/s (n=100)
-        V_AssDefCon:  6 wallclock secs ( 5.66 usr +  0.01 sys =  5.67 CPU) @ 17.64/s (n=100)
-        V_ConvertToXML_NID:  1 wallclock secs ( 1.33 usr +  0.00 sys =  1.33 CPU) @ 75.19/s (n=100)
-        V_ConvertToXML_SID:  3 wallclock secs ( 2.97 usr +  0.00 sys =  2.97 CPU) @ 33.67/s (n=100)
-        V_MakeAndBreak:  3 wallclock secs ( 2.95 usr +  0.00 sys =  2.95 CPU) @ 33.90/s (n=100)
-
-        Version 0.59
-
-        Benchmark: timing 100 iterations of A_AssDefCon, A_ConvertToXML_NID, A_ConvertToXML_SID, A_MakeAndBreak, T_AssDefCon, T_ConvertToXML_NID, T_ConvertToXML_SID, T_MakeAndBreak, V_AssDefCon, V_ConvertToXML_NID, V_ConvertToXML_SID, V_MakeAndBreak...
-        A_AssDefCon: 12 wallclock secs (12.81 usr +  0.00 sys = 12.81 CPU) @  7.81/s (n=100)
-        A_ConvertToXML_NID:  2 wallclock secs ( 2.38 usr +  0.01 sys =  2.39 CPU) @ 41.84/s (n=100)
-        A_ConvertToXML_SID:  6 wallclock secs ( 6.31 usr +  0.02 sys =  6.33 CPU) @ 15.80/s (n=100)
-        A_MakeAndBreak: 15 wallclock secs (14.66 usr +  0.00 sys = 14.66 CPU) @  6.82/s (n=100)
-        T_AssDefCon: 13 wallclock secs (13.03 usr +  0.00 sys = 13.03 CPU) @  7.67/s (n=100)
-        T_ConvertToXML_NID:  3 wallclock secs ( 2.54 usr +  0.01 sys =  2.55 CPU) @ 39.22/s (n=100)
-        T_ConvertToXML_SID:  6 wallclock secs ( 6.45 usr +  0.03 sys =  6.48 CPU) @ 15.43/s (n=100)
-        T_MakeAndBreak:  9 wallclock secs ( 9.01 usr +  0.00 sys =  9.01 CPU) @ 11.10/s (n=100)
-        V_AssDefCon:  6 wallclock secs ( 5.70 usr +  0.00 sys =  5.70 CPU) @ 17.54/s (n=100)
-        V_ConvertToXML_NID:  1 wallclock secs ( 1.28 usr +  0.01 sys =  1.29 CPU) @ 77.52/s (n=100)
-        V_ConvertToXML_SID:  3 wallclock secs ( 3.02 usr +  0.00 sys =  3.02 CPU) @ 33.11/s (n=100)
-        V_MakeAndBreak:  4 wallclock secs ( 3.53 usr +  0.01 sys =  3.54 CPU) @ 28.25/s (n=100)
-
-    The RAM usage was roughly the same for both, or slightly less for 0.60.
-
-2005-04-20   Darren Duncan <perl@DarrenDuncan.net>
-
-    * SQL-Routine Release 0.59.
-
-    * New code file versions are: Routine.pm v0.59 and en.pm v0.28.
-
-    * Added new external dependency on Scalar::Util v1.11 (bundled with Perl
-    5.8.x); SQL::Routine now uses its 'weak refs' feature internally at
-    strategic places so that you no longer need to explicitly destroy Containers
-    when you are done with them.  The circular references between SRT Nodes and
-    their Container no longer prevent Perl's standard garbage collection from
-    working when expected, which is when all external references to a Container
-    go away.  This change makes SQL::Routine much more DWIM and easier to use.
-
-    * Updated Routine.pm and Details.pod:  Removed the Container.destroy()
-    method.  Removed the CAVEATS documentation concerning it.  Updated
-    SQL_Routine.t to remove all destroy() invocations, which also reduced the
-    test count by 6 to 35.  Removed the corresponding TODO file item.
-
-    * Updated Routine.pm:  Updated the definitions of 3 Node properties to
-    indicate that they now store weak Perl refs rather than strong ones:
-    'pp_nref', 'at_nrefs', 'container'.  Those 3 properties are all 'upwards' or
-    'parent pointing' references; each has one or more corresponding 'child
-    pointing' properties which remain strong refs.  As such, every conceptual
-    circular reference now has one strong and one weak member.  A total of 5
-    Scalar::Util::weaken() invocations are now used (up from zero): 1 is in
-    Node._set_primary_parent_attribute(); 1 is in Node._set_literal_attribute();
-    3 are in Node.put_in_container(), one per property.
-
-    * Updated Routine.pm and Details.pod and en.pm:  Removed the
-    Node.delete_node() method, which was a no-op routine and never invoked; a
-    SRT Node has always been garbage collected by Perl as is normal.  This
-    method had existed as a place-holder for an eventual C implementation that
-    actually did something, but since a C version is very far away, if it ever
-    comes, this has been removed meanwhile.  Also removed the corresponding
-    en.pm user text message 'SRT_N_DEL_NODE_IN_CONT'.
-
-    * Updated both CREDITS copies regarding Stevan Little's contribution, to add 
-    that he introduced me to Scalar::Util::weaken() last month.
-
-    * Added new CAVEATS item and TODO file item concerning external refs to
-    Nodes whose host Container was garbage collected.
-
-    * Renamed this file to 'Changes' from 'ChangeLog'; the new name is more
-    descriptive to its free-form structure, and more consistent with CPAN (which
-    uses both names but 'Changes' seems to be more common these days).  Also
-    truncated this Changes file to remove all detail entries for releases v0.28
-    thru v0.58; in their place was added a change summary for releases v0.01
-    thru v0.58 that mainly just said what the names and versions of all the
-    predecessor distributions and modules are.
+    * SQL-Routine Release 0.69, containing SQL::Routine 0.69, was released
+    on CPAN.  This is the last release of this distribution and its modules
+    for which they had floating point version numbers, rather than 3-part
+    version numbers.
 
 2005-04-03   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.58, containing SQL::Routine 0.58, was released on
-    CPAN.
+    * SQL-Routine Release 0.58, containing SQL::Routine 0.58, was released
+    on CPAN.
+
+    * These were the current versions cited by the public announcement for
+    SQL-Routine/Rosetta developer release #2.
 
 2005-03-06   Darren Duncan <perl@DarrenDuncan.net>
 
@@ -946,45 +58,46 @@
 
 2004-11-05   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.48, containing SQL::Routine 0.48, was released on
-    CPAN.  This is the first release of SQL::Routine following its merger with
-    SQL::Routine::SkipID.
+    * SQL-Routine Release 0.48, containing SQL::Routine 0.48, was released
+    on CPAN.  This is the first release of SQL::Routine following its
+    merger with SQL::Routine::SkipID.
 
 2004-11-02   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine-Castaways Release 0.33, containing SQL::Routine::SkipID 0.33,
-    was released on CPAN; this is the last release of the SQL-Routine-Castaways
-    distribution.  This is the last release of SQL::Routine::SkipID prior to its
-    merger with SQL::Routine.
+    * SQL-Routine-Castaways Release 0.33, containing SQL::Routine::SkipID
+    0.33, was released on CPAN; this is the last release of the
+    SQL-Routine-Castaways distribution.  This is the last release of
+    SQL::Routine::SkipID prior to its merger with SQL::Routine.
 
 2004-11-01   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.47, containing SQL::Routine 0.47, was released on
-    CPAN.  This is the last release of SQL::Routine prior to its merger with
-    SQL::Routine::SkipID.  This is the first release of SQL::Routine following
-    its merger with SQL::Routine::ByTree.
+    * SQL-Routine Release 0.47, containing SQL::Routine 0.47, was released
+    on CPAN.  This is the last release of SQL::Routine prior to its merger
+    with SQL::Routine::SkipID.  This is the first release of SQL::Routine
+    following its merger with SQL::Routine::ByTree.
 
 2004-10-29   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.46, containing SQL::Routine 0.46, was released on
-    CPAN.  This is the last release of SQL::Routine prior to its merger with
-    SQL::Routine::ByTree.
+    * SQL-Routine Release 0.46, containing SQL::Routine 0.46, was released
+    on CPAN.  This is the last release of SQL::Routine prior to its merger
+    with SQL::Routine::ByTree.
 
 2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-Routine Release 0.43, containing SQL::Routine 0.43, was released on
-    CPAN; this is the first release of the SQL-Routine distribution.  This is
-    the first release of any distribution to contain SQL::Routine, which was
-    renamed from SQL::SyntaxModel.  This is the first release of this module
-    following its official registration on the Perl 5 Module List.
+    * SQL-Routine Release 0.43, containing SQL::Routine 0.43, was released
+    on CPAN; this is the first release of the SQL-Routine distribution. 
+    This is the first release of any distribution to contain SQL::Routine,
+    which was renamed from SQL::SyntaxModel.  This is the first release of
+    this module following its official registration on the Perl 5 Module
+    List.
 
-    * SQL-Routine-Castaways Release 0.31, containing SQL::Routine::ByTree 0.31
-    and SQL::Routine::SkipID 0.31, was released on CPAN; this is the first
-    release of the SQL-Routine-Castaways distribution.  This is the last release
-    of SQL::Routine::ByTree prior to its merger with SQL::Routine.  This is the
-    first release of any distribution to contain SQL::Routine::ByTree or
-    SQL::Routine::SkipID; they were renamed from SQL::SyntaxModel::ByTree and
-    SQL::SyntaxModel::SkipID respectively.
+    * SQL-Routine-Castaways Release 0.31, containing SQL::Routine::ByTree
+    0.31 and SQL::Routine::SkipID 0.31, was released on CPAN; this is the
+    first release of the SQL-Routine-Castaways distribution.  This is the
+    last release of SQL::Routine::ByTree prior to its merger with
+    SQL::Routine.  This is the first release of any distribution to contain
+    SQL::Routine::ByTree or SQL::Routine::SkipID; they were renamed from
+    SQL::SyntaxModel::ByTree and SQL::SyntaxModel::SkipID respectively.
 
 2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
 
@@ -1013,19 +126,19 @@
 
 2004-09-01   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-SyntaxModel-ByTree Release 0.30, containing SQL::SyntaxModel::ByTree
-    0.30, was released on CPAN; this is the last release of the
-    SQL-SyntaxModel-ByTree distribution.  This is the last release of any
-    distribution to contain SQL::SyntaxModel::ByTree.  This is the first release
-    for this distribution and module where they both explicitly have matching
-    version numbers.
+    * SQL-SyntaxModel-ByTree Release 0.30, containing
+    SQL::SyntaxModel::ByTree 0.30, was released on CPAN; this is the last
+    release of the SQL-SyntaxModel-ByTree distribution.  This is the last
+    release of any distribution to contain SQL::SyntaxModel::ByTree.  This
+    is the first release for this distribution and module where they both
+    explicitly have matching version numbers.
 
-    * SQL-SyntaxModel-SkipID Release 0.30, containing SQL::SyntaxModel::SkipID
-    0.30, was released on CPAN; this is the last release of the
-    SQL-SyntaxModel-SkipID distribution.  This is the last release of any
-    distribution to contain SQL::SyntaxModel::SkipID.  This is the first release
-    for this distribution and module where they both explicitly have matching
-    version numbers.
+    * SQL-SyntaxModel-SkipID Release 0.30, containing
+    SQL::SyntaxModel::SkipID 0.30, was released on CPAN; this is the last
+    release of the SQL-SyntaxModel-SkipID distribution.  This is the last
+    release of any distribution to contain SQL::SyntaxModel::SkipID.  This
+    is the first release for this distribution and module where they both
+    explicitly have matching version numbers.
 
 2004-08-16   Darren Duncan <perl@DarrenDuncan.net>
 
@@ -1039,15 +152,20 @@
     released on CPAN.  This is the last release for this distribution and
     module where they both do not explicitly have matching version numbers.
 
+    * These were the current versions cited by the public announcement for
+    Rosetta/SQL-SyntaxModel developer release #1.
+
 2004-06-29   Darren Duncan <perl@DarrenDuncan.net>
 
-    * SQL-SyntaxModel-ByTree Release 0.29, containing SQL::SyntaxModel::ByTree
-    0.14, was released on CPAN.  This is the last release for this distribution
-    and module where they both do not explicitly have matching version numbers.
+    * SQL-SyntaxModel-ByTree Release 0.29, containing
+    SQL::SyntaxModel::ByTree 0.14, was released on CPAN.  This is the last
+    release for this distribution and module where they both do not
+    explicitly have matching version numbers.
 
-    * SQL-SyntaxModel-SkipID Release 0.29, containing SQL::SyntaxModel::SkipID
-    0.14, was released on CPAN.  This is the last release for this distribution
-    and module where they both do not explicitly have matching version numbers.
+    * SQL-SyntaxModel-SkipID Release 0.29, containing
+    SQL::SyntaxModel::SkipID 0.14, was released on CPAN.  This is the last
+    release for this distribution and module where they both do not
+    explicitly have matching version numbers.
 
 2004-03-22   Darren Duncan <perl@DarrenDuncan.net>
 
@@ -1055,28 +173,29 @@
     released on CPAN; this is the first release of the SQL-SyntaxModel
     distribution.
 
-    * SQL-SyntaxModel-ByTree Release 0.28, containing SQL::SyntaxModel::ByTree
-    0.13, was released on CPAN; this is the first release of the
-    SQL-SyntaxModel-ByTree distribution.
+    * SQL-SyntaxModel-ByTree Release 0.28, containing
+    SQL::SyntaxModel::ByTree 0.13, was released on CPAN; this is the first
+    release of the SQL-SyntaxModel-ByTree distribution.
 
-    * SQL-SyntaxModel-SkipID Release 0.28, containing SQL::SyntaxModel::SkipID
-    0.13, was released on CPAN; this is the first release of the
-    SQL-SyntaxModel-SkipID distribution.
+    * SQL-SyntaxModel-SkipID Release 0.28, containing
+    SQL::SyntaxModel::SkipID 0.13, was released on CPAN; this is the first
+    release of the SQL-SyntaxModel-SkipID distribution.
 
 2004-03-21   Darren Duncan <perl@DarrenDuncan.net>
 
     * Rosetta Release 0.27, containing SQL::SyntaxModel 0.14 and
     SQL::SyntaxModel::ByTree 0.12 and SQL::SyntaxModel::SkipID 0.12, was
-    released on CPAN.  This is the last release of the Rosetta distribution to
-    contain any version of those 3 modules.
+    released on CPAN.  This is the last release of the Rosetta distribution
+    to contain any version of those 3 modules.
 
 2003-12-21   Darren Duncan <perl@DarrenDuncan.net>
 
     * Rosetta Release 0.20, containing SQL::SyntaxModel 0.08 and
     SQL::SyntaxModel::ByTree 0.08 and SQL::SyntaxModel::SkipID 0.08, was
-    released on CPAN.  This is the first release of any distribution to contain
-    SQL::SyntaxModel::ByTree, which was split off from SQL::SyntaxModel; this is
-    the first release of SQL::SyntaxModel following that split.
+    released on CPAN.  This is the first release of any distribution to
+    contain SQL::SyntaxModel::ByTree, which was split off from
+    SQL::SyntaxModel; this is the first release of SQL::SyntaxModel
+    following that split.
 
 2003-12-18   Darren Duncan <perl@DarrenDuncan.net>
 
@@ -1090,95 +209,99 @@
     * Rosetta Release 0.18, containing SQL::SyntaxModel 0.06 and
     SQL::SyntaxModel::SkipID 0.06, was released on CPAN.  This is the first
     release of any distribution to contain either SQL::SyntaxModel or
-    SQL::SyntaxModel::SkipID, which are the results of splitting up the renamed
-    SQL::ObjectModel.
+    SQL::SyntaxModel::SkipID, which are the results of splitting up the
+    renamed SQL::ObjectModel.
 
 2003-09-16   Darren Duncan <perl@DarrenDuncan.net>
 
-    * Rosetta Release 0.17, containing SQL::ObjectModel 0.05, was released on
-    CPAN.  This is the last release of any distribution to contain
-    SQL::ObjectModel; its subsequent release has it renamed and split in two.
+    * Rosetta Release 0.17, containing SQL::ObjectModel 0.05, was released
+    on CPAN.  This is the last release of any distribution to contain
+    SQL::ObjectModel; its subsequent release has it renamed and split in
+    two.
 
 2003-06-11   Darren Duncan <perl@DarrenDuncan.net>
 
-    * Rosetta Release 0.13, containing SQL::ObjectModel 0.01, was released on
-    CPAN.  This is the first release of any distribution to contain
-    SQL::ObjectModel; it is the result of merging 3 pre-existing and renamed
-    modules, Rosetta::Schema::DataType and Rosetta::Schema::Table and
-    Rosetta::Schema::View.
+    * Rosetta Release 0.13, containing SQL::ObjectModel 0.01, was released
+    on CPAN.  This is the first release of any distribution to contain
+    SQL::ObjectModel; it is the result of merging 3 pre-existing and
+    renamed modules, Rosetta::Schema::DataType and Rosetta::Schema::Table
+    and Rosetta::Schema::View.
 
 2003-06-10   Darren Duncan <perl@DarrenDuncan.net>
 
     * Rosetta Release 0.12, containing Rosetta::Schema::DataType 0.021 and
-    Rosetta::Schema::Table 0.011 and Rosetta::Schema::View 0.012, was released
-    on CPAN.  This is the last release of those 3 modules prior to their
-    three-way merger into SQL::ObjectModel.
+    Rosetta::Schema::Table 0.011 and Rosetta::Schema::View 0.012, was
+    released on CPAN.  This is the last release of those 3 modules prior to
+    their three-way merger into SQL::ObjectModel.
 
 2003-03-08   Darren Duncan <perl@DarrenDuncan.net>
 
     * Rosetta Release 0.06, containing Rosetta::Schema::DataType 0.02 and
-    Rosetta::Schema::Table 0.01 and Rosetta::Schema::View 0.01, was released on
-    CPAN.  This is the first release of any distribution to contain either
-    Rosetta::Schema::Table or Rosetta::Schema::View.
+    Rosetta::Schema::Table 0.01 and Rosetta::Schema::View 0.01, was
+    released on CPAN.  This is the first release of any distribution to
+    contain either Rosetta::Schema::Table or Rosetta::Schema::View.
 
 2003-03-04   Darren Duncan <perl@DarrenDuncan.net>
 
     * Rosetta Release 0.05, containing Rosetta::Schema::DataType 0.01, was
-    released on CPAN.  This is the first release of any distribution to contain
-    Rosetta::Schema::DataType.  This is the first release of any distribution
-    for which some of the existing work that became the SQL-Routine distribution
-    was in the form of executable code, and not just design documentation.
+    released on CPAN.  This is the first release of any distribution to
+    contain Rosetta::Schema::DataType.  This is the first release of any
+    distribution for which some of the existing work that became the
+    SQL-Routine distribution was in the form of executable code, and not
+    just design documentation.
 
 2003-02-10   Darren Duncan <perl@DarrenDuncan.net>
 
-    * Rosetta Release 0.04 was released on CPAN.  This is the last release of
-    any distribution for which all of the existing work that became the
-    SQL-Routine distribution was purely in the form of design documentation,
-    without executable code of any kind.
+    * Rosetta Release 0.04 was released on CPAN.  This is the last release
+    of any distribution for which all of the existing work that became the
+    SQL-Routine distribution was purely in the form of design
+    documentation, without executable code of any kind.
 
 2003-01-27   Darren Duncan <perl@DarrenDuncan.net>
 
-    * Rosetta Release 0.02 was released on CPAN; this is the first release of
-    the Rosetta distribution.  Early versions of the design documentation that
-    became the SQL-Routine distribution were included.
+    * Rosetta Release 0.02 was released on CPAN; this is the first release
+    of the Rosetta distribution.  Early versions of the design
+    documentation that became the SQL-Routine distribution were included.
 
 2003-01-05   Darren Duncan <perl@DarrenDuncan.net>
 
-    * DBIx-Portable Release 0.01 was released on CPAN; this is the only release
-    of the DBIx-Portable distribution.  This is the first release of any
-    distribution to contain design documentation that became the SQL-Routine
-    distribution.
+    * DBIx-Portable Release 0.01 was released on CPAN; this is the only
+    release of the DBIx-Portable distribution.  This is the first release
+    of any distribution to contain design documentation that became the
+    SQL-Routine distribution.
 
 2002-11-12   Darren Duncan <perl@DarrenDuncan.net>
 
     * Began development on the modules which became the SQL-Routine
-    distribution as their own entity that is separate from my application, for
-    open-source distribution on CPAN.  The modules were to comprise an
+    distribution as their own entity that is separate from my application,
+    for open-source distribution on CPAN.  The modules were to comprise an
     RDBMS-generic DB framework for any application to use.
 
     * Modules based on a template created by h2xs 1.18.
 
 2002-07-28
 
-    * Posted the first significant update to the second prototype, which added
-    an index or cache for data that was expensive to calculate for each page
-    request, and involved rewriting about a fourth of the perl code.
+    * Posted the first significant update to the second prototype, which
+    added an index or cache for data that was expensive to calculate for
+    each page request, and involved rewriting about a fourth of the perl
+    code.
 
 2002-06-07
 
     * Posted to my website the second public prototype demo of the new
-    self-proprietary database driven application, whose database schema, user
-    interface, feature set, and Perl application code was almost completely
-    rewritten. The new version explicitly had separate modules for database
-    communication and the web interface logic, with MySQL-specific code and
-    database generic or data dictionary code in separate files, and separate
-    files for parts of the web interface.  The program used the same generic
-    CPAN modules as in the first prototype, DBI/MySQL and CGI::Portable.
+    self-proprietary database driven application, whose database schema,
+    user interface, feature set, and Perl application code was almost
+    completely rewritten. The new version explicitly had separate modules
+    for database communication and the web interface logic, with
+    MySQL-specific code and database generic or data dictionary code in
+    separate files, and separate files for parts of the web interface.  The
+    program used the same generic CPAN modules as in the first prototype,
+    DBI/MySQL and CGI::Portable.
 
-    * This is when I started writing self-contained code components that were
-    explicitly designed to enable external code that used them to work
-    seamlessly on multiple database products, and hence 2002 is the start of my
-    declared copyright date range for SQL::Routine.
+    * This is when I started writing self-contained code components that
+    were explicitly designed to enable external code that used them to work
+    seamlessly on multiple database products, and hence 2002 is the start
+    of my declared copyright date range for SQL::Routine.
 
 2001-11-24
 
@@ -1187,15 +310,16 @@
 2001-07-12
 
     * Posted to my website the first public prototype demo of a new
-    self-proprietary database driven application, which is like a cross between
-    a multimedia metadata catalogue and a repository for historical or
-    genealogical data.  This application contained the first prototypes of code
-    that ended up in these modules.  All of this application's code, for
-    database communication and web interface logic, was situated in a single
-    module, with the rest of the program being more generic CPAN modules like
-    DBI (and DBD for MySQL) and CGI::Portable.
+    self-proprietary database driven application, which is like a cross
+    between a multimedia metadata catalogue and a repository for historical
+    or genealogical data.  This application contained the first prototypes
+    of code that ended up in these modules.  All of this application's
+    code, for database communication and web interface logic, was situated
+    in a single module, with the rest of the program being more generic
+    CPAN modules like DBI (and DBD for MySQL) and CGI::Portable.
 
 2000-05-17
 
-    * Requested MySQL database privileges on my web host so I have something to
-    start developing, testing and deploying database driven applications on.
+    * Requested MySQL database privileges on my web host so I have
+    something to start developing, testing and deploying database driven
+    applications on.
