@@ -1,6 +1,45 @@
                              SQL-Routine
 ----------------------------------------------------------------------
 
+2005-09-14   Darren Duncan <perl@DarrenDuncan.net>
+
+    * SQL-Routine Release 0.70.2 (SVN r813).
+
+    * New code file versions are: Routine.pm 0.70.2.
+
+    * Merged Details.pod into Routine.pm:  The Routine.pm main
+    documentation section BRIEF FUNCTION AND METHOD LIST was deleted, and
+    all of the significant content of Details.pod was placed in the same
+    location.  These 17 main documentation sections were moved from
+    Details.pod to Routine.pm: MATTERS OF PORTABILITY AND FEATURES,
+    STRUCTURE, RELATING INTERFACE AND STORAGE CLASSES, ABOUT NODE GROUPS,
+    "FAULT TOLERANCE, DATA INTEGRITY, AND CONCURRENCY", NODE IDENTITY
+    ATTRIBUTES, CONSTRUCTOR WRAPPER FUNCTIONS, CONTAINER CONSTRUCTOR
+    FUNCTIONS, CONTAINER OBJECT METHODS, NODE CONSTRUCTOR FUNCTIONS, NODE
+    OBJECT METHODS, GROUP CONSTRUCTOR FUNCTIONS, GROUP OBJECT METHODS,
+    CONTAINER OR NODE METHODS FOR DEBUGGING, CONTAINER OR NODE FUNCTIONS
+    AND METHODS FOR RAPID DEVELOPMENT, INFORMATION FUNCTIONS, OLDER
+    DOCUMENTATION.  These 5 remaining Details.pod documentation sections
+    were redundant and simply deleted with their now superfluous file:
+    NAME, DESCRIPTION, SEE ALSO, AUTHOR, LICENSE AND COPYRIGHT.  Removed
+    all references to Details.pod in all other distribution files.
+
+    * Updated Routine.pm and Language.pod to remove all references to
+    possible versions of this library that are written in other languages,
+    such as C or Parrot/Pugs/Perl 6.  A C version is unlikely to ever
+    happen, or by that time these references would be severely out of date,
+    and either way they are clutter now.  The Perl 6 version is happening
+    now, but since that is a clone of the Perl 5 version, there's no point
+    for its documentation to refer to itself as a potential future project.
+    In Routine.pm, removed all the code comments for NodeStorage property
+    declarations that specify how they would be represented in a C version
+    of SQL::Routine.  In Routine.pm, removed the whole main documentation
+    section OLDER DOCUMENTATION, whose sole content was details about C
+    implementation, and mentions of Perl 6 etc.  In Language.pod, updated
+    the NODE ATTRIBUTE TYPES intro paragraph to remove the mention of C
+    versions, as well as the mention of there being separate accessor
+    methods for each attribute type (not true since r0.68).
+
 2005-09-12   Darren Duncan <perl@DarrenDuncan.net>
 
     * SQL-Routine Release 0.70.1 (SVN r808).

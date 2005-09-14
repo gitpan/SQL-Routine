@@ -7,7 +7,7 @@ use version;
 plan( 'tests' => 27 );
 
 use_ok( 'SQL::Routine' );
-is( $SQL::Routine::VERSION, qv('0.70.1'), "SQL::Routine is the correct version" );
+is( $SQL::Routine::VERSION, qv('0.70.2'), "SQL::Routine is the correct version" );
 
 use_ok( 'SQL::Routine::L::en' );
 is( $SQL::Routine::L::en::VERSION, qv('0.38.1'), "SQL::Routine::L::en is the correct version" );

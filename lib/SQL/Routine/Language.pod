@@ -9,8 +9,7 @@ SQL::Routine::Language - What language or grammar SQL::Routine speaks
 SQL::Routine contains SQL schemas and queries, represented as a tree of
 atomic tokens; it is structurally like an abstract syntax tree or an XML
 DOM, but one that only accepts, respectively, a specific source language or
-XML schema.  See L<SQL::Routine> and L<SQL::Routine::Details> for more
-details.
+XML schema.  See L<SQL::Routine> for more details.
 
 The module's API and code make it look like a generic tree, composed of
 related Nodes.  The restrictions for which attributes each Node can have,
@@ -454,12 +453,10 @@ decides. I<Note that this idea may need to be thought out further.>
 
 =head1 NODE ATTRIBUTE TYPES
 
-There are 4 major SQL::Routine Node attribute types, and a Node object
-provides separate accessor methods for those attributes of each type (a
-consistency held between the Perl and C versions).  Each major type may be
-further sub-divided into minor types, which are tested for by the above
+There are 4 major SQL::Routine Node attribute types.  Each major type may
+be further sub-divided into minor types, which are tested for by the above
 methods.  Each instance of a Node attribute corresponds to one XML tag
-attribute, if a Node object were an XML tag.  The types are:
+attribute, if a Node object were an XML tag.  The major types are:
 
 =over 4
 

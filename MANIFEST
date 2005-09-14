@@ -2,7 +2,6 @@ Changes
 GPL
 INSTALL
 lib/SQL/Routine.pm
-lib/SQL/Routine/Details.pod
 lib/SQL/Routine/EnumTypes.pod
 lib/SQL/Routine/L/en.pm
 lib/SQL/Routine/Language.pod
