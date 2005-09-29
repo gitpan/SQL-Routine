@@ -1,163 +1,262 @@
 #!perl
 use 5.008001; use utf8; use strict; use warnings;
 
-package SQL::Routine;
-use version; our $VERSION = qv('0.70.2');
-
-use Scalar::Util;
 use only 'Locale::KeyedText' => '1.6.0-';
 
+package SQL::Routine;
+use version; our $VERSION = qv('0.70.3');
+
+use List::Util qw( first );
+
 ######################################################################
 ######################################################################
 
-# Names of properties for objects of the SQL::Routine::Container (interface) class are declared here:
-my $CPROP_STORAGE = 'storage'; # the SQL::Routine::ContainerStorage object that we shelter
-    # This is a strong Perl ref so a ContainerStorage will persist as long as any Container interface of it.
-my $CPROP_AUTO_ASS_DEF_CON = 'auto_ass_def_con'; # boolean - false by def
+# Names of properties for objects of the SQL::Routine::Container
+    # (interface) class are declared here:
+my $CPROP_STORAGE = 'storage';
+    # the SQL::Routine::ContainerStorage object that we shelter
+    # This is a strong Perl ref so a ContainerStorage will persist as long
+    # as any Container interface of it.
+my $CPROP_AUTO_ASS_DEF_CON = 'auto_ass_def_con';
+    # boolean - false by def
     # When this flag is true, SQL::Routine's build_*() methods will
-    # automatically invoke assert_deferrable_constraints() on each Node newly created 
-    # by way of this Container interface (or child Node interfaces), prior to returning it.  The use of this method
-    # helps isolate bad input bugs faster by flagging them closer to when they were
-    # created; it is especially useful with the build*tree() methods.
-my $CPROP_AUTO_SET_NIDS = 'auto_set_nids'; # boolean - false by def
-    # When this flag is true, SQL::Routine will automatically generate and set a Node Id for 
-    # a Node being created for this Container interface when there is no explicit Id given as a Node.new() argument.
-    # When this flag is false, a missing Node Id argument will cause an exception to be raised instead.
-my $CPROP_MAY_MATCH_SNIDS = 'may_match_snids'; # boolean - false by def
-    # When this flag is true, SQL::Routine will accept a wider range of input values when setting 
-    # Node ref attribute values, beyond Node object references and integers representing Node ids to 
-    # look up; if other types of values are provided, SQL::Routine will try to look up Nodes based 
-    # on their Surrogate Id attribute, usually 'si_name', before giving up on finding a Node to link.
-my $CPROP_EXPLICIT_GROUPS = 'explicit_groups'; # hash ("Group",Group) - 
-    # A list of refs to any Groups associated with this Container interface that were explicitly defined by users.
-    # These Perl refs are weak-refs so an explicit Group disappears when all external refs go away.
-my $CPROP_DEFAULT_GROUP = 'default_group'; # the SQL::Routine::Group object imposing default mutex for edited Nodes
-    # This is a strong Perl ref so a Container's default Group lasts for as long as the Container does; 
-    # only the default Group has a weak Perl ref to its Container, to avoid circular refs; other groups have strong refs back.
-    # Note that this Group may never be exposed to the public like the explicit Groups, or they may mess with it.
+    # automatically invoke assert_deferrable_constraints() on each Node
+    # newly created by way of this Container interface (or child Node
+    # interfaces), prior to returning it.  The use of this method helps
+    # isolate bad input bugs faster by flagging them closer to when they
+    # were created; it is especially useful with the build*tree() methods.
+my $CPROP_AUTO_SET_NIDS = 'auto_set_nids';
+    # boolean - false by def
+    # When this flag is true, SQL::Routine will automatically generate and
+    # set a Node Id for a Node being created for this Container interface
+    # when there is no explicit Id given as a Node.new() argument.
+    # When this flag is false, a missing Node Id argument will cause an
+    # exception to be raised instead.
+my $CPROP_MAY_MATCH_SNIDS = 'may_match_snids';
+    # boolean - false by def
+    # When this flag is true, SQL::Routine will accept a wider range of
+    # input values when setting Node ref attribute values, beyond Node
+    # object references and integers representing Node ids to
+    # look up; if other types of values are provided, SQL::Routine will try
+    # to look up Nodes based on their Surrogate Id attribute,
+    # usually 'si_name', before giving up on finding a Node to link.
+my $CPROP_EXPLICIT_GROUPS = 'explicit_groups';
+    # hash ("Group",Group) -
+    # A list of refs to any Groups associated with this Container interface
+    # that were explicitly defined by users.
+    # These Perl refs are weak-refs so an explicit Group disappears when
+    # all external refs go away.
+my $CPROP_DEFAULT_GROUP = 'default_group';
+    # the SQL::Routine::Group object imposing default mutex for edited
+    # Nodes.  This is a strong Perl ref so a Container's default Group
+    # lasts for as long as the Container does;
+    # only the default Group has a weak Perl ref to its Container, to avoid
+    # circular refs; other groups have strong refs back.
+    # Note that this Group may never be exposed to the public like the
+    # explicit Groups, or they may mess with it.
 
-# Names of properties for objects of the SQL::Routine::ContainerStorage class are declared here:
-my $CSPROP_ALL_NODES = 'all_nodes'; # hash of NodeStorage refs - find any NodeStorage by its node_id quickly
-my $CSPROP_PSEUDONODES = 'pseudonodes'; # hash of arrays of NodeStorage refs
-    # This property is for remembering the insert order of Nodes having hardwired pseudonode parents
-my $CSPROP_NEXT_FREE_NID = 'next_free_nid'; # uint - next free node id
-    # Value is one higher than the highest NodeStorage ID that is or was in use by a NodeStorage in this ContainerStorage.
-    # This value can never be decremented during a ContainerStorage's life, or edited by external code.
-my $CSPROP_EDIT_COUNT = 'edit_count'; # uint - count of distinct edits to this ContainerStorage's NodeStorage set
-    # Value is zero for brand new ContainerStorage, is inc by 1 for each time a NodeStorage is edited, added, deleted.
-    # Actual value isn't important; simply whether it has changed or not between two arbitrary 
-    # samplings is what's important; the sampler knows something changed since they last sampled.
-    # This value can never be decremented during a ContainerStorage's life, or edited by external code.
-my $CSPROP_DEF_CON_TESTED = 'def_con_tested'; # sint - what 'edit_count' was when def con last success
-    # When this property is equal to the 'edit_count' property, there have been no changes to the Nodes 
-    # in this ContainerStorage since the last time assert_deferrable_constraints() passed its tests, 
-    # and so the current Nodes are still valid.  It is used internally by 
-    # assert_deferrable_constraints() to make code faster by avoiding un-necessary 
-    # repeated tests from multiple external ContainerStorage.assert_deferrable_constraints() calls.
-    # It is set to negative-one (-1) on a new empty ContainerStorage, and is only ever updated 
-    # by ContainerStorage.assert_deferrable_constraints() following a pass of the full test suite.
+# Names of properties for objects of the SQL::Routine::ContainerStorage
+    # class are declared here:
+my $CSPROP_ALL_NODES = 'all_nodes';
+    # hash of NodeStorage refs - find any NodeStorage by its node_id
+    # quickly
+my $CSPROP_PSEUDONODES = 'pseudonodes';
+    # hash of arrays of NodeStorage refs
+    # This property is for remembering the insert order of Nodes having
+    # hardwired pseudonode parents
+my $CSPROP_NEXT_FREE_NID = 'next_free_nid';
+    # uint - next free node id
+    # Value is one higher than the highest NodeStorage ID that is or was in
+    # use by a NodeStorage in this ContainerStorage.
+    # This value can never be decremented during a ContainerStorage's life,
+    # or edited by external code.
+my $CSPROP_EDIT_COUNT = 'edit_count';
+    # uint - count of distinct edits to this ContainerStorage's NodeStorage
+    # set.  Value is zero for brand new ContainerStorage, is inc by 1 for
+    # each time a NodeStorage is edited, added, deleted.
+    # Actual value isn't important; simply whether it has changed or not
+    # between two arbitrary samplings is what's important; the sampler
+    # knows something changed since they last sampled.
+    # This value can never be decremented during a ContainerStorage's life,
+    # or edited by external code.
+my $CSPROP_DEF_CON_TESTED = 'def_con_tested';
+    # sint - what 'edit_count' was when def con last success
+    # When this property is equal to the 'edit_count' property, there have
+    # been no changes to the Nodes in this ContainerStorage since
+    # the last time assert_deferrable_constraints() passed its tests,
+    # and so the current Nodes are still valid.  It is used internally by
+    # assert_deferrable_constraints() to make code faster by avoiding
+    # un-necessary repeated tests from multiple external
+    # ContainerStorage.assert_deferrable_constraints() calls.  It is set to
+    # negative-one (-1) on a new empty ContainerStorage, and is only ever
+    # updated by ContainerStorage.assert_deferrable_constraints() following
+    # a pass of the full test suite.
     # This value can never be edited by external code.
-#my $CSPROP_CURR_NODE = 'curr_node'; # ref to a NodeStorage; used when "streaming" to or from XML
-    # I may instead make a new inner class for this, and there can be several of these 
-    # per container, such as if multiple streams are working in different areas at once.
-# To do: have attribute to indicate an edit in progress 
+#my $CSPROP_CURR_NODE = 'curr_node';
+    # ref to a NodeStorage; used when "streaming" to or from XML
+    # I may instead make a new inner class for this, and there can be
+    # several of these per container, such as if multiple
+    # streams are working in different areas at once.
+# To do: have attribute to indicate an edit in progress
     # or that there was a failure resulting in inconsistent data;
-    # this may be set by a method which partly implements a data change 
+    # this may be set by a method which partly implements a data change
     # which is not backed out of, before that function throws an exception;
-    # this property may best just be inside the thrown Locale::KeyedText object;
-    # OTOH, if users have coarse-grained locks on Containers for threads, we could have a property,
-    # since a call to an editing method would check and clear that before the thread releases lock
+    # this property may best just be inside the thrown Locale::KeyedText
+    # object; OTOH, if users have coarse-grained locks on
+    # Containers for threads, we could have a property,
+    # since a call to an editing method would check and clear that before
+    # the thread releases lock
 
-# Names of properties for objects of the SQL::Routine::Node (interface) class are declared here:
-my $NPROP_STORAGE = 'storage'; # the SQL::Routine::NodeStorage object that we interface for
-    # This Perl ref is a weak-ref so wrapper doesn't prevent auto-destruct of a NodeStorage by its existence
-my $NPROP_CONTAINER = 'container'; # ref to Container interface this Node interface lives in
-    # This is a strong Perl ref so a model will last as long as any external ref to a Container or Node or Group interface.
+# Names of properties for objects of the SQL::Routine::Node (interface)
+    # class are declared here:
+my $NPROP_STORAGE = 'storage';
+    # the SQL::Routine::NodeStorage object that we interface for
+    # This Perl ref is a weak-ref so wrapper doesn't prevent auto-destruct
+    # of a NodeStorage by its existence
+my $NPROP_CONTAINER = 'container';
+    # ref to Container interface this Node interface lives in
+    # This is a strong Perl ref so a model will last as long as any
+    # external ref to a Container or Node or Group interface.
 
-# Names of properties for objects of the SQL::Routine::NodeStorage class are declared here:
-my $NSPROP_CONSTOR = 'constor'; # ref to ContainerStorage this NodeStorage lives in
-    # These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-my $NSPROP_NODE_TYPE = 'node_type'; # str (enum) - what type of NodeStorage this is, can not change once set
-    # The NodeStorage type is the only property which absolutely can not change, and is set when object created.
-    # (All other NodeStorage properties start out undefined or false, and are set separately from object creation.)
-my $NSPROP_NODE_ID = 'node_id'; # uint - unique identifier attribute for this node within container+type
+# Names of properties for objects of the SQL::Routine::NodeStorage class
+    # are declared here:
+my $NSPROP_CONSTOR = 'constor';
+    # ref to ContainerStorage this NodeStorage lives in
+    # These Perl refs are weak-refs since they point 'upwards' to 'parent'
+    # objects.
+my $NSPROP_NODE_TYPE = 'node_type';
+    # str (enum) - what type of NodeStorage this is, can not change once
+    # set.  The NodeStorage type is the only property which absolutely can
+    # not change, and is set when object created.
+    # (All other NodeStorage properties start out undefined or false, and
+    # are set separately from object creation.)
+my $NSPROP_NODE_ID = 'node_id';
+    # uint - unique identifier attribute for this node within
+    # container+type
     # This property corresponds to a NodeStorage attribute named 'id'.
-my $NSPROP_PP_NSREF = 'pp_nsref'; # NodeStorage - special NodeStorage attr which points to primary-parent NodeStorage in the same ContainerStorage
-    # These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-    # This property is analagous to a non-existing AT_NSREFS element whose name is "pp".
-    # When converting to XML, this "pp" attribute won't become an XML attr (redundant)
-my $NSPROP_AT_LITERALS = 'at_literals'; # hash (enum,lit) - attrs of NodeStorage which are non-enum, non-id literal values
-my $NSPROP_AT_ENUMS = 'at_enums'; # hash (enum,enum) - attrs of NodeStorage which are enumerated values
-my $NSPROP_AT_NSREFS = 'at_nsrefs'; # hash (enum,NodeStorage) - attrs of NodeStorage which point to other Nodes in the same ContainerStorage
-    # These Perl refs are weak-refs since they point 'upwards' to 'parent' objects.
-my $NSPROP_PRIM_CHILD_NSREFS = 'prim_child_nsrefs'; # array - list of refs to other Nodes having actual refs to this one
-    # We use this to reciprocate actual refs from the PP_NSREF property of other Nodes to us.
-    # When converting to XML, only child Nodes linked through PRIM_CHILD_NSREFS are rendered.
-    # Every NodeStorage in this list is guaranteed to appear in this list exactly once.
-my $NSPROP_LINK_CHILD_NSREFS = 'link_child_nsrefs'; # array - list of refs to other Nodes having actual refs to this one
-    # We use this to reciprocate actual refs from the AT_NSREFS property of other Nodes to us.
-    # When converting to XML, only child Nodes linked through PRIM_CHILD_NSREFS are rendered.
-    # Each NodeStorage in this list may possibly appear in this list more than once.
-    # It is important to ensure that if a NodeStorage links to us multiple times (via multiple AT_NSREFS) 
-    # then we include the other NodeStorage in our child list just as many times; eg: 2 here means 2 back; 
-    # however, when rendering to XML, we only render a NodeStorage once, and not as many times as linked; 
-    # it is also possible that we may never be put in this situation from real-world usage.
-    # Note that in the above situation, a normalized child list would have the above two links sitting 
-    # adjacent to each other; however, calls to set_attribute() won't do this, but rather 
-    # append new links to the end of the list.  In the interest of simplicity, any method that wants to 
-    # change the order of a child list should also normalize any multiple same-child occurrances.
-my $NSPROP_ATT_WRITE_BLOCKS = 'att_write_blocks'; # hash ("Group",Group) - 
+my $NSPROP_PP_NSREF = 'pp_nsref';
+    # NodeStorage - special NodeStorage attr which points to primary-parent
+    # NodeStorage in the same ContainerStorage
+    # These Perl refs are weak-refs since they point 'upwards' to 'parent'
+    # objects.  This property is analagous to a non-existing AT_NSREFS
+    # element whose name is "pp".  When converting to XML, this "pp"
+    # attribute won't become an XML attr (redundant)
+my $NSPROP_AT_LITERALS = 'at_literals';
+    # hash (enum,lit) - attrs of NodeStorage which are non-enum, non-id
+    # literal values
+my $NSPROP_AT_ENUMS = 'at_enums';
+    # hash (enum,enum) - attrs of NodeStorage which are enumerated values
+my $NSPROP_AT_NSREFS = 'at_nsrefs';
+    # hash (enum,NodeStorage) - attrs of NodeStorage which point to other
+    # Nodes in the same ContainerStorage.  These Perl refs are weak-refs
+    # since they point 'upwards' to 'parent' objects.
+my $NSPROP_PRIM_CHILD_NSREFS = 'prim_child_nsrefs';
+    # array - list of refs to other Nodes having actual refs to this one
+    # We use this to reciprocate actual refs from the PP_NSREF property of
+    # other Nodes to us.
+    # When converting to XML, only child Nodes linked through
+    # PRIM_CHILD_NSREFS are rendered.
+    # Every NodeStorage in this list is guaranteed to appear in this list
+    # exactly once.
+my $NSPROP_LINK_CHILD_NSREFS = 'link_child_nsrefs';
+    # array - list of refs to other Nodes having actual refs to this one
+    # We use this to reciprocate actual refs from the AT_NSREFS property of
+    # other Nodes to us.
+    # When converting to XML, only child Nodes linked through
+    # PRIM_CHILD_NSREFS are rendered.
+    # Each NodeStorage in this list may possibly appear in this list more
+    # than once.
+    # It is important to ensure that if a NodeStorage links to us multiple
+    # times (via multiple AT_NSREFS) then we include the other NodeStorage
+    # in our child list just as many times; eg: 2 here means 2 back;
+    # however, when rendering to XML, we only render a NodeStorage once,
+    # and not as many times as linked; it is also possible that we may
+    # never be put in this situation from real-world usage.
+    # Note that in the above situation, a normalized child list would have
+    # the above two links sitting adjacent to each other;
+    # however, calls to set_attribute() won't do this, but rather
+    # append new links to the end of the list.  In the interest of
+    # simplicity, any method that wants to change the order of a child
+    # list should also normalize any multiple same-child occurrances.
+my $NSPROP_ATT_WRITE_BLOCKS = 'att_write_blocks';
+    # hash ("Group",Group) -
     # A list of refs to any Groups imposing a 'write block' on us.
-    # These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
-    # Note that 0..3 of this and the following properties may link to the same Group, if its corresponding IS...BLOCK prop is true.
-my $NSPROP_ATT_PC_ADD_BLOCKS = 'att_pc_add_blocks'; # hash ("Group",Group) - 
+    # These Perl refs are weak-refs; a Group's impositions disappear when
+    # all external refs to it go away.
+    # Note that 0..3 of this and the following properties may link to the
+    # same Group, if its corresponding IS...BLOCK prop is true.
+my $NSPROP_ATT_PC_ADD_BLOCKS = 'att_pc_add_blocks';
+    # hash ("Group",Group) -
     # A list of refs to any Groups imposing a 'child addition block' on us.
-    # These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
-my $NSPROP_ATT_LC_ADD_BLOCKS = 'att_lc_add_blocks'; # hash ("Group",Group) - 
-    # A list of refs to any Groups imposing a 'reference addition block' on us.
-    # These Perl refs are weak-refs; a Group's impositions disappear when all external refs to it go away.
-my $NSPROP_ATT_MUTEX = 'att_mutex'; # Group - 
+    # These Perl refs are weak-refs; a Group's impositions disappear when
+    # all external refs to it go away.
+my $NSPROP_ATT_LC_ADD_BLOCKS = 'att_lc_add_blocks';
+    # hash ("Group",Group) -
+    # A list of refs to any Groups imposing a 'reference addition block'
+    # on us.
+    # These Perl refs are weak-refs; a Group's impositions disappear when
+    # all external refs to it go away.
+my $NSPROP_ATT_MUTEX = 'att_mutex';
+    # Group -
     # Ref to a Group imposing a 'mutex' on us.
-    # This Perl ref is a weak-ref; a Group's impositions disappear when all external refs to it go away.
+    # This Perl ref is a weak-ref; a Group's impositions disappear when
+    # all external refs to it go away.
 
-# Names of properties for objects of the SQL::Routine::Group (interface) class are declared here:
-    # Note that there is no SQL::Routine::GroupStorage class; a Group is always specific to a Container interface.
-my $GPROP_CONTAINER = 'container'; # ref to Container interface this Group interface lives in
-    # This is a strong Perl ref so a model will last as long as any external ref to a Container or Node or Group interface; 
-    # the sole exception to this is when the Group is used as a Container interface's "default mutex"; then this is a 
-    # weak ref because the Container's link to us is a strong ref only in that case; the default mutex has no external refs.
-my $GPROP_MEMBER_NSREFS = 'member_nsrefs'; # hash ("NodeStorage", NodeStorage) - explicit member Nodes of this Group
-    # These are the actual Nodes that belong to this Group, which the Container interface wants to work with as a whole for awhile.
-    # These Perl refs are weak-refs to not prevent auto-destruct of the NodeStorages.
-my $GPROP_IS_WRITE_BLOCK = 'is_write_block'; # boolean - 
-    # When this is true, no Container interface (not even ours) may edit or delete our member Nodes.  
-my $GPROP_IS_PC_ADD_BLOCK = 'is_pc_add_block'; # boolean -
-    # When this is true, no Container interface (not even ours) may add primary-child Nodes to our member Nodes.  
-my $GPROP_IS_LC_ADD_BLOCK = 'is_lc_add_block'; # boolean -
-    # When this is true, no Container interface (not even ours) may add link-child Nodes to our member Nodes.  
-my $GPROP_IS_MUTEX = 'is_mutex'; # boolean -
-    # When this is true, no Container interface besides may see our member Nodes.  
+# Names of properties for objects of the SQL::Routine::Group (interface)
+    # class are declared here:
+    # Note that there is no SQL::Routine::GroupStorage class; a Group is
+    # always specific to a Container interface.
+my $GPROP_CONTAINER = 'container';
+    # ref to Container interface this Group interface lives in
+    # This is a strong Perl ref so a model will last as long as any
+    # external ref to a Container or Node or Group interface;
+    # the sole exception to this is when the Group is used as a Container
+    # interface's "default mutex"; then this is a
+    # weak ref because the Container's link to us is a strong ref only in
+    # that case; the default mutex has no external refs.
+my $GPROP_MEMBER_NSREFS = 'member_nsrefs';
+    # hash ("NodeStorage", NodeStorage) - explicit member Nodes of this
+    # Group.  These are the actual Nodes that belong to this Group, which
+    # the Container interface wants to work with as a whole for awhile.
+    # These Perl refs are weak-refs to not prevent auto-destruct of the
+    # NodeStorages.
+my $GPROP_IS_WRITE_BLOCK = 'is_write_block';
+    # boolean -
+    # When this is true, no Container interface (not even ours) may edit or
+    # delete our member Nodes.
+my $GPROP_IS_PC_ADD_BLOCK = 'is_pc_add_block';
+    # boolean -
+    # When this is true, no Container interface (not even ours) may add
+    # primary-child Nodes to our member Nodes.
+my $GPROP_IS_LC_ADD_BLOCK = 'is_lc_add_block';
+    # boolean -
+    # When this is true, no Container interface (not even ours) may add
+    # link-child Nodes to our member Nodes.
+my $GPROP_IS_MUTEX = 'is_mutex';
+    # boolean -
+    # When this is true, no Container interface besides may see our member
+    # Nodes.
 
-# These are programmatically recognized enumerations of values that 
-# particular Node attributes are allowed to have.  They are given names 
-# here so that multiple Node types can make use of the same value lists.  
+# These are programmatically recognized enumerations of values that
+# particular Node attributes are allowed to have.  They are given names
+# here so that multiple Node types can make use of the same value lists.
 # Currently only the codes are shown, but attributes may be attached later.
 my %ENUMERATED_TYPES = (
     'container_type' => { map { ($_ => 1) } qw(
         ERROR SCALAR ROW SC_ARY RW_ARY CONN CURSOR LIST SRT_NODE SRT_NODE_LIST
     ) },
     'exception_type' => { map { ($_ => 1) } qw(
-        SRTX_NO_ENVI_LOAD_FAILED SRTX_ENVI_EXEC_FAILED 
+        SRTX_NO_ENVI_LOAD_FAILED SRTX_ENVI_EXEC_FAILED
         SRTX_NO_CONN_SERVER_ABSENT SRTX_NO_CONN_BAD_AUTH SRTX_NO_CONN_ACTIVE_LOST
     ) },
     'standard_routine' => { map { ($_ => 1) } qw(
-        CATALOG_LIST CATALOG_INFO CATALOG_VERIFY 
+        CATALOG_LIST CATALOG_INFO CATALOG_VERIFY
         CATALOG_CREATE CATALOG_DELETE CATALOG_CLONE CATALOG_MOVE
-        CATALOG_OPEN 
-        CATALOG_CLOSE 
-        CATALOG_PING CATALOG_ATTACH CATALOG_DETACH 
+        CATALOG_OPEN
+        CATALOG_CLOSE
+        CATALOG_PING CATALOG_ATTACH CATALOG_DETACH
         SCHEMA_LIST SCHEMA_INFO SCHEMA_VERIFY
-        SCHEMA_CREATE SCHEMA_DELETE SCHEMA_CLONE SCHEMA_UPDATE 
+        SCHEMA_CREATE SCHEMA_DELETE SCHEMA_CLONE SCHEMA_UPDATE
         DOMAIN_LIST DOMAIN_INFO DOMAIN_VERIFY
         DOMAIN_CREATE DOMAIN_DELETE DOMAIN_CLONE DOMAIN_UPDATE
         SEQU_LIST SEQU_INFO SEQU_VERIFY
@@ -166,21 +265,21 @@ my %ENUMERATED_TYPES = (
         TABLE_CREATE TABLE_DELETE TABLE_CLONE TABLE_UPDATE
         VIEW_LIST VIEW_INFO VIEW_VERIFY
         VIEW_CREATE VIEW_DELETE VIEW_CLONE VIEW_UPDATE
-        ROUTINE_LIST ROUTINE_INFO ROUTINE_VERIFY 
+        ROUTINE_LIST ROUTINE_INFO ROUTINE_VERIFY
         ROUTINE_CREATE ROUTINE_DELETE ROUTINE_CLONE ROUTINE_UPDATE
         USER_LIST USER_INFO USER_VERIFY
         USER_CREATE USER_DELETE USER_CLONE USER_UPDATE USER_GRANT USER_REVOKE
-        REC_FETCH 
-        REC_VERIFY REC_INSERT REC_UPDATE 
+        REC_FETCH
+        REC_VERIFY REC_INSERT REC_UPDATE
         REC_DELETE REC_REPLACE REC_CLONE REC_LOCK REC_UNLOCK
         RETURN
         CURSOR_OPEN CURSOR_CLOSE CURSOR_FETCH
-        SELECT INSERT UPDATE DELETE 
+        SELECT INSERT UPDATE DELETE
         COMMIT ROLLBACK
-        LOCK UNLOCK 
-        PLAIN THROW TRY CATCH IF ELSEIF ELSE SWITCH CASE OTHERWISE FOREACH 
-        FOR WHILE UNTIL MAP GREP REGEXP 
-        LOOP CONDITION LOGIC 
+        LOCK UNLOCK
+        PLAIN THROW TRY CATCH IF ELSEIF ELSE SWITCH CASE OTHERWISE FOREACH
+        FOR WHILE UNTIL MAP GREP REGEXP
+        LOOP CONDITION LOGIC
         CAST
         NOT AND OR XOR
         EQ NE LT GT LE GE IS_NULL NOT_NULL COALESCE SWITCH LIKE
@@ -193,7 +292,7 @@ my %ENUMERATED_TYPES = (
         CONN_CX CURSOR_CX
     ) },
     'standard_routine_arg' => { map { ($_ => 1) } qw(
-        RECURSIVE LINK_BP SOURCE_LINK_BP DEST_LINK_BP 
+        RECURSIVE LINK_BP SOURCE_LINK_BP DEST_LINK_BP
         LOGIN_NAME LOGIN_PASS
         RETURN_VALUE
         INTO
@@ -205,8 +304,8 @@ my %ENUMERATED_TYPES = (
         SOURCE START_POS STR_LEN REPEAT
     ) },
     'simple_scalar_type' => { map { ($_ => 1) } qw(
-        NUM_INT NUM_EXA NUM_APR STR_BIT STR_CHAR BOOLEAN 
-        DATM_FULL DATM_DATE DATM_TIME INTRVL_YM INTRVL_DT 
+        NUM_INT NUM_EXA NUM_APR STR_BIT STR_CHAR BOOLEAN
+        DATM_FULL DATM_DATE DATM_TIME INTRVL_YM INTRVL_DT
     ) },
     'char_enc_type' => { map { ($_ => 1) } qw(
         UTF8 UTF16 UTF32 ASCII ANSEL EBCDIC
@@ -215,7 +314,7 @@ my %ENUMERATED_TYPES = (
         ABS GRE JUL CHI HEB ISL JPN
     ) },
     'privilege_type' => { map { ($_ => 1) } qw(
-        ALL SELECT DELETE INSERT UPDATE CONNECT EXECUTE CREATE ALTER DROP 
+        ALL SELECT DELETE INSERT UPDATE CONNECT EXECUTE CREATE ALTER DROP
     ) },
     'table_index_type' => { map { ($_ => 1) } qw(
         ATOMIC FULLTEXT UNIQUE FOREIGN UFOREIGN
@@ -236,8 +335,8 @@ my %ENUMERATED_TYPES = (
         PACKAGE TRIGGER PROCEDURE FUNCTION BLOCK
     ) },
     'basic_trigger_event' => { map { ($_ => 1) } qw(
-        BEFR_INS AFTR_INS INST_INS 
-        BEFR_UPD AFTR_UPD INST_UPD 
+        BEFR_INS AFTR_INS INST_INS
+        BEFR_UPD AFTR_UPD INST_UPD
         BEFR_DEL AFTR_DEL INST_DEL
     ) },
     'user_type' => { map { ($_ => 1) } qw(
@@ -245,10 +344,11 @@ my %ENUMERATED_TYPES = (
     ) },
 );
 
-# For each pair of related enumerated types, this says which specific values in 
-# one type go with which specific values of another type in a parent-child 
-# relationship.  Level 1 is the parent enum type name; level 2 is the child enum 
-# type name; level 3 is a parent type value; level 4 is the child type value.
+# For each pair of related enumerated types, this says which specific
+# values in one type go with which specific values of another type in a
+# parent-child relationship.  Level 1 is the parent enum type name; level 2
+# is the child enum type name; level 3 is a parent type value; level 4 is
+# the child type value.
 my %P_C_REL_ENUMS = (
     'standard_routine' => {
         'standard_routine_context' => {
@@ -499,10 +599,11 @@ my %P_C_REL_ENUMS = (
     },
 );
 
-# This goes with %P_C_REL_ENUMS and says which of the child values specified 
-# there are optional; any values listed there but not here are mandatory.
-# Every hash key in the top 2 levels of %P_C_REL_ENUMS has a matching hash key 
-# here; every level 3 hash key there may not have a match here, however.
+# This goes with %P_C_REL_ENUMS and says which of the child values
+# specified there are optional; any values listed there but not here are
+# mandatory.  Every hash key in the top 2 levels of %P_C_REL_ENUMS has a
+# matching hash key here; every level 3 hash key there may not have
+# a match here, however.
 my %OPT_P_C_REL_ENUMS = (
     'standard_routine' => {
         'standard_routine_cxt' => {
@@ -520,66 +621,107 @@ my %OPT_P_C_REL_ENUMS = (
 );
 
 # Names of hash keys in %NODE_TYPES elements:
-my $TPI_AT_SEQUENCE = 'at_sequence'; # Array of all 'attribute' names in canon order
-my $TPI_PP_PSEUDONODE = 'pp_pseudonode'; # If set, Nodes of this type have a hard-coded pseudo-parent
-my $TPI_PP_NSREF    = 'pp_nsref'; # An array ref whose values are enums and each matches a single %NODE_TYPES key.
-my $TPI_AT_LITERALS = 'at_literals'; # Hash - Keys are attr names a Node can have which have literal values
-    # Values are enums and say what literal data type the attribute has, like int or bool or str
-my $TPI_AT_ENUMS    = 'at_enums'; # Hash - Keys are attr names a Node can have which are enumerated values
-    # Values are enums and match a %ENUMERATED_TYPES key
-my $TPI_AT_NSREFS   = 'at_nsrefs'; # Hash - Keys are attr names a Node can have which are Node Ref/Id values
-    # Values are array refs whose values are enums and each matches a single %NODE_TYPES key, 
-    # but an empty array matches all Node types.
-my $TPI_SI_ATNM     = 'si_atnm'; # The surrogate identifier, distinct under primary parent and always-mandatory
-    # Is an array of 4 cstr elements, one for id|lit|enum|nref; 1 elem is valued, other 3 are undef
-    # External code can opt specify a Node by the value of this attr-name rather of its Id
-    # If set_attributes() is given a non-Hash value, it will resolve to setting either this 'SI' 
-    # attribute or the Node's 'id' attribute depending on whether it looks like an 'id' attribute.
-my $TPI_WR_ATNM     = 'wr_atnm'; # A wrapper attribute
-my $TPI_MA_ATNMS    = 'ma_atnms'; # Array of always-mandatory ('MA') attributes
-    # The array contains 3 elements, one each for lit, enum, nref; each inner elem is a MA boolean
-my $TPI_MUTEX_ATGPS = 'mutex_atgps'; # Array of groups of mutually exclusive attributes
-    # Each array element is an array ref with 5 elements: 1. mutex-name (cstr); 2. lit members (ary); 
-    # 3. enum members (ary); 4. nref members (ary); 5. mandatory-flag (boolean).
-my $TPI_LOCAL_ATDPS = 'local_atdps'; # Array of attributes depended-on by other attrs in same Nodes
-    # Each array element is an array ref with 4 elements: 
-    # 1. undef or depended on lit attr name (cstr); 2. undef or depended on enum attr name (cstr); 
-    # 3. undef or depended on nref attr name (cstr); 4. an array ref of N elements where 
-    # each element is an array ref with 5 elements: 
-        # 1. an array ref with 0..N elements that are names of dependent lit attrs; 
-        # 2. an array ref with 0..N elements that are names of dependent enum attrs; 
-        # 3. an array ref with 0..N elements that are names of dependent nref attrs; 
-        # 4. an array ref with 0..N elements that are depended-on values, one of which must 
-        # be matched, if depended-on attr is an enum, or which is empty otherwise;
+my $TPI_AT_SEQUENCE = 'at_sequence';
+    # Array of all 'attribute' names in canon order
+my $TPI_PP_PSEUDONODE = 'pp_pseudonode';
+    # If set, Nodes of this type have a hard-coded pseudo-parent
+my $TPI_PP_NSREF    = 'pp_nsref';
+    # An array ref whose values are enums and each matches a single
+    # %NODE_TYPES key.
+my $TPI_AT_LITERALS = 'at_literals';
+    # Hash - Keys are attr names a Node can have which have literal values
+    # Values are enums and say what literal data type the attribute has,
+    # like int or bool or str
+my $TPI_AT_ENUMS    = 'at_enums';
+    # Hash - Keys are attr names a Node can have which are enumerated
+    # values.  Values are enums and match a %ENUMERATED_TYPES key
+my $TPI_AT_NSREFS   = 'at_nsrefs';
+    # Hash - Keys are attr names a Node can have which are Node Ref/Id
+    # values.  Values are array refs whose values are enums and each
+    # matches a single %NODE_TYPES key, but an empty array matches all
+    # Node types.
+my $TPI_SI_ATNM     = 'si_atnm';
+    # The surrogate identifier, distinct under primary parent and
+    # always-mandatory.  Is an array of 4 cstr elements, one for
+    # id|lit|enum|nref; 1 elem is valued, other 3 are undef
+    # External code can opt specify a Node by the value of this attr-name
+    # rather of its Id.  If set_attributes() is given a non-Hash value,
+    # it will resolve to setting either this 'SI'
+    # attribute or the Node's 'id' attribute depending on whether it looks
+    # like an 'id' attribute.
+my $TPI_WR_ATNM     = 'wr_atnm';
+    # A wrapper attribute
+my $TPI_MA_ATNMS    = 'ma_atnms';
+    # Array of always-mandatory ('MA') attributes
+    # The array contains 3 elements, one each for lit, enum, nref; each
+    # inner elem is a MA boolean
+my $TPI_MUTEX_ATGPS = 'mutex_atgps';
+    # Array of groups of mutually exclusive attributes
+    # Each array element is an array ref with 5 elements:
+    # 1. mutex-name (cstr); 2. lit members (ary); 3. enum members (ary);
+    # 4. nref members (ary); 5. mandatory-flag (boolean).
+my $TPI_LOCAL_ATDPS = 'local_atdps';
+    # Array of attributes depended-on by other attrs in same Nodes
+    # Each array element is an array ref with 4 elements:
+    # 1. undef or depended on lit attr name (cstr);
+    # 2. undef or depended on enum attr name (cstr);
+    # 3. undef or depended on nref attr name (cstr);
+    # 4. an array ref of N elements where
+    # each element is an array ref with 5 elements:
+        # 1. an array ref with 0..N elements that are names of dependent
+        # lit attrs;
+        # 2. an array ref with 0..N elements that are names of dependent
+        # enum attrs;
+        # 3. an array ref with 0..N elements that are names of dependent
+        # nref attrs;
+        # 4. an array ref with 0..N elements that are depended-on values,
+        # one of which must be matched, if depended-on attr
+        # is an enum, or which is empty otherwise;
         # 5. mandatory-flag (boolean).
-my $TPI_ANCES_ATCORS = 'ances_atcors'; # Hash of Arrays of steps to follow when linking Nodes using SI
-    # Each hash key is a Node-ref attr name, each hash value is an array of steps.
-my $TPI_REL_P_ENUMS = 'rel_p_enums'; # Hash of enum attrs dependent on other enum attrs in parent Nodes
-    # Each hash key is an enum attr name in current Node; value is a hash where:
-    # each hash value is an enum attr name in parent Node, and the key is the Node type for the parent where that's true.
-my $TPI_REMOTE_ADDR = 'remote_addr'; # Array of ancestor Node type names under which this Node can be remotely addressed
-my $TPI_CHILD_QUANTS = 'child_quants'; # Array of quantity limits for child Nodes
-    # Each array element is an array ref with 3 elements: 
+my $TPI_ANCES_ATCORS = 'ances_atcors';
+    # Hash of Arrays of steps to follow when linking Nodes using SI.
+    # Each hash key is a Node-ref attr name, each hash value is an array
+    # of steps.
+my $TPI_REL_P_ENUMS = 'rel_p_enums';
+    # Hash of enum attrs dependent on other enum attrs in parent Nodes
+    # Each hash key is an enum attr name in current Node; value is a hash
+    # where: each hash value is an enum attr name in parent Node, and the
+    # key is the Node type for the parent where that's true.
+my $TPI_REMOTE_ADDR = 'remote_addr';
+    # Array of ancestor Node type names under which this Node can be
+    # remotely addressed
+my $TPI_CHILD_QUANTS = 'child_quants';
+    # Array of quantity limits for child Nodes
+    # Each array element is an array ref with 3 elements:
     # 1. child-node-type (cstr); 2. range-min (uint); 3. range-max (uint)
-my $TPI_MUDI_ATGPS  = 'mudi_atgps'; # Array of groups of mutually distinct attributes
-    # Each array element is an array ref with 2 elements: 1. mudi-name (cstr); 
-    # 2. an array ref of N elements where each element is an array ref with 4 elements:
+my $TPI_MUDI_ATGPS  = 'mudi_atgps';
+    # Array of groups of mutually distinct attributes
+    # Each array element is an array ref with 2 elements:
+    # 1. mudi-name (cstr);
+    # 2. an array ref of N elements where each element is an array ref
+    # with 4 elements:
         # 1. child-node-type (cstr);
-        # 2. an array ref with 0..N elements that are names of lit child-node-attrs; 
-        # 3. an array ref with 0..N elements that are names of enum child-node-attrs; 
-        # 4. an array ref with 0..N elements that are names of nref child-node-attrs.
-my $TPI_MA_REL_C_ENUMS = 'ma_rel_c_enums'; # Hash of enum attrs that may have mandatory related child Node attrs
-    # Each hash key is an enum attr name in current Node; value is a hash where:
-    # each hash value is an array of enum attr names in child Node, and the key is the Node type for the child that applies to.
+        # 2. an array ref with 0..N elements that are names of lit
+        # child-node-attrs;
+        # 3. an array ref with 0..N elements that are names of enum
+        # child-node-attrs;
+        # 4. an array ref with 0..N elements that are names of nref
+        # child-node-attrs.
+my $TPI_MA_REL_C_ENUMS = 'ma_rel_c_enums';
+    # Hash of enum attrs that may have mandatory related child Node attrs
+    # Each hash key is an enum attr name in current Node; value is a hash
+    # where: each hash value is an array of enum attr names in child Node,
+    # and the key is the Node type for the child that applies to.
 
-# Names of special "pseudo-Nodes" that are used in an XML version of this structure.
+# Names of special "pseudo-Nodes" that are used in an XML version of this
+# structure.
 my $SQLRT_L1_ROOT_PSND = 'root';
 my $SQLRT_L2_ELEM_PSND = 'elements';
 my $SQLRT_L2_BLPR_PSND = 'blueprints';
 my $SQLRT_L2_TOOL_PSND = 'tools';
 my $SQLRT_L2_SITE_PSND = 'sites';
 my $SQLRT_L2_CIRC_PSND = 'circumventions';
-my @L2_PSEUDONODE_LIST = ($SQLRT_L2_ELEM_PSND, $SQLRT_L2_BLPR_PSND, 
+my @L2_PSEUDONODE_LIST = ($SQLRT_L2_ELEM_PSND, $SQLRT_L2_BLPR_PSND,
     $SQLRT_L2_TOOL_PSND, $SQLRT_L2_SITE_PSND, $SQLRT_L2_CIRC_PSND);
 # This hash is used like the subsequent %NODE_TYPES for specific purposes.
 my %PSEUDONODE_TYPES = (
@@ -616,15 +758,15 @@ my $S = '.';
 my $P = '..';
 my $R = '...';
 my $C = '....';
-# These are the allowed Node types, with their allowed attributes and their 
-# allowed child Node types.  They are used for method input checking and 
+# These are the allowed Node types, with their allowed attributes and their
+# allowed child Node types.  They are used for method input checking and
 # other related tasks.
 my %NODE_TYPES = (
     'scalar_data_type' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id si_name base_type num_precision num_scale num_octets num_unsigned 
-            max_octets max_chars store_fixed char_enc trim_white uc_latin lc_latin 
-            pad_char trim_pad calendar with_zone range_min range_max 
+        $TPI_AT_SEQUENCE => [qw(
+            id si_name base_type num_precision num_scale num_octets num_unsigned
+            max_octets max_chars store_fixed char_enc trim_white uc_latin lc_latin
+            pad_char trim_pad calendar with_zone range_min range_max
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
         $TPI_AT_LITERALS => {
@@ -677,8 +819,8 @@ my %NODE_TYPES = (
         ],
     },
     'scalar_data_type_opt' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_value 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_value
         )],
         $TPI_PP_NSREF => ['scalar_data_type'],
         $TPI_AT_LITERALS => {
@@ -687,7 +829,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_value',undef,undef],
     },
     'row_data_type' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
@@ -700,7 +842,7 @@ my %NODE_TYPES = (
         ],
     },
     'row_data_type_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name scalar_data_type
         )],
         $TPI_PP_NSREF => ['row_data_type'],
@@ -714,7 +856,7 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [[],[],['scalar_data_type']],
     },
     'external_cursor' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_ELEM_PSND,
@@ -724,7 +866,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'catalog' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name single_schema
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
@@ -735,8 +877,8 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'application' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id si_name 
+        $TPI_AT_SEQUENCE => [qw(
+            id si_name
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_BLPR_PSND,
         $TPI_AT_LITERALS => {
@@ -745,8 +887,8 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'owner' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name
         )],
         $TPI_PP_NSREF => ['catalog'],
         $TPI_AT_LITERALS => {
@@ -755,7 +897,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'catalog_link' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name target
         )],
         $TPI_PP_NSREF => ['catalog','application'],
@@ -769,8 +911,8 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [[],[],['target']],
     },
     'schema' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name owner 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name owner
         )],
         $TPI_PP_NSREF => ['catalog'],
         $TPI_AT_LITERALS => {
@@ -783,7 +925,7 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [[],[],['owner']],
     },
     'role' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name
         )],
         $TPI_PP_NSREF => ['catalog'],
@@ -793,7 +935,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'privilege_on' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_priv_on
         )],
         $TPI_PP_NSREF => ['role'],
@@ -803,7 +945,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,undef,undef,'si_priv_on'],
     },
     'privilege_for' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_priv_type
         )],
         $TPI_PP_NSREF => ['privilege_on'],
@@ -813,7 +955,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,undef,'si_priv_type',undef],
     },
     'scalar_domain' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name data_type
         )],
         $TPI_PP_NSREF => ['schema','application'],
@@ -828,7 +970,7 @@ my %NODE_TYPES = (
         $TPI_REMOTE_ADDR => ['catalog'],
     },
     'row_domain' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name data_type
         )],
         $TPI_PP_NSREF => ['schema','application'],
@@ -844,8 +986,8 @@ my %NODE_TYPES = (
         $TPI_REMOTE_ADDR => ['catalog'],
     },
     'sequence' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name increment min_val max_val start_val cycle order 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name increment min_val max_val start_val cycle order
         )],
         $TPI_PP_NSREF => ['schema','application'],
         $TPI_AT_LITERALS => {
@@ -861,7 +1003,7 @@ my %NODE_TYPES = (
         $TPI_REMOTE_ADDR => ['catalog'],
     },
     'table' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name row_data_type
         )],
         $TPI_PP_NSREF => ['schema','application'],
@@ -877,8 +1019,8 @@ my %NODE_TYPES = (
         $TPI_REMOTE_ADDR => ['catalog'],
     },
     'table_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_row_field mandatory default_val auto_inc default_seq 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_row_field mandatory default_val auto_inc default_seq
         )],
         $TPI_PP_NSREF => ['table'],
         $TPI_AT_LITERALS => {
@@ -899,8 +1041,8 @@ my %NODE_TYPES = (
         },
     },
     'table_index' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name index_type f_table 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name index_type f_table
         )],
         $TPI_PP_NSREF => ['table'],
         $TPI_AT_LITERALS => {
@@ -929,8 +1071,8 @@ my %NODE_TYPES = (
         ],
     },
     'table_index_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_field f_field 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_field f_field
         )],
         $TPI_PP_NSREF => ['table_index'],
         $TPI_AT_NSREFS => {
@@ -944,8 +1086,8 @@ my %NODE_TYPES = (
         },
     },
     'view' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name view_type row_data_type recursive compound_op 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name view_type row_data_type recursive compound_op
             distinct_rows may_write ins_p_routine_item
         )],
         $TPI_PP_NSREF => ['view','routine_var','routine_stmt','schema','application'],
@@ -996,8 +1138,8 @@ my %NODE_TYPES = (
         ],
     },
     'view_arg' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name cont_type scalar_data_type row_data_type 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name cont_type scalar_data_type row_data_type
         )],
         $TPI_PP_NSREF => ['view'],
         $TPI_AT_LITERALS => {
@@ -1024,7 +1166,7 @@ my %NODE_TYPES = (
         ],
     },
     'view_src' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name match catalog_link may_write
         )],
         $TPI_PP_NSREF => ['view'],
@@ -1039,7 +1181,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,'si_name',undef,undef],
     },
     'view_src_arg' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_match_view_arg
         )],
         $TPI_PP_NSREF => ['view_src'],
@@ -1049,7 +1191,7 @@ my %NODE_TYPES = (
         $TPI_SI_ATNM => [undef,undef,undef,'si_match_view_arg'],
     },
     'view_src_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_match_field
         )],
         $TPI_PP_NSREF => ['view_src'],
@@ -1062,8 +1204,8 @@ my %NODE_TYPES = (
         },
     },
     'view_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_row_field src_field 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_row_field src_field
         )],
         $TPI_PP_NSREF => ['view'],
         $TPI_AT_NSREFS => {
@@ -1077,8 +1219,8 @@ my %NODE_TYPES = (
         },
     },
     'view_join' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp lhs_src rhs_src join_op 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp lhs_src rhs_src join_op
         )],
         $TPI_PP_NSREF => ['view'],
         $TPI_AT_ENUMS => {
@@ -1103,8 +1245,8 @@ my %NODE_TYPES = (
         ],
     },
     'view_join_field' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp lhs_src_field rhs_src_field 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp lhs_src_field rhs_src_field
         )],
         $TPI_PP_NSREF => ['view_join'],
         $TPI_AT_NSREFS => {
@@ -1119,7 +1261,7 @@ my %NODE_TYPES = (
         },
     },
     'view_compound_elem' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp operand
         )],
         $TPI_PP_NSREF => ['view'],
@@ -1130,11 +1272,11 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [[],[],['operand']],
     },
     'view_expr' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp view_part set_result_field set_src_field call_src_arg 
-            call_view_arg call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg 
-            cont_type valf_literal scalar_data_type valf_src_field valf_result_field 
-            valf_p_view_arg valf_p_routine_item valf_seq_next 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp view_part set_result_field set_src_field call_src_arg
+            call_view_arg call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg
+            cont_type valf_literal scalar_data_type valf_src_field valf_result_field
+            valf_p_view_arg valf_p_routine_item valf_seq_next
             valf_call_view valf_call_sroutine valf_call_uroutine catalog_link
         )],
         $TPI_PP_NSREF => ['view_expr','view'],
@@ -1218,10 +1360,10 @@ my %NODE_TYPES = (
         },
     },
     'routine' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name routine_type return_cont_type 
-            return_scalar_data_type return_row_data_type 
-            return_conn_link return_curs_ext 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name routine_type return_cont_type
+            return_scalar_data_type return_row_data_type
+            return_conn_link return_curs_ext
             trigger_on trigger_event trigger_per_stmt
         )],
         $TPI_PP_NSREF => ['routine','schema','application'],
@@ -1264,8 +1406,8 @@ my %NODE_TYPES = (
         ],
     },
     'routine_context' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name cont_type conn_link curs_ext 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name cont_type conn_link curs_ext
         )],
         $TPI_PP_NSREF => ['routine'],
         $TPI_AT_LITERALS => {
@@ -1291,9 +1433,9 @@ my %NODE_TYPES = (
         ],
     },
     'routine_arg' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name cont_type scalar_data_type row_data_type
-            conn_link curs_ext 
+            conn_link curs_ext
         )],
         $TPI_PP_NSREF => ['routine'],
         $TPI_AT_LITERALS => {
@@ -1321,9 +1463,9 @@ my %NODE_TYPES = (
         ],
     },
     'routine_var' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp si_name cont_type scalar_data_type row_data_type
-            init_lit_val is_constant conn_link curs_ext curs_for_update 
+            init_lit_val is_constant conn_link curs_ext curs_for_update
         )],
         $TPI_PP_NSREF => ['routine'],
         $TPI_AT_LITERALS => {
@@ -1357,8 +1499,8 @@ my %NODE_TYPES = (
         ],
     },
     'routine_stmt' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp block_routine assign_dest call_sroutine call_uroutine catalog_link 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp block_routine assign_dest call_sroutine call_uroutine catalog_link
         )],
         $TPI_PP_NSREF => ['routine'],
         $TPI_AT_ENUMS => {
@@ -1396,9 +1538,9 @@ my %NODE_TYPES = (
         },
     },
     'routine_expr' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg query_dest 
-            cont_type valf_literal scalar_data_type valf_p_routine_item valf_seq_next 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp call_sroutine_cxt call_sroutine_arg call_uroutine_cxt call_uroutine_arg query_dest
+            cont_type valf_literal scalar_data_type valf_p_routine_item valf_seq_next
             valf_call_sroutine valf_call_uroutine catalog_link act_on
         )],
         $TPI_PP_NSREF => ['routine_expr','routine_stmt'],
@@ -1470,7 +1612,7 @@ my %NODE_TYPES = (
         },
     },
     'data_storage_product' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name product_code is_memory_based is_file_based is_local_proc is_network_svc
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
@@ -1489,7 +1631,7 @@ my %NODE_TYPES = (
         ],
     },
     'data_link_product' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name product_code is_proxy
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_TOOL_PSND,
@@ -1502,7 +1644,7 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [['si_name','product_code'],[],[]],
     },
     'catalog_instance' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id si_name blueprint product file_path server_ip server_domain server_port
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
@@ -1526,8 +1668,8 @@ my %NODE_TYPES = (
         ],
     },
     'catalog_instance_opt' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_key value 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_key value
         )],
         $TPI_PP_NSREF => ['catalog_instance'],
         $TPI_AT_LITERALS => {
@@ -1538,8 +1680,8 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [['value'],[],[]],
     },
     'application_instance' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id si_name blueprint 
+        $TPI_AT_SEQUENCE => [qw(
+            id si_name blueprint
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_SITE_PSND,
         $TPI_AT_LITERALS => {
@@ -1557,7 +1699,7 @@ my %NODE_TYPES = (
         ],
     },
     'catalog_link_instance' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id pp blueprint product target local_dsn login_name login_pass
         )],
         $TPI_PP_NSREF => ['catalog_link_instance','catalog_instance','application_instance'],
@@ -1581,8 +1723,8 @@ my %NODE_TYPES = (
         ],
     },
     'catalog_link_instance_opt' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_key value 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_key value
         )],
         $TPI_PP_NSREF => ['catalog_link_instance'],
         $TPI_AT_LITERALS => {
@@ -1593,8 +1735,8 @@ my %NODE_TYPES = (
         $TPI_MA_ATNMS => [['value'],[],[]],
     },
     'user' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_name user_type match_owner password default_schema 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_name user_type match_owner password default_schema
         )],
         $TPI_PP_NSREF => ['catalog_instance'],
         $TPI_AT_LITERALS => {
@@ -1622,8 +1764,8 @@ my %NODE_TYPES = (
         },
     },
     'user_role' => {
-        $TPI_AT_SEQUENCE => [qw( 
-            id pp si_role 
+        $TPI_AT_SEQUENCE => [qw(
+            id pp si_role
         )],
         $TPI_PP_NSREF => ['user'],
         $TPI_AT_NSREFS => {
@@ -1635,7 +1777,7 @@ my %NODE_TYPES = (
         },
     },
     'sql_fragment' => {
-        $TPI_AT_SEQUENCE => [qw( 
+        $TPI_AT_SEQUENCE => [qw(
             id attach_to product is_inside is_before is_after fragment
         )],
         $TPI_PP_PSEUDONODE => $SQLRT_L2_CIRC_PSND,
@@ -1657,104 +1799,129 @@ my %NODE_TYPES = (
     },
 );
 
-# This structure is used as a speed-efficiency measure.  It creates a reverse-index of sorts 
-# out of each SI_ATNM that resembles and is used as a simpler version of a MUDI_ATGP.
-# It makes the distinct constraint property of surrogate node ids faster to enforce.
-# This structure's main hash has a key for each Node type or pseudo-Node type that can have primary-child Nodes; 
-# the value for each main hash key is a hash whose keys are the names of Node types that can be primary-children 
-# of the aforementioned primary-parent types, and whose values are the SI attribute name of the primary-child Node types.
-# Any Node types that can not have primary-child Nodes do not appear in the main structure hash.
+# This structure is used as a speed-efficiency measure.  It creates a
+# reverse-index of sorts out of each SI_ATNM that resembles and is used as
+# a simpler version of a MUDI_ATGP.  It makes the distinct constraint
+# property of surrogate node ids faster to enforce.  This structure's main
+# hash has a key for each Node type or pseudo-Node type that can have
+# primary-child Nodes; the value for each main hash key is a hash whose
+# keys are the names of Node types that can be primary-children of the
+# aforementioned primary-parent types, and whose values are the SI
+# attribute name of the primary-child Node types.  Any Node types that can
+# not have primary-child Nodes do not appear in the main structure hash.
 my %TYPE_CHILD_SI_ATNMS = ();
-while( my ($_node_type, $_type_info) = each %NODE_TYPES ) {
+while (my ($_node_type, $_type_info) = each %NODE_TYPES) {
     my $si_atnm = $_type_info->{$TPI_SI_ATNM};
-    if( my $pp_psnd = $_type_info->{$TPI_PP_PSEUDONODE} ) {
+    if (my $pp_psnd = $_type_info->{$TPI_PP_PSEUDONODE}) {
         $TYPE_CHILD_SI_ATNMS{$pp_psnd} ||= {};
         $TYPE_CHILD_SI_ATNMS{$pp_psnd}->{$_node_type} = $si_atnm;
-    } else { # no pseudonode, so must be PP attrs
-        foreach my $pp_node_type (@{$_type_info->{$TPI_PP_NSREF}}) {
+    }
+    else { # no pseudonode, so must be PP attrs
+        for my $pp_node_type (@{$_type_info->{$TPI_PP_NSREF}}) {
             $TYPE_CHILD_SI_ATNMS{$pp_node_type} ||= {};
             $TYPE_CHILD_SI_ATNMS{$pp_node_type}->{$_node_type} = $si_atnm;
         }
     }
 }
 
-# These special attribute hash keys are used by the get_all_properties[/*]() methods, 
-# and/or by the build*node*() functions and methods for RAD:
-my $ATTR_ID = 'id'; # attribute name to use for the node id
-my $ATTR_PP = 'pp'; # attribute name to use for the node's primary parent nref
+# These special attribute hash keys are used by the
+# get_all_properties[/*]() methods, and/or by the build*node*() functions
+# and methods for RAD:
+my $ATTR_ID = 'id';
+    # attribute name to use for the node id
+my $ATTR_PP = 'pp';
+    # attribute name to use for the node's primary parent nref
+
+# These are constant values used by this module.
+my $EMPTY_STR = q{};
+my $INDENT    = '    '; # four spaces
 
 ######################################################################
 
 sub valid_enumerated_types {
     my (undef, $type) = @_;
-    $type and return exists( $ENUMERATED_TYPES{$type} );
+    return exists $ENUMERATED_TYPES{$type}
+        if $type;
     return {map { ($_ => 1) } keys %ENUMERATED_TYPES};
 }
 
 sub valid_enumerated_type_values {
     my (undef, $type, $value) = @_;
-    $type and (exists( $ENUMERATED_TYPES{$type} ) or return);
-    $value and return exists( $ENUMERATED_TYPES{$type}->{$value} );
+    return
+        if !$type or !exists $ENUMERATED_TYPES{$type};
+    return exists $ENUMERATED_TYPES{$type}->{$value}
+        if $value;
     return {%{$ENUMERATED_TYPES{$type}}};
 }
 
 sub valid_node_types {
     my (undef, $type) = @_;
-    $type and return exists( $NODE_TYPES{$type} );
+    return exists $NODE_TYPES{$type}
+        if $type;
     return {map { ($_ => 1) } keys %NODE_TYPES};
 }
 
 sub node_types_with_pseudonode_parents {
     my (undef, $type) = @_;
-    if( $type ) {
-        exists( $NODE_TYPES{$type} ) or return;
+    if ($type) {
+        return
+            if !exists $NODE_TYPES{$type};
         return $NODE_TYPES{$type}->{$TPI_PP_PSEUDONODE};
     }
-    return {map { ($_ => $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE}) } 
+    return {map { ($_ => $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE}) }
         grep { $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %NODE_TYPES};
 }
 
 sub node_types_with_primary_parent_attributes {
     my (undef, $type) = @_;
-    if( $type ) {
-        exists( $NODE_TYPES{$type} ) or return;
-        exists( $NODE_TYPES{$type}->{$TPI_PP_NSREF} ) or return;
+    if ($type) {
+        return
+            if !exists $NODE_TYPES{$type}
+                or !exists $NODE_TYPES{$type}->{$TPI_PP_NSREF};
         return [@{$NODE_TYPES{$type}->{$TPI_PP_NSREF}}];
     }
-    return {map { ($_ => [@{$NODE_TYPES{$_}->{$TPI_PP_NSREF}}]) } 
+    return {map { ($_ => [@{$NODE_TYPES{$_}->{$TPI_PP_NSREF}}]) }
         grep { $NODE_TYPES{$_}->{$TPI_PP_NSREF} } keys %NODE_TYPES};
 }
 
 sub valid_node_type_literal_attributes {
     my (undef, $type, $attr) = @_;
-    $type and (exists( $NODE_TYPES{$type} ) or return);
-    exists( $NODE_TYPES{$type}->{$TPI_AT_LITERALS} ) or return;
-    $attr and return $NODE_TYPES{$type}->{$TPI_AT_LITERALS}->{$attr};
+    return
+        if !$type or !exists $NODE_TYPES{$type}
+            or !exists $NODE_TYPES{$type}->{$TPI_AT_LITERALS};
+    return $NODE_TYPES{$type}->{$TPI_AT_LITERALS}->{$attr}
+        if $attr;
     return {%{$NODE_TYPES{$type}->{$TPI_AT_LITERALS}}};
 }
 
 sub valid_node_type_enumerated_attributes {
     my (undef, $type, $attr) = @_;
-    $type and (exists( $NODE_TYPES{$type} ) or return);
-    exists( $NODE_TYPES{$type}->{$TPI_AT_ENUMS} ) or return;
-    $attr and return $NODE_TYPES{$type}->{$TPI_AT_ENUMS}->{$attr};
+    return
+        if !$type or !exists $NODE_TYPES{$type}
+            or !exists $NODE_TYPES{$type}->{$TPI_AT_ENUMS};
+    return $NODE_TYPES{$type}->{$TPI_AT_ENUMS}->{$attr}
+        if $attr;
     return {%{$NODE_TYPES{$type}->{$TPI_AT_ENUMS}}};
 }
 
 sub valid_node_type_node_ref_attributes {
     my (undef, $type, $attr) = @_;
-    $type and (exists( $NODE_TYPES{$type} ) or return);
-    exists( $NODE_TYPES{$type}->{$TPI_AT_NSREFS} ) or return;
+    return
+        if !$type or !exists $NODE_TYPES{$type}
+            or !exists $NODE_TYPES{$type}->{$TPI_AT_NSREFS};
     my $rh = $NODE_TYPES{$type}->{$TPI_AT_NSREFS};
-    $attr and return $rh->{$attr} ? [@{$rh->{$attr}}] : undef;
+    return $rh->{$attr} ? [@{$rh->{$attr}}] : undef
+        if $attr;
     return {map { ($_ => [@{$rh->{$_}}]) } keys %{$rh}};
 }
 
 sub valid_node_type_surrogate_id_attributes {
     my (undef, $type) = @_;
-    $type and (exists( $NODE_TYPES{$type} ) or return);
-    $type and return (grep { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM}})[0];
-    return {map { ($_ => (grep { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}})[0]) } keys %NODE_TYPES};
+    return
+        if !$type or !exists $NODE_TYPES{$type};
+    return first { $_ } @{$NODE_TYPES{$type}->{$TPI_SI_ATNM}}
+        if $type;
+    return {map { ($_ => first { $_ } @{$NODE_TYPES{$_}->{$TPI_SI_ATNM}}) } keys %NODE_TYPES};
 }
 
 ######################################################################
@@ -1762,37 +1929,37 @@ sub valid_node_type_surrogate_id_attributes {
 
 sub _serialize_as_perl {
     my ($self, $node_dump, $pad) = @_;
-    $pad ||= '';
-    my $padc = "$pad        ";
+    $pad ||= $EMPTY_STR;
+    my $padc = $pad . $INDENT;
     my ($node_type, $attrs, $children) = @{$node_dump};
     my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-    return join( '', 
-        $pad."[\n",
-        $pad."    '".$node_type."',\n",
-        (scalar(keys %{$attrs}) ? (
-            $pad."    {\n",
-            (map { $pad."        '".$_."' => ".(
-                    ref($attrs->{$_}) eq 'ARRAY' ? 
-                        "[".join( ',', map { 
-                                defined($_) ? "'".$self->_s_a_p_esc($_)."'" : "undef"
-                            } @{$attrs->{$_}} )."]" : 
-                        "'".$self->_s_a_p_esc($attrs->{$_})."'"
-                ).",\n" } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
-            $pad."    },\n",
-        ) : ''),
-        (scalar(@{$children}) ? (
-            $pad."    [\n",
+    return join $EMPTY_STR,
+        $pad . q|[\n|,
+        $pad . $INDENT . q|'| . $node_type . q|',| . "\n",
+        ((keys %{$attrs}) ? (
+            $pad . $INDENT . q|{| . "\n",
+            (map { $pad . $INDENT . $INDENT . q|'| . $_ . q|' => | . (
+                    ref $attrs->{$_} eq 'ARRAY' ?
+                        '[' . (join q{,}, map {
+                                defined $_ ? q|'| . $self->_s_a_p_esc($_) . q|'| : 'undef'
+                            } @{$attrs->{$_}}) . ']' :
+                        q|'| . $self->_s_a_p_esc($attrs->{$_}) . q|'|
+                ) . q|,| . "\n" } grep { defined $attrs->{$_} } @{$attr_seq}),
+            $pad . $INDENT . q|},| . "\n",
+        ) : $EMPTY_STR),
+        (@{$children} ? (
+            $pad . $INDENT . q|[| . "\n",
             (map { $self->_serialize_as_perl( $_,$padc ) } @{$children}),
-            $pad."    ],\n",
-        ) : ''),
-        $pad."],\n",
-    );
+            $pad . $INDENT . q|],| . "\n",
+        ) : $EMPTY_STR),
+        $pad . q|],| . "\n",
+    ;
 }
 
 sub _s_a_p_esc {
     my (undef, $text) = @_;
-    $text =~ s/\\/\\\\/g;
-    $text =~ s/'/\\'/g;
+    $text =~ s/\\/\\\\/xg;
+    $text =~ s/'/\\'/xg;
     return $text;
 }
 
@@ -1801,33 +1968,33 @@ sub _s_a_p_esc {
 
 sub _serialize_as_xml {
     my ($self, $node_dump, $pad) = @_;
-    $pad ||= '';
-    my $padc = "$pad    ";
+    $pad ||= $EMPTY_STR;
+    my $padc = $pad . $INDENT;
     my ($node_type, $attrs, $children) = @{$node_dump};
     my $attr_seq = $NODE_TYPES{$node_type}->{$TPI_AT_SEQUENCE};
-    return join( '', 
-        $pad.'<'.$node_type,
-        (map { ' '.$_.'="'.(
-                ref($attrs->{$_}) eq 'ARRAY' ? 
-                    "[".join( ',', map { 
-                            defined($_) ? $self->_s_a_x_esc($_) : ""
-                        } @{$attrs->{$_}} )."]" : 
+    return join $EMPTY_STR,
+        $pad . '<' . $node_type,
+        (map { ' ' . $_ . '="' . (
+                ref $attrs->{$_} eq 'ARRAY' ?
+                    '[' . (join q{,}, map {
+                            defined $_ ? $self->_s_a_x_esc($_) : $EMPTY_STR
+                        } @{$attrs->{$_}}) . ']' :
                     $self->_s_a_x_esc($attrs->{$_})
-            ).'"' } grep { defined( $attrs->{$_} ) } @{$attr_seq}),
-        (scalar(@{$children}) ? (
-            '>'."\n",
+            ) . '"' } grep { defined $attrs->{$_} } @{$attr_seq}),
+        (@{$children} ? (
+            '>' . "\n",
             (map { $self->_serialize_as_xml( $_,$padc ) } @{$children}),
-            $pad.'</'.$node_type.'>'."\n",
-        ) : ' />'."\n"),
-    );
+            $pad . '</' . $node_type . '>' . "\n",
+        ) : ' />' . "\n"),
+    ;
 }
 
 sub _s_a_x_esc {
     my (undef, $text) = @_;
-    $text =~ s/&/&amp;/g;
-    $text =~ s/\"/&quot;/g;
-    $text =~ s/>/&gt;/g;
-    $text =~ s/</&lt;/g;
+    $text =~ s/&/&amp;/xg;
+    $text =~ s/\"/&quot;/xg;
+    $text =~ s/>/&gt;/xg;
+    $text =~ s/</&lt;/xg;
     return $text;
 }
 
@@ -1836,24 +2003,24 @@ sub _s_a_x_esc {
 
 sub _throw_error_message {
     my ($self, $msg_key, $msg_vars) = @_;
-    # Throws an exception consisting of an object.  A Container property is not 
-    # used to store object so things work properly in multi-threaded environment; 
+    # Throws an exception consisting of an object.  A Container property is not
+    # used to store object so things work properly in multi-threaded environment;
     # an exception is only supposed to affect the thread that calls it.
-    ref($msg_vars) eq 'HASH' or $msg_vars = {};
-    if( ref($self) and UNIVERSAL::isa( $self, 'SQL::Routine::Node' ) ) {
+    ref $msg_vars eq 'HASH' or $msg_vars = {};
+    if (ref $self and UNIVERSAL::isa( $self, 'SQL::Routine::Node' )) {
         $self = $self->{$NPROP_STORAGE};
     }
-    if( ref($self) and UNIVERSAL::isa( $self, 'SQL::Routine::NodeStorage' ) ) {
+    if (ref $self and UNIVERSAL::isa( $self, 'SQL::Routine::NodeStorage' )) {
         $msg_vars->{'NTYPE'} = $self->{$NSPROP_NODE_TYPE};
         $msg_vars->{'NID'} = $self->{$NSPROP_NODE_ID};
-        if( $self->{$NSPROP_CONSTOR} ) {
+        if ($self->{$NSPROP_CONSTOR}) {
             # Note: We get here for all invoking methods except for Node.new().
             $msg_vars->{'SIDCH'} = $self->_get_surrogate_id_chain();
         }
     }
-    foreach my $var_key (keys %{$msg_vars}) {
-        if( ref($msg_vars->{$var_key}) eq 'ARRAY' ) {
-            $msg_vars->{$var_key} = 'PERL_ARRAY:['.join(',',map {$_||''} @{$msg_vars->{$var_key}}).']';
+    for my $var_key (keys %{$msg_vars}) {
+        if (ref $msg_vars->{$var_key} eq 'ARRAY') {
+            $msg_vars->{$var_key} = 'PERL_ARRAY:[' . (join q{,},map {$_||$EMPTY_STR} @{$msg_vars->{$var_key}}) . ']';
         }
     }
     die Locale::KeyedText->new_message( $msg_key, $msg_vars );
@@ -1903,11 +2070,14 @@ sub build_container {
 package SQL::Routine::Container;
 use base qw( SQL::Routine );
 
+use Scalar::Util qw( weaken );
+use List::Util qw( first );
+
 ######################################################################
 
 sub new {
     my ($class) = @_;
-    my $container = bless( {}, ref($class) || $class );
+    my $container = bless {}, ref $class || $class;
     my $constor = $class->_new_constor();
     $container->{$CPROP_STORAGE} = $constor;
     $container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
@@ -1922,7 +2092,7 @@ sub new {
 
 sub new_interface {
     my ($container) = @_;
-    my $new_container = bless( {}, ref($container) );
+    my $new_container = bless {}, ref $container;
     $new_container->{$CPROP_STORAGE} = $container->{$CPROP_STORAGE};
     $new_container->{$CPROP_AUTO_ASS_DEF_CON} = 0;
     $new_container->{$CPROP_AUTO_SET_NIDS} = 0;
@@ -1943,24 +2113,26 @@ sub get_self_id {
 
 sub _ns_to_ni {
     my ($container, $nodstor) = @_;
-    ref($container) eq 'SQL::Routine::Container' or die "invocant of _ns_to_ni() is no Cont\n";
-    defined($nodstor) or return;
-    if( ref($nodstor) eq 'ARRAY' ) {
-        return [map { $container->_ns_to_ni_item( $_ ) } @{$nodstor}];
-    }
-    if( ref($nodstor) eq 'HASH' ) {
-        return {map { ($_ => $container->_ns_to_ni_item( $nodstor->{$_} )) } @{$nodstor}};
-    }
+    die "invocant of _ns_to_ni() is no Cont\n"
+        if ref $container ne 'SQL::Routine::Container';
+    return
+        if !defined $nodstor;
+    return [map { $container->_ns_to_ni_item( $_ ) } @{$nodstor}]
+        if ref $nodstor eq 'ARRAY';
+    return {map { ($_ => $container->_ns_to_ni_item( $nodstor->{$_} )) } @{$nodstor}}
+        if ref $nodstor eq 'HASH';
     return $container->_ns_to_ni_item( $nodstor );
 }
 
 sub _ns_to_ni_item {
     my ($container, $nodstor) = @_;
-    defined($nodstor) or return;
-    ref($nodstor) eq 'SQL::Routine::NodeStorage' or return $nodstor;
-    my $new_node = bless( {}, 'SQL::Routine::Node' );
+    return
+        if !defined $nodstor;
+    return $nodstor
+        if ref $nodstor ne 'SQL::Routine::NodeStorage';
+    my $new_node = bless {}, 'SQL::Routine::Node';
     $new_node->{$NPROP_STORAGE} = $nodstor;
-    Scalar::Util::weaken( $new_node->{$NPROP_STORAGE} );
+    weaken $new_node->{$NPROP_STORAGE};
     $new_node->{$NPROP_CONTAINER} = $container;
     return $new_node;
 }
@@ -1969,7 +2141,7 @@ sub _ns_to_ni_item {
 
 sub auto_assert_deferrable_constraints {
     my ($container, $new_value) = @_;
-    if( defined( $new_value ) ) {
+    if (defined $new_value) {
         $container->{$CPROP_AUTO_ASS_DEF_CON} = $new_value;
     }
     return $container->{$CPROP_AUTO_ASS_DEF_CON};
@@ -1979,7 +2151,7 @@ sub auto_assert_deferrable_constraints {
 
 sub auto_set_node_ids {
     my ($container, $new_value) = @_;
-    if( defined( $new_value ) ) {
+    if (defined $new_value) {
         $container->{$CPROP_AUTO_SET_NIDS} = $new_value;
     }
     return $container->{$CPROP_AUTO_SET_NIDS};
@@ -1989,7 +2161,7 @@ sub auto_set_node_ids {
 
 sub may_match_surrogate_node_ids {
     my ($container, $new_value) = @_;
-    if( defined( $new_value ) ) {
+    if (defined $new_value) {
         $container->{$CPROP_MAY_MATCH_SNIDS} = $new_value;
     }
     return $container->{$CPROP_MAY_MATCH_SNIDS};
@@ -2001,16 +2173,16 @@ sub delete_node_tree {
     my ($container) = @_;
     my $constor = $container->{$CPROP_STORAGE};
     # First check that all NodeStorages have no locks on them.
-    foreach my $nodstor (values %{$constor->{$CSPROP_ALL_NODES}}) {
-        (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-            $container->_throw_error_message( 'SRT_C_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node_tree', 
-                'NTYPE' => $nodstor->{$NSPROP_NODE_TYPE}, 'NID' => $nodstor->{$NSPROP_NODE_ID}, 
-                'SIDCH' => $nodstor->_get_surrogate_id_chain() } );
+    for my $nodstor (values %{$constor->{$CSPROP_ALL_NODES}}) {
+        $container->_throw_error_message( 'SRT_C_METH_VIOL_WRITE_BLOCKS',
+            { 'METH' => 'delete_node_tree', 'NTYPE' => $nodstor->{$NSPROP_NODE_TYPE},
+            'NID' => $nodstor->{$NSPROP_NODE_ID}, 'SIDCH' => $nodstor->_get_surrogate_id_chain() } )
+            if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     }
     # If we get here, we may delete all the Nodes.
     %{$constor->{$CSPROP_ALL_NODES}} = ();
     my $pseudonodes = $constor->{$CSPROP_PSEUDONODES};
-    foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
+    for my $pseudonode_name (@L2_PSEUDONODE_LIST) {
         @{$pseudonodes->{$_}} = ();
     }
     $constor->{$CSPROP_EDIT_COUNT} ++; # All Nodes are gone.
@@ -2022,13 +2194,17 @@ sub delete_node_tree {
 sub get_child_nodes {
     my ($container, $node_type) = @_;
     my $pseudonodes = $container->{$CPROP_STORAGE}->{$CSPROP_PSEUDONODES};
-    if( defined( $node_type ) ) {
-        unless( $NODE_TYPES{$node_type} ) {
-            $container->_throw_error_message( 'SRT_C_GET_CH_NODES_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
+    if (defined $node_type) {
+        if (!$NODE_TYPES{$node_type}) {
+            $container->_throw_error_message( 'SRT_C_GET_CH_NODES_BAD_TYPE',
+                { 'ARGNTYPE' => $node_type } );
         }
-        my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} or return [];
+        my $pp_pseudonode = $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE};
+        return []
+            if !$pp_pseudonode;
         return $container->_ns_to_ni( [grep { $_->{$NSPROP_NODE_TYPE} eq $node_type } @{$pseudonodes->{$pp_pseudonode}}] );
-    } else {
+    }
+    else {
         return $container->_ns_to_ni( [map { @{$pseudonodes->{$_}} } @L2_PSEUDONODE_LIST] );
     }
 }
@@ -2037,8 +2213,9 @@ sub get_child_nodes {
 
 sub find_node_by_id {
     my ($container, $node_id) = @_;
-    defined( $node_id ) or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_UNDEF', { 'METH' => 'find_node_by_id', 'ARGNM' => 'NODE_ID' } );
+    $container->_throw_error_message( 'SRT_C_METH_ARG_UNDEF',
+        { 'METH' => 'find_node_by_id', 'ARGNM' => 'NODE_ID' } )
+        if !defined $node_id;
     return $container->_ns_to_ni( $container->{$CPROP_STORAGE}->{$CSPROP_ALL_NODES}->{$node_id} );
 }
 
@@ -2046,9 +2223,10 @@ sub find_node_by_id {
 
 sub find_child_node_by_surrogate_id {
     my ($container, $target_attr_value) = @_;
-    defined( $target_attr_value ) or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_UNDEF', { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } );
-    ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+    $container->_throw_error_message( 'SRT_C_METH_ARG_UNDEF',
+        { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } )
+        if !defined $target_attr_value;
+    ref $target_attr_value eq 'ARRAY' or $target_attr_value = [$target_attr_value];
     return $container->_ns_to_ni( $container->{$CPROP_STORAGE}->_find_child_node_by_surrogate_id( $container, $target_attr_value ) );
 }
 
@@ -2093,8 +2271,8 @@ sub get_all_properties_as_perl_str {
 
 sub get_all_properties_as_xml_str {
     my ($container, $links_as_si, $want_shortest) = @_;
-    return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-        $container->_serialize_as_xml( $container->get_all_properties( $links_as_si, $want_shortest ) );
+    return qq{<?xml version="1.0" encoding="UTF-8"?>\n}
+        . $container->_serialize_as_xml( $container->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
@@ -2108,52 +2286,56 @@ sub _build_node_is_child_or_not {
     my ($container, $node_type, $attrs, $pp_node) = @_;
 
     # This input validation is the same as what Node.new() does, and throws the same error keys.
-    # It is also done here to head off a bootstrap problem that affects SI_ATNM determination below.  
-    defined( $node_type ) or $container->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' );
+    # It is also done here to head off a bootstrap problem that affects SI_ATNM determination below.
+    $container->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' )
+        if !defined $node_type;
     my $type_info = $NODE_TYPES{$node_type};
-    unless( $type_info ) {
-        $container->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
-    }
+    $container->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE',
+        { 'ARGNTYPE' => $node_type } )
+        if !$type_info;
 
     # Now normalize $attrs into a nice orderly hash.
-    if( ref($attrs) eq 'HASH' ) {
+    if (ref $attrs eq 'HASH') {
         $attrs = {%{$attrs}}; # copy this, to preserve caller environment
-    } elsif( defined($attrs) ) {
-        if( $attrs =~ m/^\d+$/ and $attrs > 0 ) { # looks like a node id
+    }
+    elsif (defined $attrs) {
+        if ($attrs =~ m/^\d+$/x and $attrs > 0) { # looks like a node id
             $attrs = { $ATTR_ID => $attrs };
-        } else { # does not look like node id
-            $attrs = { (grep { $_ } @{$type_info->{$TPI_SI_ATNM}})[0] => $attrs };
         }
-    } else {
+        else { # does not look like node id
+            $attrs = { (first { $_ } @{$type_info->{$TPI_SI_ATNM}}) => $attrs };
+        }
+    }
+    else {
         $attrs = {};
     }
 
     # Now create the Node and set its attributes.
-    my $node_id = delete( $attrs->{$ATTR_ID} );
+    my $node_id = delete $attrs->{$ATTR_ID};
     my $node = $container->new_node( $container, $node_type, $node_id );
-    my $pp_in_attrs = delete( $attrs->{$ATTR_PP} ); # ensure won't override any $pp_node
-    if( $pp_node ) {
+    my $pp_in_attrs = delete $attrs->{$ATTR_PP}; # ensure won't override any $pp_node
+    if ($pp_node) {
         $pp_node->add_child_node( $node );
-    } else {
+    }
+    else {
         $pp_in_attrs and $node->set_primary_parent_attribute( $pp_in_attrs );
     }
-    if( my $node_surr_id = delete( $attrs->{(grep { $_ } @{$type_info->{$TPI_SI_ATNM}})[0]} ) ) {
+    if (my $node_surr_id = delete $attrs->{ first { $_ } @{$type_info->{$TPI_SI_ATNM}} }) {
         $node->set_surrogate_id_attribute( $node_surr_id );
     }
     $node->set_attributes( $attrs );
 
     # Apply auto-asserted deferrable constraints.
-    if( $container->{$CPROP_AUTO_ASS_DEF_CON} ) {
+    if ($container->{$CPROP_AUTO_ASS_DEF_CON}) {
         eval {
             $node->assert_deferrable_constraints(); # check that this Node's own attrs are correct
         };
-        if( my $exception = $@ ) {
+        if (my $exception = $@) {
             my $msg_key = $exception->get_message_key();
-            unless( $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET' or 
-                    $msg_key eq 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN' or 
-                    $msg_key eq 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES' ) {
-                die $exception; # don't trap any other types of exceptions
-            }
+            die $exception # don't trap any other types of exceptions
+                if $msg_key ne 'SRT_N_ASDC_CH_N_TOO_FEW_SET'
+                    and $msg_key ne 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN'
+                    and $msg_key ne 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES';
         }
     }
 
@@ -2162,13 +2344,15 @@ sub _build_node_is_child_or_not {
 
 sub build_child_node {
     my ($container, $node_type, $attrs) = @_;
-    if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
+    if ($node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST) {
         return $container;
-    } else { # $node_type is not a valid pseudo-Node
+    }
+    else { # $node_type is not a valid pseudo-Node
         my $node = $container->_build_node_is_child_or_not( $node_type, $attrs );
-        unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+        if (!$NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE}) {
             $node->delete_node(); # so the new Node doesn't persist
-            $container->_throw_error_message( 'SRT_C_BUILD_CH_ND_NO_PSND', { 'ARGNTYPE' => $node_type } );
+            $container->_throw_error_message( 'SRT_C_BUILD_CH_ND_NO_PSND',
+                { 'ARGNTYPE' => $node_type } );
         }
         return $node;
     }
@@ -2176,46 +2360,56 @@ sub build_child_node {
 
 sub build_child_nodes {
     my ($container, $children) = @_;
-    defined( $children ) or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
-    ref($children) eq 'ARRAY' or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
-    foreach my $child (@{$children}) {
-        defined( $child ) or $container->_throw_error_message( 
-            'SRT_C_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
-        ref($child) eq 'ARRAY' or $container->_throw_error_message( 
-            'SRT_C_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+    $container->_throw_error_message( 'SRT_C_METH_ARG_UNDEF',
+        { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } )
+        if !defined $children;
+    $container->_throw_error_message( 'SRT_C_METH_ARG_NO_ARY',
+        { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } )
+        if ref $children ne 'ARRAY';
+    for my $child (@{$children}) {
+        $container->_throw_error_message( 'SRT_C_METH_ARG_ARY_ELEM_UNDEF',
+            { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } )
+            if !defined $child;
+        $container->_throw_error_message( 'SRT_C_METH_ARG_ARY_ELEM_NO_ARY',
+            { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } )
+            if ref $child ne 'ARRAY';
         $container->build_child_node( @{$child} );
     }
 }
 
 sub build_child_node_tree {
     my ($container, $node_type, $attrs, $children) = @_;
-    if( $node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST ) {
-        defined( $children ) and $container->build_child_node_trees( $children );
+    if ($node_type eq $SQLRT_L1_ROOT_PSND or grep { $_ eq $node_type } @L2_PSEUDONODE_LIST) {
+        defined $children and $container->build_child_node_trees( $children );
         return $container;
-    } else { # $node_type is not a valid pseudo-Node
+    }
+    else { # $node_type is not a valid pseudo-Node
         my $node = $container->_build_node_is_child_or_not( $node_type, $attrs );
-        unless( $NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE} ) {
+        if (!$NODE_TYPES{$node_type}->{$TPI_PP_PSEUDONODE}) {
             $node->delete_node(); # so the new Node doesn't persist
-            $container->_throw_error_message( 'SRT_C_BUILD_CH_ND_TR_NO_PSND', { 'ARGNTYPE' => $node_type } );
+            $container->_throw_error_message( 'SRT_C_BUILD_CH_ND_TR_NO_PSND',
+                { 'ARGNTYPE' => $node_type } );
         }
-        defined( $children ) and $node->build_child_node_trees( $children );
+        defined $children and $node->build_child_node_trees( $children );
         return $node;
     }
 }
 
 sub build_child_node_trees {
     my ($container, $children) = @_;
-    defined( $children ) or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
-    ref($children) eq 'ARRAY' or $container->_throw_error_message( 
-        'SRT_C_METH_ARG_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
-    foreach my $child (@{$children}) {
-        defined( $child ) or $container->_throw_error_message( 
-            'SRT_C_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
-        ref($child) eq 'ARRAY' or $container->_throw_error_message( 
-            'SRT_C_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+    $container->_throw_error_message( 'SRT_C_METH_ARG_UNDEF',
+        { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } )
+        if !defined $children;
+    $container->_throw_error_message( 'SRT_C_METH_ARG_NO_ARY',
+        { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } )
+        if ref $children ne 'ARRAY';
+    for my $child (@{$children}) {
+        $container->_throw_error_message( 'SRT_C_METH_ARG_ARY_ELEM_UNDEF',
+            { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } )
+            if !defined $child;
+        $container->_throw_error_message( 'SRT_C_METH_ARG_ARY_ELEM_NO_ARY',
+            { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } )
+            if ref $child ne 'ARRAY';
         $container->build_child_node_tree( @{$child} );
     }
 }
@@ -2230,7 +2424,7 @@ use base qw( SQL::Routine );
 
 sub _new {
     my ($class) = @_;
-    my $constor = bless( {}, ref($class) || $class );
+    my $constor = bless {}, ref $class || $class;
     $constor->{$CSPROP_ALL_NODES} = {};
     $constor->{$CSPROP_PSEUDONODES} = { map { ($_ => []) } @L2_PSEUDONODE_LIST };
     $constor->{$CSPROP_NEXT_FREE_NID} = 1;
@@ -2244,27 +2438,30 @@ sub _new {
 sub _find_child_node_by_surrogate_id {
     my ($constor, $container, $target_attr_value) = @_;
     my ($l2_psn, $chain_first, @chain_rest);
-    unless( defined( $target_attr_value->[0] ) ) {
+    if (!defined $target_attr_value->[0]) {
         # The given surrogate id chain starts with [undef,'root',<l2-psn>,<chain-of-node-si>].
         (undef, undef, $l2_psn, $chain_first, @chain_rest) = @{$target_attr_value};
-    } else {
+    }
+    else {
         # The given surrogate id chain starts with [<chain-of-node-si>].
         ($chain_first, @chain_rest) = @{$target_attr_value};
     }
     my $pseudonodes = $constor->{$CSPROP_PSEUDONODES};
     my @nodestors_to_search;
-    if( $l2_psn and grep { $l2_psn eq $_ } @L2_PSEUDONODE_LIST ) {
+    if ($l2_psn and grep { $l2_psn eq $_ } @L2_PSEUDONODE_LIST) {
         # Search only children of a specific pseudo-Node.
         @nodestors_to_search = @{$pseudonodes->{$l2_psn}};
-    } else {
+    }
+    else {
         # Search children of all pseudo-Nodes.
         @nodestors_to_search = map { @{$pseudonodes->{$_}} } @L2_PSEUDONODE_LIST;
     }
-    foreach my $child (@nodestors_to_search) {
-        if( my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 ) ) {
-            if( $si_atvl eq $chain_first ) {
-                return @chain_rest ? $child->_find_child_node_by_surrogate_id( $container, \@chain_rest ) : $child;
-            }
+    for my $child (@nodestors_to_search) {
+        if (my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 )) {
+            return @chain_rest
+                   ? $child->_find_child_node_by_surrogate_id( $container, \@chain_rest )
+                   : $child
+                if $si_atvl eq $chain_first;
         }
     }
     return;
@@ -2274,13 +2471,12 @@ sub _find_child_node_by_surrogate_id {
 
 sub _assert_deferrable_constraints {
     my ($constor, $container) = @_;
-    if( $constor->{$CSPROP_DEF_CON_TESTED} == $constor->{$CSPROP_EDIT_COUNT} ) {
-        return;
-    }
+    return
+        if $constor->{$CSPROP_DEF_CON_TESTED} == $constor->{$CSPROP_EDIT_COUNT};
     # Test nodes in the same order that they appear in the Node tree.
-    foreach my $pseudonode_name (@L2_PSEUDONODE_LIST) {
+    for my $pseudonode_name (@L2_PSEUDONODE_LIST) {
         SQL::Routine::NodeStorage->_assert_child_comp_deferrable_constraints( $container, $pseudonode_name, $constor );
-        foreach my $child_nodstor (@{$constor->{$CSPROP_PSEUDONODES}->{$pseudonode_name}}) {
+        for my $child_nodstor (@{$constor->{$CSPROP_PSEUDONODES}->{$pseudonode_name}}) {
             $constor->_assert_child_deferrable_constraints( $container, $child_nodstor );
         }
     }
@@ -2290,7 +2486,7 @@ sub _assert_deferrable_constraints {
 sub _assert_child_deferrable_constraints {
     my ($constor, $container, $nodstor) = @_;
     $nodstor->_assert_deferrable_constraints( $container );
-    foreach my $child_nodstor (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+    for my $child_nodstor (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
         $constor->_assert_child_deferrable_constraints( $container, $child_nodstor );
     }
 }
@@ -2313,41 +2509,48 @@ sub _get_all_properties {
 package SQL::Routine::Node;
 use base qw( SQL::Routine );
 
+use Scalar::Util qw( weaken );
+
 ######################################################################
 
 sub new {
     my ($class, $container, $node_type, $node_id) = @_;
-    my $node = bless( {}, ref($class) || $class );
+    my $node = bless {}, ref $class || $class;
 
-    defined( $container ) or $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_CONT' );
-    unless( ref($container) and UNIVERSAL::isa( $container, 'SQL::Routine::Container' ) ) {
-        $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_CONT', { 'ARGNCONT' => $container } );
-    }
+    $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_CONT' )
+        if !defined $container;
+    $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_CONT',
+        { 'ARGNCONT' => $container } )
+        if !ref $container or !UNIVERSAL::isa( $container, 'SQL::Routine::Container' );
     my $constor = $container->{$CPROP_STORAGE};
 
-    defined( $node_type ) or $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' );
+    $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_TYPE' )
+        if !defined $node_type;
     my $type_info = $NODE_TYPES{$node_type};
-    unless( $type_info ) {
-        $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE', { 'ARGNTYPE' => $node_type } );
-    }
+    $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_TYPE',
+        { 'ARGNTYPE' => $node_type } )
+        if !$type_info;
 
-    if( defined( $node_id ) ) {
-        unless( $node_id =~ m/^\d+$/ and $node_id > 0 ) {
-            $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_ID', { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } );
-        }
-        if( $constor->{$CSPROP_ALL_NODES}->{$node_id} ) {
-            $node->_throw_error_message( 'SRT_N_NEW_NODE_DUPL_ID', { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } );
-        }
-    } elsif( $container->{$CPROP_AUTO_SET_NIDS} ) {
+    if (defined $node_id) {
+        $node->_throw_error_message( 'SRT_N_NEW_NODE_BAD_ID',
+            { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } )
+            if $node_id !~ m/^\d+$/x or $node_id <= 0;
+        $node->_throw_error_message( 'SRT_N_NEW_NODE_DUPL_ID',
+            { 'ARGNTYPE' => $node_type, 'ARGNID' => $node_id } )
+            if $constor->{$CSPROP_ALL_NODES}->{$node_id};
+    }
+    elsif ($container->{$CPROP_AUTO_SET_NIDS}) {
         $node_id = $constor->{$CSPROP_NEXT_FREE_NID};
-    } else {
-        $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_ID', { 'ARGNTYPE' => $node_type } );
+    }
+    else {
+        $node->_throw_error_message( 'SRT_N_NEW_NODE_NO_ARG_ID',
+            { 'ARGNTYPE' => $node_type } );
     }
 
     my $nodstor = $class->_new_nodstor( $constor, $node_type, $node_id );
 
     $node->{$NPROP_STORAGE} = $nodstor;
-    Scalar::Util::weaken( $node->{$NPROP_STORAGE} );
+    weaken $node->{$NPROP_STORAGE};
     $node->{$NPROP_CONTAINER} = $container;
 
     return $node;
@@ -2358,11 +2561,11 @@ sub new {
 sub new_interface {
     my ($node) = @_;
     my $container = $node->{$NPROP_CONTAINER};
-    my $new_container = bless( {}, ref($container) );
+    my $new_container = bless {}, ref $container;
     $new_container->{$CPROP_STORAGE} = $container->{$CPROP_STORAGE};
-    my $new_node = bless( {}, ref($node) );
+    my $new_node = bless {}, ref $node;
     $new_node->{$NPROP_STORAGE} = $node->{$NPROP_STORAGE};
-    Scalar::Util::weaken( $new_node->{$NPROP_STORAGE} );
+    weaken $new_node->{$NPROP_STORAGE};
     $new_node->{$NPROP_CONTAINER} = $new_container;
     return $new_node;
 }
@@ -2378,24 +2581,26 @@ sub get_self_id {
 
 sub _ns_to_ni {
     my ($node, $nodstor) = @_;
-    ref($node) eq 'SQL::Routine::Node' or die "invocant of _ns_to_ni() is no Node\n";
-    defined($nodstor) or return;
-    if( ref($nodstor) eq 'ARRAY' ) {
-        return [map { $node->_ns_to_ni_item( $_ ) } @{$nodstor}];
-    }
-    if( ref($nodstor) eq 'HASH' ) {
-        return {map { ($_ => $node->_ns_to_ni_item( $nodstor->{$_} )) } @{$nodstor}};
-    }
+    die "invocant of _ns_to_ni() is no Node\n"
+        if ref $node ne 'SQL::Routine::Node';
+    return
+        if !defined $nodstor;
+    return [map { $node->_ns_to_ni_item( $_ ) } @{$nodstor}]
+        if ref $nodstor eq 'ARRAY';
+    return {map { ($_ => $node->_ns_to_ni_item( $nodstor->{$_} )) } @{$nodstor}}
+        if ref $nodstor eq 'HASH';
     return $node->_ns_to_ni_item( $nodstor );
 }
 
 sub _ns_to_ni_item {
     my ($node, $nodstor) = @_;
-    defined($nodstor) or return;
-    ref($nodstor) eq 'SQL::Routine::NodeStorage' or return $nodstor;
-    my $new_node = bless( {}, 'SQL::Routine::Node' );
+    return
+        if !defined $nodstor;
+    return $nodstor
+        if ref $nodstor ne 'SQL::Routine::NodeStorage';
+    my $new_node = bless {}, 'SQL::Routine::Node';
     $new_node->{$NPROP_STORAGE} = $nodstor;
-    Scalar::Util::weaken( $new_node->{$NPROP_STORAGE} );
+    weaken $new_node->{$NPROP_STORAGE};
     $new_node->{$NPROP_CONTAINER} = $node->{$NPROP_CONTAINER};
     return $new_node;
 }
@@ -2437,8 +2642,9 @@ sub get_node_id {
 
 sub set_node_id {
     my ($node, $new_id) = @_;
-    defined( $new_id ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_node_id', 'ARGNM' => 'NEW_ID' } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'set_node_id', 'ARGNM' => 'NEW_ID' } )
+        if !defined $new_id;
     return $node->{$NPROP_STORAGE}->_set_node_id( $node->{$NPROP_CONTAINER}, $new_id );
 }
 
@@ -2446,25 +2652,30 @@ sub set_node_id {
 
 sub get_primary_parent_attribute {
     my ($node) = @_;
-    $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} or $node->_throw_error_message( 
-        'SRT_N_METH_NO_PP_AT', { 'METH' => 'get_primary_parent_attribute' } );
+    $node->_throw_error_message( 'SRT_N_METH_NO_PP_AT',
+        { 'METH' => 'get_primary_parent_attribute' } )
+        if !$NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF};
     return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_primary_parent_attribute( $node->{$NPROP_CONTAINER} ) );
 }
 
 sub clear_primary_parent_attribute {
     my ($node) = @_;
-    $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} or $node->_throw_error_message( 
-        'SRT_N_METH_NO_PP_AT', { 'METH' => 'clear_primary_parent_attribute' } );
+    $node->_throw_error_message( 'SRT_N_METH_NO_PP_AT',
+        { 'METH' => 'clear_primary_parent_attribute' } )
+        if !$NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF};
     $node->{$NPROP_STORAGE}->_clear_primary_parent_attribute( $node->{$NPROP_CONTAINER} );
 }
 
 sub set_primary_parent_attribute {
     my ($node, $attr_value) = @_;
-    my $exp_node_types = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} or $node->_throw_error_message( 
-        'SRT_N_METH_NO_PP_AT', { 'METH' => 'set_primary_parent_attribute' } );
-    defined( $attr_value ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_primary_parent_attribute', 'ARGNM' => 'ATTR_VALUE' } );
-    if( ref($attr_value) eq ref($node) ) {
+    my $exp_node_types = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF};
+    $node->_throw_error_message( 'SRT_N_METH_NO_PP_AT',
+        { 'METH' => 'set_primary_parent_attribute' } )
+        if !$exp_node_types;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'set_primary_parent_attribute', 'ARGNM' => 'ATTR_VALUE' } )
+        if !defined $attr_value;
+    if (ref $attr_value eq ref $node) {
         $attr_value = $attr_value->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
     }
     $node->{$NPROP_STORAGE}->_set_primary_parent_attribute( $node->{$NPROP_CONTAINER}, $exp_node_types, $attr_value );
@@ -2480,44 +2691,55 @@ sub get_surrogate_id_attribute {
 sub clear_surrogate_id_attribute {
     my ($node) = @_;
     my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
-    $id and return $node->_throw_error_message( 'SRT_N_CLEAR_SI_AT_MAND_NID' );
-    $lit and return $node->{$NPROP_STORAGE}->_clear_literal_attribute( $node->{$NPROP_CONTAINER}, $lit );
-    $enum and return $node->{$NPROP_STORAGE}->_clear_enumerated_attribute( $node->{$NPROP_CONTAINER}, $enum );
-    $nref and return $node->{$NPROP_STORAGE}->_clear_node_ref_attribute( $node->{$NPROP_CONTAINER}, $nref );
+    $node->_throw_error_message( 'SRT_N_CLEAR_SI_AT_MAND_NID' )
+        if $id;
+    return $node->{$NPROP_STORAGE}->_clear_literal_attribute( $node->{$NPROP_CONTAINER}, $lit )
+        if $lit;
+    return $node->{$NPROP_STORAGE}->_clear_enumerated_attribute( $node->{$NPROP_CONTAINER}, $enum )
+        if $enum;
+    return $node->{$NPROP_STORAGE}->_clear_node_ref_attribute( $node->{$NPROP_CONTAINER}, $nref )
+        if $nref;
 }
 
 sub set_surrogate_id_attribute {
     my ($node, $attr_value) = @_;
-    defined( $attr_value ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_surrogate_id_attribute', 'ARGNM' => 'ATTR_VALUE' } );
-    if( ref($attr_value) eq ref($node) ) {
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'set_surrogate_id_attribute', 'ARGNM' => 'ATTR_VALUE' } )
+        if !defined $attr_value;
+    if (ref $attr_value eq ref $node) {
         $attr_value = $attr_value->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
     }
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
     my ($id, $lit, $enum, $nref) = @{$type_info->{$TPI_SI_ATNM}};
-    $id and return $node->{$NPROP_STORAGE}->_set_node_id( $node->{$NPROP_CONTAINER}, $attr_value );
-    $lit and return $node->{$NPROP_STORAGE}->_set_literal_attribute( $node->{$NPROP_CONTAINER}, $lit, $type_info->{$TPI_AT_LITERALS}->{$lit}, $attr_value );
-    $enum and return $node->{$NPROP_STORAGE}->_set_enumerated_attribute( $node->{$NPROP_CONTAINER}, $enum, $type_info->{$TPI_AT_ENUMS}->{$enum}, $attr_value );
-    $nref and return $node->{$NPROP_STORAGE}->_set_node_ref_attribute( $node->{$NPROP_CONTAINER}, $nref, $type_info->{$TPI_AT_NSREFS}->{$nref}, $attr_value );
+    return $node->{$NPROP_STORAGE}->_set_node_id( $node->{$NPROP_CONTAINER}, $attr_value )
+        if $id;
+    return $node->{$NPROP_STORAGE}->_set_literal_attribute( $node->{$NPROP_CONTAINER}, $lit, $type_info->{$TPI_AT_LITERALS}->{$lit}, $attr_value )
+        if $lit;
+    return $node->{$NPROP_STORAGE}->_set_enumerated_attribute( $node->{$NPROP_CONTAINER}, $enum, $type_info->{$TPI_AT_ENUMS}->{$enum}, $attr_value )
+        if $enum;
+    return $node->{$NPROP_STORAGE}->_set_node_ref_attribute( $node->{$NPROP_CONTAINER}, $nref, $type_info->{$TPI_AT_NSREFS}->{$nref}, $attr_value )
+        if $nref;
 }
 
 ######################################################################
 
 sub get_attribute {
     my ($node, $attr_name, $get_target_si) = @_;
-    defined( $attr_name ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_attribute', 'ARGNM' => 'ATTR_NAME' } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'get_attribute', 'ARGNM' => 'ATTR_NAME' } )
+        if !defined $attr_name;
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-    $attr_name eq $ATTR_ID and return $node->{$NPROP_STORAGE}->_get_node_id( $node->{$NPROP_CONTAINER} );
-    $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF} and 
-        return $node->{$NPROP_STORAGE}->_get_primary_parent_attribute( $node->{$NPROP_CONTAINER} );
-    $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} and 
-        return $node->{$NPROP_STORAGE}->_get_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-    $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} and 
-        return $node->{$NPROP_STORAGE}->_get_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-    $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} and 
-        return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $get_target_si ) );
-    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+    return $node->{$NPROP_STORAGE}->_get_node_id( $node->{$NPROP_CONTAINER} )
+        if $attr_name eq $ATTR_ID;
+    return $node->{$NPROP_STORAGE}->_get_primary_parent_attribute( $node->{$NPROP_CONTAINER} )
+        if $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF};
+    return $node->{$NPROP_STORAGE}->_get_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name )
+        if $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name};
+    return $node->{$NPROP_STORAGE}->_get_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name )
+        if $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name};
+    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $get_target_si ) )
+        if $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name};
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM',
         { 'METH' => 'get_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
@@ -2527,38 +2749,41 @@ sub get_attributes {
     my $at_nsrefs = $node->{$NPROP_STORAGE}->{$NSPROP_AT_NSREFS};
     return {
         $ATTR_ID => $node->get_node_id(),
-        ($NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} ? 
+        ($NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} ?
             ($ATTR_PP => $node->{$NPROP_STORAGE}->_get_primary_parent_attribute( $node->{$NPROP_CONTAINER} )) : ()),
         %{$node->{$NPROP_STORAGE}->{$NSPROP_AT_LITERALS}},
         %{$node->{$NPROP_STORAGE}->{$NSPROP_AT_ENUMS}},
-        ($get_target_si ? 
-            (map { ($_ => $at_nsrefs->{$_}->_get_surrogate_id_attribute( $container, $get_target_si )) } keys %{$at_nsrefs}) : 
+        ($get_target_si ?
+            (map { ($_ => $at_nsrefs->{$_}->_get_surrogate_id_attribute( $container, $get_target_si )) } keys %{$at_nsrefs}) :
             ($node->_ns_to_ni( $at_nsrefs ))),
     };
 }
 
 sub clear_attribute {
     my ($node, $attr_name) = @_;
-    defined( $attr_name ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'clear_attribute', 'ARGNM' => 'ATTR_NAME' } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'clear_attribute', 'ARGNM' => 'ATTR_NAME' } )
+        if !defined $attr_name;
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-    $attr_name eq $ATTR_ID and $node->_throw_error_message( 'SRT_N_CLEAR_AT_MAND_NID' );
-    $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF} and 
-        return $node->{$NPROP_STORAGE}->_clear_primary_parent_attribute( $node->{$NPROP_CONTAINER} );
-    $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} and 
-        return $node->{$NPROP_STORAGE}->_clear_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-    $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} and 
-        return $node->{$NPROP_STORAGE}->_clear_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-    $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} and 
-        return $node->{$NPROP_STORAGE}->_clear_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name );
-    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+    $node->_throw_error_message( 'SRT_N_CLEAR_AT_MAND_NID' )
+        if $attr_name eq $ATTR_ID;
+    return $node->{$NPROP_STORAGE}->_clear_primary_parent_attribute( $node->{$NPROP_CONTAINER} )
+        if $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF};
+    return $node->{$NPROP_STORAGE}->_clear_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name )
+        if $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name};
+    return $node->{$NPROP_STORAGE}->_clear_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name )
+        if $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name};
+    return $node->{$NPROP_STORAGE}->_clear_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name )
+        if $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name};
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM',
         { 'METH' => 'clear_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
 sub clear_attributes {
     my ($node) = @_;
-    $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} and 
+    if ($NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF}) {
         $node->{$NPROP_STORAGE}->_clear_primary_parent_attribute( $node->{$NPROP_CONTAINER} );
+    }
     $node->{$NPROP_STORAGE}->_clear_literal_attributes( $node->{$NPROP_CONTAINER} );
     $node->{$NPROP_STORAGE}->_clear_enumerated_attributes( $node->{$NPROP_CONTAINER} );
     $node->{$NPROP_STORAGE}->_clear_node_ref_attributes( $node->{$NPROP_CONTAINER} );
@@ -2566,66 +2791,75 @@ sub clear_attributes {
 
 sub set_attribute {
     my ($node, $attr_name, $attr_value) = @_;
-    defined( $attr_name ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_attribute', 'ARGNM' => 'ATTR_NAME' } );
-    defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARG_VAL', { 'ATNM' => $attr_name } );
-    if( ref($attr_value) eq ref($node) ) {
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'set_attribute', 'ARGNM' => 'ATTR_NAME' } )
+        if !defined $attr_name;
+    $node->_throw_error_message( 'SRT_N_SET_AT_NO_ARG_VAL',
+        { 'ATNM' => $attr_name } )
+        if !defined $attr_value;
+    if (ref $attr_value eq ref $node) {
         $attr_value = $attr_value->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
     }
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-    if( $attr_name eq $ATTR_ID ) {
+    if ($attr_name eq $ATTR_ID) {
         return $node->{$NPROP_STORAGE}->_set_node_id( $node->{$NPROP_CONTAINER}, $attr_value );
     }
-    if( my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF} ) {
+    if (my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF}) {
         return $node->{$NPROP_STORAGE}->_set_primary_parent_attribute( $node->{$NPROP_CONTAINER}, $exp_node_types, $attr_value );
     }
-    if( my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} ) {
+    if (my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name}) {
         return $node->{$NPROP_STORAGE}->_set_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_lit_type, $attr_value );
     }
-    if( my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} ) {
+    if (my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name}) {
         return $node->{$NPROP_STORAGE}->_set_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_enum_type, $attr_value );
     }
-    if( my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} ) {
+    if (my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name}) {
         return $node->{$NPROP_STORAGE}->_set_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_node_types, $attr_value );
     }
-    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM', 
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_AT_NM',
         { 'METH' => 'set_attribute', 'ARGNM' => 'ATTR_NAME', 'ARGVL' => $attr_name } );
 }
 
 sub set_attributes {
     my ($node, $attrs) = @_;
-    defined( $attrs ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS' } );
-    ref($attrs) eq 'HASH' or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_HASH', { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS' } )
+        if !defined $attrs;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_HASH',
+        { 'METH' => 'set_attributes', 'ARGNM' => 'ATTRS', 'ARGVL' => $attrs } )
+        if ref $attrs ne 'HASH';
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-    foreach my $attr_name (keys %{$attrs}) {
+    ATTR_NAME:
+    for my $attr_name (keys %{$attrs}) {
         my $attr_value = $attrs->{$attr_name};
-        defined( $attr_value ) or $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARG_ELEM_VAL', { 'ATNM' => $attr_name } );
-        if( ref($attr_value) eq ref($node) ) {
+        $node->_throw_error_message( 'SRT_N_SET_ATS_NO_ARG_ELEM_VAL',
+            { 'ATNM' => $attr_name } )
+            if !defined $attr_value;
+        if (ref $attr_value eq ref $node) {
             $attr_value = $attr_value->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
         }
-        if( $attr_name eq $ATTR_ID ) {
+        if ($attr_name eq $ATTR_ID) {
             $node->{$NPROP_STORAGE}->_set_node_id( $node->{$NPROP_CONTAINER}, $attr_value );
-            next;
+            next ATTR_NAME;
         }
-        if( my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF} ) {
+        if (my $exp_node_types = $attr_name eq $ATTR_PP && $type_info->{$TPI_PP_NSREF}) {
             $node->{$NPROP_STORAGE}->_set_primary_parent_attribute( $node->{$NPROP_CONTAINER}, $exp_node_types, $attr_value );
-            next;
+            next ATTR_NAME;
         }
-        if( my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name} ) {
+        if (my $exp_lit_type = $type_info->{$TPI_AT_LITERALS} && $type_info->{$TPI_AT_LITERALS}->{$attr_name}) {
             $node->{$NPROP_STORAGE}->_set_literal_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_lit_type, $attr_value );
-            next;
+            next ATTR_NAME;
         }
-        if( my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name} ) {
+        if (my $exp_enum_type = $type_info->{$TPI_AT_ENUMS} && $type_info->{$TPI_AT_ENUMS}->{$attr_name}) {
             $node->{$NPROP_STORAGE}->_set_enumerated_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_enum_type, $attr_value );
-            next;
+            next ATTR_NAME;
         }
-        if( my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name} ) {
+        if (my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$attr_name}) {
             $node->{$NPROP_STORAGE}->_set_node_ref_attribute( $node->{$NPROP_CONTAINER}, $attr_name, $exp_node_types, $attr_value );
-            next;
+            next ATTR_NAME;
         }
-        $node->_throw_error_message( 'SRT_N_SET_ATS_INVAL_ELEM_NM', { 'ATNM' => $attr_name } );
+        $node->_throw_error_message( 'SRT_N_SET_ATS_INVAL_ELEM_NM',
+            { 'ATNM' => $attr_name } );
     }
 }
 
@@ -2639,35 +2873,38 @@ sub move_before_sibling {
 
     # First make sure we have 3 actual Nodes that are all in the same Container.
 
-    defined( $sibling ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING' } );
-    ref($sibling) eq ref($node) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING', 'ARGVL' => $sibling } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING' } )
+        if !defined $sibling;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NODE',
+        { 'METH' => 'move_before_sibling', 'ARGNM' => 'SIBLING', 'ARGVL' => $sibling } )
+        if ref $sibling ne ref $node;
     my $sibling_nodstor = $sibling->{$NPROP_STORAGE};
-    unless( $sibling_nodstor->{$NSPROP_CONSTOR} eq $constor ) {
-        $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_DIFF_CONT' );
-    }
+    $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_DIFF_CONT' )
+        if $sibling_nodstor->{$NSPROP_CONSTOR} ne $constor;
 
     my $parent_nodstor = undef;
-    if( defined( $parent ) ) {
-        ref($parent) eq ref($node) or $node->_throw_error_message( 
-            'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'move_before_sibling', 'ARGNM' => 'PARENT', 'ARGVL' => $parent } );
+    if (defined $parent) {
+        $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NODE',
+            { 'METH' => 'move_before_sibling', 'ARGNM' => 'PARENT', 'ARGVL' => $parent } )
+            if ref $parent ne ref $node;
         $parent_nodstor = $parent->{$NPROP_STORAGE};
-        unless( $parent_nodstor->{$NSPROP_CONSTOR} eq $constor ) {
-            $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_DIFF_CONT' );
-        }
-    } else {
-        unless( $parent_nodstor = $nodstor->{$NSPROP_PP_NSREF} ) {
-            $pp_pseudonode or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_P_ARG_OR_PP_OR_PS' );
+        $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_DIFF_CONT' )
+            if $parent_nodstor->{$NSPROP_CONSTOR} ne $constor;
+    }
+    else {
+        if (!($parent_nodstor = $nodstor->{$NSPROP_PP_NSREF})) {
+            $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_NO_P_ARG_OR_PP_OR_PS' )
+                if !$pp_pseudonode;
         }
     }
 
     # Now get the Node list we're going to search through.
 
-    my $ra_search_list = $parent_nodstor ? 
-        ($parent_nodstor eq $nodstor->{$NSPROP_PP_NSREF} ? 
-            $parent_nodstor->{$NSPROP_PRIM_CHILD_NSREFS} : 
-            $parent_nodstor->{$NSPROP_LINK_CHILD_NSREFS}) : 
+    my $ra_search_list = $parent_nodstor ?
+        ($parent_nodstor eq $nodstor->{$NSPROP_PP_NSREF} ?
+            $parent_nodstor->{$NSPROP_PRIM_CHILD_NSREFS} :
+            $parent_nodstor->{$NSPROP_LINK_CHILD_NSREFS}) :
         $constor->{$CSPROP_PSEUDONODES}->{$pp_pseudonode};
 
     # Now confirm the given Nodes are our parent and sibling.
@@ -2679,35 +2916,45 @@ sub move_before_sibling {
     my @refs_after_both = ();
 
     my $others_go_before = 1;
-    foreach my $child_nodstor (@{$ra_search_list}) {
-        if( $child_nodstor eq $nodstor ) {
-            push( @curr_node_refs, $child_nodstor );
-        } elsif( $child_nodstor eq $sibling_nodstor ) {
-            push( @sib_node_refs, $child_nodstor );
+    for my $child_nodstor (@{$ra_search_list}) {
+        if ($child_nodstor eq $nodstor) {
+            push @curr_node_refs, $child_nodstor;
+        }
+        elsif ($child_nodstor eq $sibling_nodstor) {
+            push @sib_node_refs, $child_nodstor;
             $others_go_before = 0;
-        } elsif( $others_go_before ) {
-            push( @refs_before_both, $child_nodstor );
-        } else {
-            push( @refs_after_both, $child_nodstor );
+        }
+        elsif ($others_go_before) {
+            push @refs_before_both, $child_nodstor;
+        }
+        else {
+            push @refs_after_both, $child_nodstor;
         }
     }
 
-    scalar( @curr_node_refs ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_NOT_P' );
-    scalar( @sib_node_refs ) or $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_NOT_S' );
+    $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_P_NOT_P' )
+        if !@curr_node_refs;
+    $node->_throw_error_message( 'SRT_N_MOVE_PRE_SIB_S_NOT_S' )
+        if !@sib_node_refs;
 
     # Now confirm there are no blocks imposed against this action.
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'move_before_sibling' } );
-    (keys %{$sibling_nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $sibling_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'move_before_sibling' } );
-    if( $parent_nodstor ) {
-        if( $parent_nodstor eq $nodstor->{$NSPROP_PP_NSREF} ) {
-            (keys %{$parent_nodstor->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
-                $parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS', { 'METH' => 'move_before_sibling' } );
-        } else {
-            (keys %{$parent_nodstor->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
-                $parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'move_before_sibling' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'move_before_sibling' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    $sibling_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'move_before_sibling' } )
+        if (keys %{$sibling_nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    if ($parent_nodstor) {
+        if ($parent_nodstor eq $nodstor->{$NSPROP_PP_NSREF}) {
+            $parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS',
+                { 'METH' => 'move_before_sibling' } )
+                if (keys %{$parent_nodstor->{$NSPROP_ATT_PC_ADD_BLOCKS}}) >= 1;
+        }
+        else {
+            $parent_nodstor->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS',
+                { 'METH' => 'move_before_sibling' } )
+                if (keys %{$parent_nodstor->{$NSPROP_ATT_LC_ADD_BLOCKS}}) >= 1;
         }
     }
 
@@ -2722,36 +2969,43 @@ sub move_before_sibling {
 sub get_child_nodes {
     my ($node, $node_type) = @_;
     my $nodstor = $node->{$NPROP_STORAGE};
-    if( defined( $node_type ) ) {
-        unless( $NODE_TYPES{$node_type} ) {
+    if (defined $node_type) {
+        if (!$NODE_TYPES{$node_type}) {
             $node->_throw_error_message( 'SRT_N_GET_CH_NODES_BAD_TYPE' );
         }
         return $node->_ns_to_ni( [grep { $_->{$NSPROP_NODE_TYPE} eq $node_type } @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}] );
-    } else {
+    }
+    else {
         return $node->_ns_to_ni( [@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}] );
     }
 }
 
 sub add_child_node {
     my ($node, $child) = @_;
-    defined( $child ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD' } );
-    ref($child) eq ref($node) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_NODE', { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD', 'ARGVL' => $child } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD' } )
+        if !defined $child;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NODE',
+        { 'METH' => 'add_child_node', 'ARGNM' => 'CHILD', 'ARGVL' => $child } )
+        if ref $child ne ref $node;
     $child = $child->{$NPROP_STORAGE}; # unwrap any Node object into its NodeStorage; no-op if arg not a Node
-    my $exp_node_types = $NODE_TYPES{$child->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF} or $child->_throw_error_message( 
-        'SRT_N_METH_NO_PP_AT', { 'METH' => 'set_primary_parent_attribute' } );
+    my $exp_node_types = $NODE_TYPES{$child->{$NSPROP_NODE_TYPE}}->{$TPI_PP_NSREF};
+    $child->_throw_error_message( 'SRT_N_METH_NO_PP_AT',
+        { 'METH' => 'set_primary_parent_attribute' } )
+        if !$exp_node_types;
     $child->_set_primary_parent_attribute( $node->{$NPROP_CONTAINER}, $exp_node_types, $node->{$NPROP_STORAGE} );
         # will die if not same Container or the change would result in a circular reference
 }
 
 sub add_child_nodes {
     my ($node, $children) = @_;
-    defined( $children ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN' } );
-    ref($children) eq 'ARRAY' or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
-    foreach my $child (@{$children}) {
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN' } )
+        if !defined $children;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_ARY',
+        { 'METH' => 'add_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } )
+        if ref $children ne 'ARRAY';
+    for my $child (@{$children}) {
         $node->add_child_node( $child );
     }
 }
@@ -2761,12 +3015,12 @@ sub add_child_nodes {
 sub get_referencing_nodes {
     my ($node, $node_type) = @_;
     my $nodstor = $node->{$NPROP_STORAGE};
-    if( defined( $node_type ) ) {
-        unless( $NODE_TYPES{$node_type} ) {
-            $node->_throw_error_message( 'SRT_N_GET_REF_NODES_BAD_TYPE' );
-        }
+    if (defined $node_type) {
+        $node->_throw_error_message( 'SRT_N_GET_REF_NODES_BAD_TYPE' )
+            if !$NODE_TYPES{$node_type};
         return $node->_ns_to_ni( [grep { $_->{$NSPROP_NODE_TYPE} eq $node_type } @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}}] );
-    } else {
+    }
+    else {
         return $node->_ns_to_ni( [@{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}}] );
     }
 }
@@ -2782,22 +3036,27 @@ sub get_surrogate_id_chain {
 
 sub find_node_by_surrogate_id {
     my ($node, $self_attr_name, $target_attr_value) = @_;
-    defined( $self_attr_name ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } )
+        if !defined $self_attr_name;
     my $type_info = $NODE_TYPES{$node->{$NPROP_STORAGE}->{$NSPROP_NODE_TYPE}};
-    my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$self_attr_name} or 
-        $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
-        { 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } );
-    defined( $target_attr_value ) or $node->_throw_error_message( 
-        'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
-    ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
-    scalar( @{$target_attr_value} ) >= 1 or $node->_throw_error_message( 
-        'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
-    foreach my $child (@{$target_attr_value}) {
-        defined( $child ) or $node->_throw_error_message( 
-            'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL', { 'ATNM' => $self_attr_name } );
+    my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$self_attr_name};
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM',
+        { 'METH' => 'find_node_by_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } )
+        if !$exp_node_types;
+    $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL',
+        { 'ATNM' => $self_attr_name } )
+        if !defined $target_attr_value;
+    ref $target_attr_value eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+    $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL',
+        { 'ATNM' => $self_attr_name } )
+        if @{$target_attr_value} == 0;
+    for my $child (@{$target_attr_value}) {
+        $node->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_ARG_VAL',
+            { 'ATNM' => $self_attr_name } )
+            if !defined $child;
     }
-    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_find_node_by_surrogate_id( 
+    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_find_node_by_surrogate_id(
         $node->{$NPROP_CONTAINER}, $self_attr_name, $target_attr_value ) );
 }
 
@@ -2805,10 +3064,11 @@ sub find_node_by_surrogate_id {
 
 sub find_child_node_by_surrogate_id {
     my ($node, $target_attr_value) = @_;
-    defined( $target_attr_value ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } );
-    ref($target_attr_value) eq 'ARRAY' or $target_attr_value = [$target_attr_value];
-    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_find_child_node_by_surrogate_id( 
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'find_child_node_by_surrogate_id', 'ARGNM' => 'TARGET_ATTR_VALUE' } )
+        if !defined $target_attr_value;
+    ref $target_attr_value eq 'ARRAY' or $target_attr_value = [$target_attr_value];
+    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_find_child_node_by_surrogate_id(
         $node->{$NPROP_CONTAINER}, $target_attr_value ) );
 }
 
@@ -2817,13 +3077,15 @@ sub find_child_node_by_surrogate_id {
 sub get_relative_surrogate_id {
     my ($node, $self_attr_name, $want_shortest) = @_;
     my $nodstor = $node->{$NPROP_STORAGE};
-    defined( $self_attr_name ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME' } )
+        if !defined $self_attr_name;
     my $type_info = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}};
-    my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$self_attr_name} or 
-        $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM', 
-        { 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } );
-    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_relative_surrogate_id( 
+    my $exp_node_types = $type_info->{$TPI_AT_NSREFS} && $type_info->{$TPI_AT_NSREFS}->{$self_attr_name};
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_NREF_AT_NM',
+        { 'METH' => 'get_relative_surrogate_id', 'ARGNM' => 'SELF_ATTR_NAME', 'ARGVL' => $self_attr_name } )
+        if !$exp_node_types;
+    return $node->_ns_to_ni( $node->{$NPROP_STORAGE}->_get_relative_surrogate_id(
         $node->{$NPROP_CONTAINER}, $self_attr_name, $want_shortest ) );
 }
 
@@ -2848,8 +3110,8 @@ sub get_all_properties_as_perl_str {
 
 sub get_all_properties_as_xml_str {
     my ($node, $links_as_si, $want_shortest) = @_;
-    return '<?xml version="1.0" encoding="UTF-8"?>'."\n".
-        $node->_serialize_as_xml( $node->get_all_properties( $links_as_si, $want_shortest ) );
+    return qq{<?xml version="1.0" encoding="UTF-8"?>\n}
+        . $node->_serialize_as_xml( $node->get_all_properties( $links_as_si, $want_shortest ) );
 }
 
 ######################################################################
@@ -2866,15 +3128,19 @@ sub build_child_node {
 
 sub build_child_nodes {
     my ($node, $children) = @_;
-    defined( $children ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
-    ref($children) eq 'ARRAY' or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
-    foreach my $child (@{$children}) {
-        defined( $child ) or $node->_throw_error_message( 
-            'SRT_N_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } );
-        ref($child) eq 'ARRAY' or $node->_throw_error_message( 
-            'SRT_N_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } )
+        if !defined $children;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_ARY',
+        { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } )
+        if ref $children ne 'ARRAY';
+    for my $child (@{$children}) {
+        $node->_throw_error_message( 'SRT_N_METH_ARG_ARY_ELEM_UNDEF',
+            { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN' } )
+            if !defined $child;
+        $node->_throw_error_message( 'SRT_N_METH_ARG_ARY_ELEM_NO_ARY',
+            { 'METH' => 'build_child_nodes', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } )
+            if ref $child ne 'ARRAY';
         $node->build_child_node( @{$child} );
     }
 }
@@ -2882,21 +3148,25 @@ sub build_child_nodes {
 sub build_child_node_tree {
     my ($node, $node_type, $attrs, $children) = @_;
     my $new_node = $node->{$NPROP_CONTAINER}->_build_node_is_child_or_not( $node_type, $attrs, $node );
-    defined( $children ) and $new_node->build_child_node_trees( $children );
+    defined $children and $new_node->build_child_node_trees( $children );
     return $new_node;
 }
 
 sub build_child_node_trees {
     my ($node, $children) = @_;
-    defined( $children ) or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
-    ref($children) eq 'ARRAY' or $node->_throw_error_message( 
-        'SRT_N_METH_ARG_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } );
-    foreach my $child (@{$children}) {
-        defined( $child ) or $node->_throw_error_message( 
-            'SRT_N_METH_ARG_ARY_ELEM_UNDEF', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } );
-        ref($child) eq 'ARRAY' or $node->_throw_error_message( 
-            'SRT_N_METH_ARG_ARY_ELEM_NO_ARY', { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } );
+    $node->_throw_error_message( 'SRT_N_METH_ARG_UNDEF',
+        { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } )
+        if !defined $children;
+    $node->_throw_error_message( 'SRT_N_METH_ARG_NO_ARY',
+        { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ARGVL' => $children } )
+        if ref $children ne 'ARRAY';
+    for my $child (@{$children}) {
+        $node->_throw_error_message( 'SRT_N_METH_ARG_ARY_ELEM_UNDEF',
+            { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN' } )
+            if !defined $child;
+        $node->_throw_error_message( 'SRT_N_METH_ARG_ARY_ELEM_NO_ARY',
+            { 'METH' => 'build_child_node_trees', 'ARGNM' => 'CHILDREN', 'ELEMVL' => $child } )
+            if ref $child ne 'ARRAY';
         $node->build_child_node_tree( @{$child} );
     }
 }
@@ -2907,14 +3177,17 @@ sub build_child_node_trees {
 package SQL::Routine::NodeStorage;
 use base qw( SQL::Routine );
 
+use Scalar::Util qw( weaken );
+use only 'List::MoreUtils' => '0.12-', qw( first_index );
+
 ######################################################################
 
 sub _new {
     my ($class, $constor, $node_type, $node_id) = @_;
-    my $nodstor = bless( {}, ref($class) || $class );
+    my $nodstor = bless {}, ref $class || $class;
 
     $nodstor->{$NSPROP_CONSTOR} = $constor;
-    Scalar::Util::weaken( $nodstor->{$NSPROP_CONSTOR} ); # avoid strong circular references
+    weaken $nodstor->{$NSPROP_CONSTOR}; # avoid strong circular references
     $nodstor->{$NSPROP_NODE_TYPE} = $node_type;
     $nodstor->{$NSPROP_NODE_ID} = $node_id;
     $nodstor->{$NSPROP_PP_NSREF} = undef;
@@ -2932,12 +3205,12 @@ sub _new {
 
     # Now get our parent pseudo-Node to link back to us, if there is one.
     my $type_info = $NODE_TYPES{$node_type};
-    if( my $pp_pseudonode = $type_info->{$TPI_PP_PSEUDONODE} ) {
-        push( @{$constor->{$CSPROP_PSEUDONODES}->{$pp_pseudonode}}, $nodstor );
+    if (my $pp_pseudonode = $type_info->{$TPI_PP_PSEUDONODE}) {
+        push @{$constor->{$CSPROP_PSEUDONODES}->{$pp_pseudonode}}, $nodstor;
     }
 
     # Now adjust our "next free node id" counter if appropriate
-    if( $node_id >= $constor->{$CSPROP_NEXT_FREE_NID} ) {
+    if ($node_id >= $constor->{$CSPROP_NEXT_FREE_NID}) {
         $constor->{$CSPROP_NEXT_FREE_NID} = 1 + $node_id;
     }
 
@@ -2953,35 +3226,37 @@ sub _delete_node {
     my ($nodstor, $container) = @_;
     my $constor = $container->{$CPROP_STORAGE};
 
-    if( @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} > 0 or @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} > 0 ) {
-        $nodstor->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD', 
-            { 'PRIM_COUNT' => scalar( @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} ), 
-            'LINK_COUNT' => scalar( @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} ) } );
+    if (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} > 0 or @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} > 0) {
+        $nodstor->_throw_error_message( 'SRT_N_DEL_NODE_HAS_CHILD',
+            { 'PRIM_COUNT' => scalar @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}},
+            'LINK_COUNT' => scalar @{$nodstor->{$NSPROP_LINK_CHILD_NSREFS}} } );
     }
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'delete_node' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
 
     # Remove our parent Nodes' links back to us.
-    if( my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
+    if (my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE}) {
         my $siblings = $constor->{$CSPROP_PSEUDONODES}->{$pp_pseudonode};
         @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
-    } elsif( my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF} ) {
+    }
+    elsif (my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF}) {
         my $siblings = $pp_nodstor->{$NSPROP_PRIM_CHILD_NSREFS};
         @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
     }
-    foreach my $attr_value (values %{$nodstor->{$NSPROP_AT_NSREFS}}) {
+    for my $attr_value (values %{$nodstor->{$NSPROP_AT_NSREFS}}) {
         my $siblings = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
         @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove all occurances
     }
 
     # Remove primary Container link to us.
-    delete( $constor->{$CSPROP_ALL_NODES}->{$nodstor->{$NSPROP_NODE_ID}} );
+    delete $constor->{$CSPROP_ALL_NODES}->{$nodstor->{$NSPROP_NODE_ID}};
 
-    # Note: We do not need to explicitly remove any links held by the invocant 
-    # NodeStorage to its ContainerStorage or parent NodeStorages because they will be garbage 
-    # collected along with the invocant NodeStorage once this method returns; 
-    # the invocant Node interface will be garbage collected when reference the reference to it held by 
+    # Note: We do not need to explicitly remove any links held by the invocant
+    # NodeStorage to its ContainerStorage or parent NodeStorages because they will be garbage
+    # collected along with the invocant NodeStorage once this method returns;
+    # the invocant Node interface will be garbage collected when reference the reference to it held by
     # the external invoker code goes out of scope.
 
     $constor->{$CSPROP_EDIT_COUNT} ++; # A Node is gone.
@@ -2994,40 +3269,41 @@ sub _delete_node_tree {
     my ($nodstor, $container) = @_;
     my $constor = $container->{$CPROP_STORAGE};
 
-    # Now build a list of all primary-descendant NodeStorages (includes self), 
+    # Now build a list of all primary-descendant NodeStorages (includes self),
     # which are the deletion candidates.
     my %candidates = ();
     $nodstor->_delete_node_tree__add_to_candidates( \%candidates );
 
-    # Now assert that all primary-descendant NodeStorages (includes self) may be deleted, 
+    # Now assert that all primary-descendant NodeStorages (includes self) may be deleted,
     # and lack children outside the candidates.
-    foreach my $candidate (values %candidates) {
-        foreach my $link_child_nodstor (@{$candidate->{$NSPROP_LINK_CHILD_NSREFS}}) {
-            unless( $candidates{$link_child_nodstor} ) {
-                $nodstor->_throw_error_message( 'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD', 
-                    { 'PNTYPE' => $candidate->{$NSPROP_NODE_TYPE}, 
-                    'PNID' => $candidate->{$NSPROP_NODE_ID}, 
-                    'PSIDCH' => $candidate->_get_surrogate_id_chain( $container ), 
-                    'CNTYPE' => $link_child_nodstor->{$NSPROP_NODE_TYPE}, 
-                    'CNID' => $link_child_nodstor->{$NSPROP_NODE_ID}, 
-                    'CSIDCH' => $link_child_nodstor->_get_surrogate_id_chain( $container ) } );
-            }
+    for my $candidate (values %candidates) {
+        for my $link_child_nodstor (@{$candidate->{$NSPROP_LINK_CHILD_NSREFS}}) {
+            $nodstor->_throw_error_message( 'SRT_N_DEL_NODE_TREE_HAS_EXT_CHILD',
+                { 'PNTYPE' => $candidate->{$NSPROP_NODE_TYPE},
+                'PNID' => $candidate->{$NSPROP_NODE_ID},
+                'PSIDCH' => $candidate->_get_surrogate_id_chain( $container ),
+                'CNTYPE' => $link_child_nodstor->{$NSPROP_NODE_TYPE},
+                'CNID' => $link_child_nodstor->{$NSPROP_NODE_ID},
+                'CSIDCH' => $link_child_nodstor->_get_surrogate_id_chain( $container ) } )
+                if !$candidates{$link_child_nodstor};
         }
     }
 
     # Now assert that no Nodes have blocks imposed on them.
-    foreach my $candidate (values %candidates) {
-        (keys %{$candidate->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-            $candidate->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'delete_node' } );
+    for my $candidate (values %candidates) {
+        $candidate->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+            { 'METH' => 'delete_node' } )
+            if (keys %{$candidate->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     }
 
     # If we get here, then all of the candidate NodeStorages may be deleted.
 
     # Now remove the single prim-child ref to the tree's root NodeStorage.
-    if( my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
+    if (my $pp_pseudonode = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE}) {
         my $siblings = $constor->{$CSPROP_PSEUDONODES}->{$pp_pseudonode};
         @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
-    } elsif( my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF} ) {
+    }
+    elsif (my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF}) {
         my $siblings = $pp_nodstor->{$NSPROP_PRIM_CHILD_NSREFS};
         @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
     }
@@ -3035,19 +3311,20 @@ sub _delete_node_tree {
     # Now remove all of the link-child refs to the candidates that are in non-candidate NodeStorages.
     # Also remove all candidates from their Container's all-nodes list.
     my $cont_all_nodes = $constor->{$CSPROP_ALL_NODES};
-    foreach my $candidate (values %candidates) {
-        foreach my $attr_value (values %{$candidate->{$NSPROP_AT_NSREFS}}) {
-            $candidates{$attr_value} and next; # just do this slower unlinking process if parent not being deleted
+    for my $candidate (values %candidates) {
+        ATTR_VALUE:
+        for my $attr_value (values %{$candidate->{$NSPROP_AT_NSREFS}}) {
+            $candidates{$attr_value} and next ATTR_VALUE; # just do this slower unlinking process if parent not being deleted
             my $siblings = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
             @{$siblings} = grep { $_ ne $candidate } @{$siblings}; # remove all occurances
         }
-        delete( $cont_all_nodes->{$candidate->{$NSPROP_NODE_ID}} );
+        delete $cont_all_nodes->{$candidate->{$NSPROP_NODE_ID}};
     }
 
-    # Note: We do not need to explicitly remove any links held by the invocant 
-    # NodeStorage to its ContainerStorage or parent NodeStorages because they will be garbage 
-    # collected along with the invocant NodeStorage once this method returns; 
-    # the invocant Node interface will be garbage collected when reference the reference to it held by 
+    # Note: We do not need to explicitly remove any links held by the invocant
+    # NodeStorage to its ContainerStorage or parent NodeStorages because they will be garbage
+    # collected along with the invocant NodeStorage once this method returns;
+    # the invocant Node interface will be garbage collected when reference the reference to it held by
     # the external invoker code goes out of scope.
 
     $constor->{$CSPROP_EDIT_COUNT} ++; # Several Nodes are gone.
@@ -3057,7 +3334,7 @@ sub _delete_node_tree {
 sub _delete_node_tree__add_to_candidates {
     my ($nodstor, $candidates) = @_;
     $candidates->{$nodstor} = $nodstor; # key is stringified version of Node ref, value is actual Node ref
-    foreach my $prim_child_nodstor (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+    for my $prim_child_nodstor (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
         $prim_child_nodstor->_delete_node_tree__add_to_candidates( $candidates );
     }
 }
@@ -3073,32 +3350,32 @@ sub _set_node_id {
     my ($nodstor, $container, $new_id) = @_;
     my $constor = $container->{$CPROP_STORAGE};
 
-    unless( $new_id =~ m/^\d+$/ and $new_id > 0 ) {
-        $nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG', { 'ARG' => $new_id } );
-    }
+    $nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_BAD_ARG',
+        { 'ARG' => $new_id } )
+        if $new_id !~ m/^\d+$/x or $new_id <= 0;
 
     my $old_id = $nodstor->{$NSPROP_NODE_ID};
 
-    if( $new_id == $old_id ) {
-        return; # no-op; new id same as old
-    }
+    return # no-op; new id same as old
+        if $new_id == $old_id;
     my $rh_cal = $constor->{$CSPROP_ALL_NODES};
 
-    if( $rh_cal->{$new_id} ) {
-        $nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID', { 'ARG' => $new_id } );
-    }
+    $nodstor->_throw_error_message( 'SRT_N_SET_NODE_ID_DUPL_ID',
+        { 'ARG' => $new_id } )
+        if $rh_cal->{$new_id};
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_node_id' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'set_node_id' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
 
     # The following seq should leave state consistent or recoverable if the thread dies
     $rh_cal->{$new_id} = $nodstor; # temp reserve new+old
     $nodstor->{$NSPROP_NODE_ID} = $new_id; # change self from old to new
-    delete( $rh_cal->{$old_id} ); # now only new reserved
+    delete $rh_cal->{$old_id}; # now only new reserved
     $constor->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 
     # Now adjust our "next free node id" counter if appropriate
-    if( $new_id >= $constor->{$CSPROP_NEXT_FREE_NID} ) {
+    if ($new_id >= $constor->{$CSPROP_NEXT_FREE_NID}) {
         $constor->{$CSPROP_NEXT_FREE_NID} = 1 + $new_id;
     }
 }
@@ -3112,9 +3389,12 @@ sub _get_primary_parent_attribute {
 
 sub _clear_primary_parent_attribute {
     my ($nodstor, $container) = @_;
-    my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF} or return; # no-op; attr not set
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_primary_parent_attribute' } );
+    my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF};
+    return
+        if !$pp_nodstor; # no-op; attr not set
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_primary_parent_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     # The attribute value is a Node object, so clear its link back.
     my $siblings = $pp_nodstor->{$NSPROP_PRIM_CHILD_NSREFS};
     @{$siblings} = grep { $_ ne $nodstor } @{$siblings}; # remove the occurance
@@ -3125,53 +3405,54 @@ sub _clear_primary_parent_attribute {
 sub _set_primary_parent_attribute {
     my ($nodstor, $container, $exp_node_types, $attr_value) = @_;
 
-    if( ref($attr_value) eq ref($nodstor) ) {
+    if (ref $attr_value eq ref $nodstor) {
         # We were given a Node object for a new attribute value.
-        unless( grep { $attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_WRONG_NODE_TYPE', 
-                { 'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NSPROP_NODE_TYPE} } );
-        }
-        unless( $attr_value->{$NSPROP_CONSTOR} eq $nodstor->{$NSPROP_CONSTOR} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_DIFF_CONT' );
-        }
+        $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_WRONG_NODE_TYPE',
+            { 'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NSPROP_NODE_TYPE} } )
+            if !grep { $attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types};
+        $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_DIFF_CONT' )
+            if $attr_value->{$NSPROP_CONSTOR} ne $nodstor->{$NSPROP_CONSTOR};
         # If we get here, both Nodes are in the same Container and can link
-    } elsif( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
+    }
+    elsif ($attr_value =~ m/^\d+$/x and $attr_value > 0) {
         # We were given a Node Id for a new attribute value.
         my $searched_attr_value = $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_ALL_NODES}->{$attr_value};
-        unless( $searched_attr_value and grep { $searched_attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_NONEX_NID', 
-                { 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
-        }
+        $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_NONEX_NID',
+            { 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } )
+            if !$searched_attr_value or !grep { $searched_attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types};
         $attr_value = $searched_attr_value;
-    } else {
+    }
+    else {
         # We were given a Surrogate Node Id for a new attribute value.
         $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_NO_ALLOW_SID_FOR_PP' );
     }
 
-    if( $nodstor->{$NSPROP_PP_NSREF} and $attr_value eq $nodstor->{$NSPROP_PP_NSREF} ) {
-        return; # no-op; new attribute value same as old
-    }
+    return # no-op; new attribute value same as old
+        if $nodstor->{$NSPROP_PP_NSREF} and $attr_value eq $nodstor->{$NSPROP_PP_NSREF};
 
-    # Attempt is to link two Nodes in the same Container; it would be okay, except 
+    # Attempt is to link two Nodes in the same Container; it would be okay, except
     # that we still have to check for circular primary parent Node references.
     my $pp_nodstor = $attr_value;
-    do { # Also make sure we aren't trying to link to ourself.
-        if( $pp_nodstor eq $nodstor ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' );
-        }
-    } while( $pp_nodstor = $pp_nodstor->{$NSPROP_PP_NSREF} );
+    $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' )
+        if $pp_nodstor eq $nodstor; # Error: we are trying to link to ourself.
+    while ($pp_nodstor = $pp_nodstor->{$NSPROP_PP_NSREF}) {
+        $nodstor->_throw_error_message( 'SRT_N_SET_PP_AT_CIRC_REF' )
+            if $pp_nodstor eq $nodstor; # Error: we are trying to link to a parent.
+    }
     # For simplicity, we assume circular refs via Node-ref attrs other than 'pp' are impossible.
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_primary_parent_attribute' } );
-    (keys %{$attr_value->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
-        $attr_value->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS', { 'METH' => 'set_primary_parent_attribute' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'set_primary_parent_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    $attr_value->_throw_error_message( 'SRT_N_METH_VIOL_PC_ADD_BLOCKS',
+        { 'METH' => 'set_primary_parent_attribute' } )
+        if (keys %{$attr_value->{$NSPROP_ATT_PC_ADD_BLOCKS}}) >= 1;
 
     $nodstor->_clear_primary_parent_attribute( $container ); # clears any existing link through this attribute
     $nodstor->{$NSPROP_PP_NSREF} = $attr_value;
-    Scalar::Util::weaken( $nodstor->{$NSPROP_PP_NSREF} ); # avoid strong circular references
+    weaken $nodstor->{$NSPROP_PP_NSREF}; # avoid strong circular references
     # The attribute value is a Node object, so that Node should link back now.
-    push( @{$attr_value->{$NSPROP_PRIM_CHILD_NSREFS}}, $nodstor );
+    push @{$attr_value->{$NSPROP_PRIM_CHILD_NSREFS}}, $nodstor;
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
@@ -3184,16 +3465,18 @@ sub _get_literal_attribute {
 
 sub _clear_literal_attribute {
     my ($nodstor, $container, $attr_name) = @_;
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
-    delete( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    delete $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name};
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _clear_literal_attributes {
     my ($nodstor, $container) = @_;
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attributes' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     $nodstor->{$NSPROP_AT_LITERALS} = {};
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3201,35 +3484,35 @@ sub _clear_literal_attributes {
 sub _set_literal_attribute {
     my ($nodstor, $container, $attr_name, $exp_lit_type, $attr_value) = @_;
 
-    if( ref($attr_value) ) {
-        $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_IS_REF', 
-            { 'ATNM' => $attr_name, 'ARG_REF_TYPE' => ref($attr_value) } );
-    }
+    $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_IS_REF',
+        { 'ATNM' => $attr_name, 'ARG_REF_TYPE' => ref $attr_value } )
+        if ref $attr_value;
 
     my $node_type = $nodstor->{$NSPROP_NODE_TYPE};
 
-    if( $exp_lit_type eq 'bool' ) {
-        unless( $attr_value eq '0' or $attr_value eq '1' ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_BOOL', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
-        }
+    if ($exp_lit_type eq 'bool') {
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_BOOL',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value } )
+            if $attr_value ne '0' and $attr_value ne '1';
+    }
 
-    } elsif( $exp_lit_type eq 'uint' ) {
-        unless( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_UINT', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
-        }
+    elsif ($exp_lit_type eq 'uint') {
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_UINT',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value } )
+            if $attr_value !~ m/^\d+$/x or $attr_value <= 0;
+    }
 
-    } elsif( $exp_lit_type eq 'sint' ) {
-        unless( $attr_value =~ m/^-?\d+$/ ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_SINT', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
-        }
+    elsif ($exp_lit_type eq 'sint') {
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_LIT_V_SINT',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value } )
+            if $attr_value !~ m/^ -? \d+ $/x;
+    }
 
-    } else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
+    else {} # $exp_lit_type eq 'cstr' or 'misc'; no change to value needed
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'set_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
 
     $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} = $attr_value;
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3244,16 +3527,18 @@ sub _get_enumerated_attribute {
 
 sub _clear_enumerated_attribute {
     my ($nodstor, $container, $attr_name) = @_;
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
-    delete( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    delete $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name};
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _clear_enumerated_attributes {
     my ($nodstor, $container) = @_;
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attributes' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     $nodstor->{$NSPROP_AT_ENUMS} = {};
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
@@ -3261,13 +3546,13 @@ sub _clear_enumerated_attributes {
 sub _set_enumerated_attribute {
     my ($nodstor, $container, $attr_name, $exp_enum_type, $attr_value) = @_;
 
-    unless( $ENUMERATED_TYPES{$exp_enum_type}->{$attr_value} ) {
-        $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_ENUM_V', { 'ATNM' => $attr_name, 
-            'ENUMTYPE' => $exp_enum_type, 'ARG' => $attr_value } );
-    }
+    $nodstor->_throw_error_message( 'SRT_N_SET_AT_INVAL_ENUM_V',
+        { 'ATNM' => $attr_name, 'ENUMTYPE' => $exp_enum_type, 'ARG' => $attr_value } )
+        if !$ENUMERATED_TYPES{$exp_enum_type}->{$attr_value};
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'set_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
 
     $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} = $attr_value;
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3278,36 +3563,39 @@ sub _set_enumerated_attribute {
 sub _get_node_ref_attribute {
     my ($nodstor, $container, $attr_name, $get_target_si) = @_;
     my $attr_val = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name};
-    if( $get_target_si and defined($attr_val) ) {
+    if ($get_target_si and defined $attr_val) {
         return $attr_val->_get_surrogate_id_attribute( $container, $get_target_si );
-    } else {
+    }
+    else {
         return $attr_val;
     }
 }
 
 sub _clear_node_ref_attribute {
     my ($nodstor, $container, $attr_name) = @_;
-    my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} or return; # no-op; attr not set
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attribute' } );
+    my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name};
+    return
+        if !$attr_value; # no-op; attr not set
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
     # The attribute value is a Node object, so clear its link back.
     my $ra_children_of_parent = $attr_value->{$NSPROP_LINK_CHILD_NSREFS};
-    foreach my $i (0..$#{$ra_children_of_parent}) {
-        if( $ra_children_of_parent->[$i] eq $nodstor ) {
-            # remove first instance of $nodstor from it's parent's child list
-            splice( @{$ra_children_of_parent}, $i, 1 );
-            last;
-        }
-    }
-    delete( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ); # removes link to link-parent, if any
+    my $child_index = first_index { $_ eq $nodstor } @{$ra_children_of_parent};
+    die "internal error of _clear_node_ref_attribute(), parent has no recip link to child\n"
+        if $child_index == -1;
+    # remove first instance of $nodstor from it's parent's child list
+    splice @{$ra_children_of_parent}, $child_index, 1;
+    delete $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name}; # removes link to link-parent, if any
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
 sub _clear_node_ref_attributes {
     my ($nodstor, $container) = @_;
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'clear_attributes' } );
-    foreach my $attr_name (keys %{$nodstor->{$NSPROP_AT_NSREFS}}) {
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'clear_attributes' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    for my $attr_name (keys %{$nodstor->{$NSPROP_AT_NSREFS}}) {
         $nodstor->_clear_node_ref_attribute( $container, $attr_name );
     }
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
@@ -3316,57 +3604,57 @@ sub _clear_node_ref_attributes {
 sub _set_node_ref_attribute {
     my ($nodstor, $container, $attr_name, $exp_node_types, $attr_value) = @_;
 
-    if( ref($attr_value) eq ref($nodstor) ) {
+    if (ref $attr_value eq ref $nodstor) {
         # We were given a Node object for a new attribute value.
-        unless( grep { $attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_WRONG_NODE_TYPE', { 'ATNM' => $attr_name, 
-                'EXPNTYPE' => $exp_node_types, 'ARGNTYPE' => $attr_value->{$NSPROP_NODE_TYPE} } );
-        }
-        unless( $attr_value->{$NSPROP_CONSTOR} eq $nodstor->{$NSPROP_CONSTOR} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_DIFF_CONT', { 'ATNM' => $attr_name } );
-        }
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_WRONG_NODE_TYPE',
+            { 'ATNM' => $attr_name, 'EXPNTYPE' => $exp_node_types,
+            'ARGNTYPE' => $attr_value->{$NSPROP_NODE_TYPE} } )
+            if !grep { $attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types};
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_DIFF_CONT',
+            { 'ATNM' => $attr_name } )
+            if $attr_value->{$NSPROP_CONSTOR} ne $nodstor->{$NSPROP_CONSTOR};
         # If we get here, both Nodes are in the same Container and can link
-    } elsif( $attr_value =~ m/^\d+$/ and $attr_value > 0 ) {
+    }
+    elsif ($attr_value =~ m/^\d+$/x and $attr_value > 0) {
         # We were given a Node Id for a new attribute value.
         my $searched_attr_value = $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_ALL_NODES}->{$attr_value};
-        unless( $searched_attr_value and grep { $searched_attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_NID', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
-        }
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_NID',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } )
+            if !$searched_attr_value or !grep { $searched_attr_value->{$NSPROP_NODE_TYPE} eq $_ } @{$exp_node_types};
         $attr_value = $searched_attr_value;
-    } else {
+    }
+    else {
         # We were given a Surrogate Node Id for a new attribute value.
-        unless( $container->{$CPROP_MAY_MATCH_SNIDS} ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NO_ALLOW_SID', { 'ATNM' => $attr_name, 'ARG' => $attr_value } );
-        }
-        my $searched_attr_values = $nodstor->_find_node_by_surrogate_id( $container, $attr_name, 
-            ref($attr_value) eq 'ARRAY' ? $attr_value : [$attr_value] );
-        unless( $searched_attr_values ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_SID', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } );
-        }
-        if( @{$searched_attr_values} > 1 ) {
-            $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_AMBIG_SID', 
-                { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types, 
-                'CANDIDATES' => [';', map { (@{$_->get_surrogate_id_chain()},';') } @{$searched_attr_values}] } );
-        }
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NO_ALLOW_SID',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value } )
+            if !$container->{$CPROP_MAY_MATCH_SNIDS};
+        my $searched_attr_values = $nodstor->_find_node_by_surrogate_id( $container, $attr_name,
+            ref $attr_value eq 'ARRAY' ? $attr_value : [$attr_value] );
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_NONEX_SID',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types } )
+            if !$searched_attr_values;
+        $nodstor->_throw_error_message( 'SRT_N_SET_AT_NREF_AMBIG_SID',
+            { 'ATNM' => $attr_name, 'ARG' => $attr_value, 'EXPNTYPE' => $exp_node_types,
+            'CANDIDATES' => [';', map { (@{$_->get_surrogate_id_chain()},';') } @{$searched_attr_values}] } )
+            if @{$searched_attr_values} > 1;
         $attr_value = $searched_attr_values->[0];
     }
 
-    if( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} and $attr_value eq $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ) {
-        return; # no-op; new attribute value same as old
-    }
+    return # no-op; new attribute value same as old
+        if $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} and $attr_value eq $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name};
 
-    (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-        $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS', { 'METH' => 'set_attribute' } );
-    (keys %{$attr_value->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
-        $attr_value->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS', { 'METH' => 'set_attribute' } );
+    $nodstor->_throw_error_message( 'SRT_N_METH_VIOL_WRITE_BLOCKS',
+        { 'METH' => 'set_attribute' } )
+        if (keys %{$nodstor->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+    $attr_value->_throw_error_message( 'SRT_N_METH_VIOL_LC_ADD_BLOCKS',
+        { 'METH' => 'set_attribute' } )
+        if (keys %{$attr_value->{$NSPROP_ATT_LC_ADD_BLOCKS}}) >= 1;
 
     $nodstor->_clear_node_ref_attribute( $container, $attr_name ); # clears any existing link through this attribute
     $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} = $attr_value;
-    Scalar::Util::weaken( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ); # avoid strong circular references
+    weaken $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name}; # avoid strong circular references
     # The attribute value is a Node object, so that Node should link back now.
-    push( @{$attr_value->{$NSPROP_LINK_CHILD_NSREFS}}, $nodstor );
+    push @{$attr_value->{$NSPROP_LINK_CHILD_NSREFS}}, $nodstor;
     $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_EDIT_COUNT} ++; # A Node was changed.
 }
 
@@ -3375,10 +3663,14 @@ sub _set_node_ref_attribute {
 sub _get_surrogate_id_attribute {
     my ($nodstor, $container, $get_target_si) = @_;
     my ($id, $lit, $enum, $nref) = @{$NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_SI_ATNM}};
-    $id and return $nodstor->_get_node_id( $container );
-    $lit and return $nodstor->_get_literal_attribute( $container, $lit );
-    $enum and return $nodstor->_get_enumerated_attribute( $container, $enum );
-    $nref and return $nodstor->_get_node_ref_attribute( $container, $nref, $get_target_si );
+    return $nodstor->_get_node_id( $container )
+        if $id;
+    return $nodstor->_get_literal_attribute( $container, $lit )
+        if $lit;
+    return $nodstor->_get_enumerated_attribute( $container, $enum )
+        if $enum;
+    return $nodstor->_get_node_ref_attribute( $container, $nref, $get_target_si )
+        if $nref;
 }
 
 ######################################################################
@@ -3386,15 +3678,17 @@ sub _get_surrogate_id_attribute {
 sub _get_surrogate_id_chain {
     my ($nodstor, $container) = @_;
     my $si_atvl = $nodstor->_get_surrogate_id_attribute( $container, 1 ); # target SI lit/enum is being returned as a string
-    if( my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF} ) {
+    if (my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF}) {
         # Current Node has a primary-parent Node; append to its id chain.
         my $elements = $pp_nodstor->_get_surrogate_id_chain( $container );
-        push( @{$elements}, $si_atvl );
+        push @{$elements}, $si_atvl;
         return $elements;
-    } elsif( my $l2_psnd = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE} ) {
+    }
+    elsif (my $l2_psnd = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_PP_PSEUDONODE}) {
         # Current Node has a primary-parent pseudo-Node; append to its id chain.
         return [undef, $SQLRT_L1_ROOT_PSND, $l2_psnd, $si_atvl];
-    } else {
+    }
+    else {
         # Current Node is not linked to the main Node tree yet; indicate this with non-undef first chain element.
         return [$si_atvl];
     }
@@ -3407,28 +3701,29 @@ sub _find_node_by_surrogate_id {
     my $type_info = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}};
     my $exp_node_types = $type_info->{$TPI_AT_NSREFS}->{$self_attr_name};
     my %exp_p_node_types = map { ($_ => 1) } @{$exp_node_types};
-    if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
+    if (my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name}) {
         # The value we are searching for must be the child part of a correlated pair.
         return $nodstor->_find_node_by_surrogate_id_using_path( $container, \%exp_p_node_types, $target_attr_value, $search_path );
     }
     # If we get here, the value we are searching for is not the child part of a correlated pair.
-    my %remotely_addressable_types = map { ($_ => $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR}) } 
+    my %remotely_addressable_types = map { ($_ => $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR}) }
         grep { $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR} } @{$exp_node_types};
     my ($unqualified_value, $qualifier_l1, @rest) = @{$target_attr_value};
-    if( $qualifier_l1 ) {
+    if ($qualifier_l1) {
         # An attempt is definitely being made to remotely address a Node.
-        scalar( keys %remotely_addressable_types ) >= 1 or $nodstor->_throw_error_message( 
-            'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR', { 'ATNM' => $self_attr_name, 'ATVL' => $target_attr_value } );
+        $nodstor->_throw_error_message( 'SRT_N_FIND_ND_BY_SID_NO_REM_ADDR',
+            { 'ATNM' => $self_attr_name, 'ATVL' => $target_attr_value } )
+            if (keys %remotely_addressable_types) == 0;
         # If we get here, we are allowed to remotely address a Node.
         return $nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, $target_attr_value );
     }
     # If we get here, we are searching with a purely unqualified target SI value.
     # First try to find the target among our ancestors' siblings.
-    if( my $result = $nodstor->_find_node_by_surrogate_id_within_layers( $container, \%exp_p_node_types, $unqualified_value ) ) {
+    if (my $result = $nodstor->_find_node_by_surrogate_id_within_layers( $container, \%exp_p_node_types, $unqualified_value )) {
         return $result;
     }
     # If we get here, there were no ancestor sibling matches.
-    if( scalar( keys %remotely_addressable_types ) >= 1 ) {
+    if ((keys %remotely_addressable_types) >= 1) {
         # If we get here, we are allowed to remotely address a Node.
         return $nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, $target_attr_value );
     }
@@ -3442,33 +3737,37 @@ sub _find_node_by_surrogate_id_remotely {
     my ($nodstor, $container, $exp_p_node_types, $target_attr_value) = @_;
     my @search_chain = reverse @{$target_attr_value};
     my %exp_anc_node_types = map { ($_ => 1) } map { @{$_} } values %{$exp_p_node_types};
-    # First check if we, ourselves, are a child of an expected ancestor type; 
+    # First check if we, ourselves, are a child of an expected ancestor type;
     # if we are, then we should search beneath our own ancestor first.
     my $self_anc_nodstor = $nodstor;
-    while( $self_anc_nodstor and !$exp_anc_node_types{$self_anc_nodstor->{$NSPROP_NODE_TYPE}} ) {
+    while ($self_anc_nodstor and !$exp_anc_node_types{$self_anc_nodstor->{$NSPROP_NODE_TYPE}}) {
         $self_anc_nodstor = $self_anc_nodstor->{$NSPROP_PP_NSREF};
     }
-    if( $self_anc_nodstor ) {
+    if ($self_anc_nodstor) {
         # Search beneath our own ancestor first.
-        my $curr_nodstor = $nodstor;
-        do {
-            # $curr_node is everything from our parent to and including the remote ancestor.
-            $curr_nodstor = $curr_nodstor->{$NSPROP_PP_NSREF};
-            if( my $result = $curr_nodstor->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain ) ) {
+        my $curr_nodstor = $nodstor->{$NSPROP_PP_NSREF};
+        while ($curr_nodstor ne $self_anc_nodstor) {
+            # $curr_nodstor is everything from our parent to and including the remote ancestor.
+            if (my $result = $curr_nodstor->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain )) {
                 return $result;
             }
-        } until( $curr_nodstor eq $self_anc_nodstor );
+            $curr_nodstor = $curr_nodstor->{$NSPROP_PP_NSREF};
+        }
+        # Now $curr_nodstor eq $self_anc_nodstor.
+        if (my $result = $curr_nodstor->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain )) {
+            return $result;
+        }
     }
     # If we get here, we either have no qualified ancestor, or nothing was found when starting beneath it.
     # Now look beneath other allowable ancestors.
     my %psn_roots = map { ($_ => 1) } grep { $_ } map { $NODE_TYPES{$_}->{$TPI_PP_PSEUDONODE} } keys %exp_anc_node_types;
     my $pseudonodes = $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_PSEUDONODES};
-    my @anc_nodstors = grep { $exp_anc_node_types{$_->{$NSPROP_NODE_TYPE}} } 
+    my @anc_nodstors = grep { $exp_anc_node_types{$_->{$NSPROP_NODE_TYPE}} }
         map { @{$pseudonodes->{$_}} } grep { $psn_roots{$_} } @L2_PSEUDONODE_LIST;
     my @matched_node_list = ();
-    foreach my $anc_nodstor (@anc_nodstors) {
-        if( my $result = $anc_nodstor->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain ) ) {
-            push( @matched_node_list, @{$result} );
+    for my $anc_nodstor (@anc_nodstors) {
+        if (my $result = $anc_nodstor->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain )) {
+            push @matched_node_list, @{$result};
         }
     }
     return @matched_node_list == 0 ? undef : \@matched_node_list;
@@ -3477,29 +3776,34 @@ sub _find_node_by_surrogate_id_remotely {
 sub _find_node_by_surrogate_id_remotely_below_here {
     # Method assumes $exp_p_node_types only contains Node types that can be remotely addressable.
     my ($nodstor, $container, $exp_p_node_types, $search_chain_in) = @_;
-    my @search_chain = @{$search_chain_in} or return; # search chain empty; no match possible
-    my $si_atvl = $nodstor->_get_surrogate_id_attribute( $container, 1 ) or return;
-    if( $exp_p_node_types->{$nodstor->{$NSPROP_NODE_TYPE}} ) {
+    my @search_chain = @{$search_chain_in};
+    return
+        if !@search_chain; # search chain empty; no match possible
+    my $si_atvl = $nodstor->_get_surrogate_id_attribute( $container, 1 );
+    return
+        if !$si_atvl;
+    if ($exp_p_node_types->{$nodstor->{$NSPROP_NODE_TYPE}}) {
         # It is illegal to remotely match a Node that is a child of a remotely matcheable type.
         # Therefore, the invocant Node must be the end of the line, win or lose; its children can not be searched.
-        if( @search_chain == 1 and $si_atvl eq $search_chain[0] ) {
+        if (@search_chain == 1 and $si_atvl eq $search_chain[0]) {
             # We have a single perfectly matching Node along this path.
             return [$nodstor];
-        } else {
+        }
+        else {
             # No match, and we can't go further anyway.
-            return; 
+            return;
         }
     }
     # If we get here, the invocant Node can not be returned regardless of its name; proceed to its children.
-    if( @search_chain > 1 and $si_atvl eq $search_chain[0] ) {
+    if (@search_chain > 1 and $si_atvl eq $search_chain[0]) {
         # There are at least 2 chain elements left, so the invocant Node may match the first one.
-        shift( @search_chain );
+        shift @search_chain;
     }
     # If we get here, there is at least 1 more unmatched search chain element.
     my @matched_node_list = ();
-    foreach my $child (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-        if( my $result = $child->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain ) ) {
-            push( @matched_node_list, @{$result} );
+    for my $child (@{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+        if (my $result = $child->_find_node_by_surrogate_id_remotely_below_here( $container, $exp_p_node_types, \@search_chain )) {
+            push @matched_node_list, @{$result};
         }
     }
     return @matched_node_list == 0 ? undef : \@matched_node_list;
@@ -3512,11 +3816,12 @@ sub _find_node_by_surrogate_id_within_layers {
     # Now determine who our siblings are.
 
     my @sibling_list = ();
-    if( $pp_nodstor ) {
+    if ($pp_nodstor) {
         # We have a normal Node primary-parent, P.
         # Search among all Nodes that have P as their primary-parent Node; these are our siblings.
         @sibling_list = @{$pp_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}};
-    } else {
+    }
+    else {
         # Either we have a pseudo-Node primary-parent, or no parent normal Node is defined for us.
         # Search among all Nodes that have pseudo-Node primary-parents.
         my $pseudonodes = $nodstor->{$NSPROP_CONSTOR}->{$CSPROP_PSEUDONODES};
@@ -3525,21 +3830,22 @@ sub _find_node_by_surrogate_id_within_layers {
 
     # Now search among our siblings for a match.
 
-    foreach my $sibling_nodstor (@sibling_list) {
-        $exp_p_node_types->{$sibling_nodstor->{$NSPROP_NODE_TYPE}} or next;
-        if( my $si_atvl = $sibling_nodstor->_get_surrogate_id_attribute( $container, 1 ) ) {
-            if( $si_atvl eq $target_attr_value ) {
-                return [$sibling_nodstor];
-            }
-        }
+    SIBLING:
+    for my $sibling_nodstor (@sibling_list) {
+        next SIBLING
+            if !$exp_p_node_types->{$sibling_nodstor->{$NSPROP_NODE_TYPE}};
+        my $si_atvl = $sibling_nodstor->_get_surrogate_id_attribute( $container, 1 );
+        return [$sibling_nodstor]
+            if $si_atvl and $si_atvl eq $target_attr_value;
     }
 
     # Nothing was found among our siblings.
 
-    if( $pp_nodstor ) {
+    if ($pp_nodstor) {
         # We are not at the tree's root, so move upwards by a generation and try again.
         return $pp_nodstor->_find_node_by_surrogate_id_within_layers( $container, $exp_p_node_types, $target_attr_value );
-    } else {
+    }
+    else {
         # There is no further up that we can go, so no match was found.
         return;
     }
@@ -3552,79 +3858,90 @@ sub _find_node_by_surrogate_id_using_path {
 
     # Now enumerate through the explicit search path elements, updating $curr_node in the process.
 
-    foreach my $path_seg (@{$search_path}) {
-        if( ref($path_seg) eq 'HASH' ) { # <nref-attr-pick>
+    for my $path_seg (@{$search_path}) {
+        if (ref $path_seg eq 'HASH') { # <nref-attr-pick>
             # Convert the <nref-attr-pick> into an <nref-attr> based on the current Node's Node type.
             # If the lookup returns nothing, then this is an explicit failure condition so return.
-            $path_seg = $path_seg->{$curr_nodstor->{$NSPROP_NODE_TYPE}} or return;
+            $path_seg = $path_seg->{$curr_nodstor->{$NSPROP_NODE_TYPE}};
+            return
+                if !$path_seg;
         }
-        if( $path_seg eq $S ) { # <self> is a no-op, existing for easier-to-read documentation only
+        if ($path_seg eq $S) { # <self> is a no-op, existing for easier-to-read documentation only
             # no-op
-        } elsif( $path_seg eq $P ) { # <primary-parent>
-            unless( $curr_nodstor = $curr_nodstor->{$NSPROP_PP_NSREF} ) {
-                return; # current Node's primary parent isn't set yet (it should be); get out
-            }
-        } elsif( $path_seg eq $R ) { # <root-of-kind>
-            while( $curr_nodstor->{$NSPROP_PP_NSREF} and 
-                    $curr_nodstor->{$NSPROP_PP_NSREF}->{$NSPROP_NODE_TYPE} eq $curr_nodstor->{$NSPROP_NODE_TYPE} ) {
+        }
+        elsif ($path_seg eq $P) { # <primary-parent>
+            $curr_nodstor = $curr_nodstor->{$NSPROP_PP_NSREF};
+            return
+                if !$curr_nodstor; # current Node's primary parent isn't set yet (it should be); get out
+        }
+        elsif ($path_seg eq $R) { # <root-of-kind>
+            while ($curr_nodstor->{$NSPROP_PP_NSREF}
+                    and $curr_nodstor->{$NSPROP_PP_NSREF}->{$NSPROP_NODE_TYPE} eq $curr_nodstor->{$NSPROP_NODE_TYPE}) {
                 $curr_nodstor = $curr_nodstor->{$NSPROP_PP_NSREF};
             }
-        } elsif( $path_seg eq $C ) { # <primary-child>
+        }
+        elsif ($path_seg eq $C) { # <primary-child>
             # For simplicity we are assuming the $C is the end of the path; it's grand-child or bust.
-            if( defined($qualifier_l1) ) {
+            if (defined $qualifier_l1) {
                 # Given value is qualified; only look within the specified contexts.
-                foreach my $child_l1 (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-                    my $si_atvl = $child_l1->_get_surrogate_id_attribute( $container, 1 ) or next;
-                    $si_atvl eq $qualifier_l1 or next;
-                    foreach my $child_l2 (@{$child_l1->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-                        $exp_p_node_types->{$child_l2->{$NSPROP_NODE_TYPE}} or next;
-                        if( my $si_atvl = $child_l2->_get_surrogate_id_attribute( $container, 1 ) ) {
-                            if( $si_atvl eq $unqualified_value ) {
-                                return [$child_l2];
-                            }
-                        }
+                CHILD_L1:
+                for my $child_l1 (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+                    my $si_atvl = $child_l1->_get_surrogate_id_attribute( $container, 1 );
+                    next CHILD_L1
+                        if !$si_atvl or $si_atvl ne $qualifier_l1;
+                    CHILD_L2:
+                    for my $child_l2 (@{$child_l1->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+                        next CHILD_L2
+                            if !$exp_p_node_types->{$child_l2->{$NSPROP_NODE_TYPE}};
+                        my $si_atvl = $child_l2->_get_surrogate_id_attribute( $container, 1 );
+                        return [$child_l2]
+                            if $si_atvl and $si_atvl eq $unqualified_value;
                     }
                 }
-            } else { 
+            }
+            else {
                 # Given value is unqualified; take any ones that match.
                 my @matched_node_list = ();
-                foreach my $grandchild (map { @{$_->{$NSPROP_PRIM_CHILD_NSREFS}} } @{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-                    $exp_p_node_types->{$grandchild->{$NSPROP_NODE_TYPE}} or next;
-                    if( my $si_atvl = $grandchild->_get_surrogate_id_attribute( $container, 1 ) ) {
-                        if( $si_atvl eq $unqualified_value ) {
-                            push( @matched_node_list, $grandchild );
+                GRANDCHILD:
+                for my $grandchild (map { @{$_->{$NSPROP_PRIM_CHILD_NSREFS}} } @{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+                    next GRANDCHILD
+                        if !$exp_p_node_types->{$grandchild->{$NSPROP_NODE_TYPE}};
+                    if (my $si_atvl = $grandchild->_get_surrogate_id_attribute( $container, 1 )) {
+                        if ($si_atvl eq $unqualified_value) {
+                            push @matched_node_list, $grandchild;
                         }
                     }
                 }
                 return @matched_node_list == 0 ? undef : \@matched_node_list;
             }
             return;
-        } else { # <nref-attr>; $path_seg is an attribute name
-            unless( $curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$path_seg} ) {
-                return; # the Node-ref attribute we should follow isn't set yet (it should be); get out
-            }
+        }
+        else { # <nref-attr>; $path_seg is an attribute name
+            $curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$path_seg};
+            return
+                if !$curr_nodstor; # the Node-ref attribute we should follow isn't set yet (it should be); get out
         }
     }
 
     # We are at the end of the explicit search path, and the start of the implicit path.
     # Now enumerate through any wrapper attributes, if there are any, updating $curr_node in the process.
 
-    while( my $wr_atnm = $NODE_TYPES{$curr_nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_WR_ATNM} ) {
-        unless( $curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$wr_atnm} ) {
-            return; # the Node-ref attribute we should follow isn't set yet (it should be); get out
-        }
+    while (my $wr_atnm = $NODE_TYPES{$curr_nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_WR_ATNM}) {
+        $curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$wr_atnm};
+        return
+            if !$curr_nodstor; # the Node-ref attribute we should follow isn't set yet (it should be); get out
     }
 
     # We are at the end of the implicit search path.
     # The required Node must be one of $curr_node's children.
 
-    foreach my $child (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-        $exp_p_node_types->{$child->{$NSPROP_NODE_TYPE}} or next;
-        if( my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 ) ) {
-            if( $si_atvl eq $unqualified_value ) {
-                return [$child];
-            }
-        }
+    CHILD:
+    for my $child (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+        next CHILD
+            if !$exp_p_node_types->{$child->{$NSPROP_NODE_TYPE}};
+        my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 );
+        return [$child]
+            if $si_atvl and $si_atvl eq $unqualified_value;
     }
 
     # Nothing was found, nothing more to search.
@@ -3636,13 +3953,14 @@ sub _find_node_by_surrogate_id_using_path {
 
 sub _find_child_node_by_surrogate_id {
     my ($nodstor, $container, $target_attr_value) = @_;
-    if( defined( $target_attr_value->[0] ) ) {
+    if (defined $target_attr_value->[0]) {
         # The given surrogate id chain is relative to the current Node.
         my $curr_nodstor = $nodstor;
-        ELEM: foreach my $chain_element (@{$target_attr_value}) {
-            foreach my $child (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-                if( my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 ) ) {
-                    if( $si_atvl eq $chain_element ) {
+        ELEM:
+        for my $chain_element (@{$target_attr_value}) {
+            for my $child (@{$curr_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+                if (my $si_atvl = $child->_get_surrogate_id_attribute( $container, 1 )) {
+                    if ($si_atvl eq $chain_element) {
                         $curr_nodstor = $child;
                         next ELEM;
                     }
@@ -3651,7 +3969,8 @@ sub _find_child_node_by_surrogate_id {
             return;
         }
         return $curr_nodstor;
-    } else {
+    }
+    else {
         # The given surrogate id chain starts at the root of the current Node's Container.
         return $nodstor->{$NSPROP_CONSTOR}->_find_child_node_by_surrogate_id( $container, $target_attr_value );
     }
@@ -3663,21 +3982,27 @@ sub _get_relative_surrogate_id {
     my ($nodstor, $container, $self_attr_name, $want_shortest) = @_;
     my $type_info = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}};
     my $exp_node_types = $type_info->{$TPI_AT_NSREFS}->{$self_attr_name};
-    my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$self_attr_name} or return;
+    my $attr_value = $nodstor->{$NSPROP_AT_NSREFS}->{$self_attr_name};
+    return
+        if !$attr_value;
     my $attr_value_si_atvl = $attr_value->_get_surrogate_id_attribute( $container, 1 );
-    if( my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name} ) {
+    if (my $search_path = $type_info->{$TPI_ANCES_ATCORS} && $type_info->{$TPI_ANCES_ATCORS}->{$self_attr_name}) {
         # The value we are outputting is the child part of a correlated pair.
-        if( $search_path->[-1] eq $C ) {
+        if ($search_path->[-1] eq $C) {
             # For simplicity, assume only one $C, which is at the end of the search path, as find_*() does.
-            my $p_of_attr_value = $attr_value->{$NSPROP_PP_NSREF} or return; # linked Node not in tree
+            my $p_of_attr_value = $attr_value->{$NSPROP_PP_NSREF};
+            return
+                if !$p_of_attr_value; # linked Node not in tree
             my $p_of_attr_value_si_atvl = $p_of_attr_value->_get_surrogate_id_attribute( $container, 1 );
             # Now we have the info we need.  However, we may optionally abbreviate output further.
-            if( $want_shortest ) {
+            if ($want_shortest) {
                 # We want to further abbreviate output, check if $attr_value_si_atvl distinct by itself.
-                my $p_of_p_of_attr_value = $p_of_attr_value->{$NSPROP_PP_NSREF} or return; # linked Node not in tree
-                foreach my $ch_nodstor (map { @{$_->{$NSPROP_PRIM_CHILD_NSREFS}} } @{$p_of_p_of_attr_value->{$NSPROP_PRIM_CHILD_NSREFS}}) {
-                    if( my $ch_si_atvl = $ch_nodstor->_get_surrogate_id_attribute( $container, 1 ) ) {
-                        if( $ch_si_atvl eq $attr_value_si_atvl and $ch_nodstor ne $attr_value ) {
+                my $p_of_p_of_attr_value = $p_of_attr_value->{$NSPROP_PP_NSREF};
+                return
+                    if !$p_of_p_of_attr_value; # linked Node not in tree
+                for my $ch_nodstor (map { @{$_->{$NSPROP_PRIM_CHILD_NSREFS}} } @{$p_of_p_of_attr_value->{$NSPROP_PRIM_CHILD_NSREFS}}) {
+                    if (my $ch_si_atvl = $ch_nodstor->_get_surrogate_id_attribute( $container, 1 )) {
+                        if ($ch_si_atvl eq $attr_value_si_atvl and $ch_nodstor ne $attr_value) {
                             # The target Node has a cousin Node that has the same surrogate id, so we must qualify ours.
                             return [$attr_value_si_atvl, $p_of_attr_value_si_atvl];
                         }
@@ -3685,11 +4010,13 @@ sub _get_relative_surrogate_id {
                 }
                 # If we get here, there is no cousin with the same surrogate id, so an unqualified one is okay here.
                 return $attr_value_si_atvl;
-            } else {
+            }
+            else {
                 # We do not want to further abbreviate output, so return fully qualified version.
                 return [$attr_value_si_atvl, $p_of_attr_value_si_atvl];
             }
-        } else {
+        }
+        else {
             # There is a correlated search path, and it does not have a $C.
             return $attr_value_si_atvl;
         }
@@ -3697,49 +4024,58 @@ sub _get_relative_surrogate_id {
     # If we get here, the value we are outputting is not the child part of a correlated pair.
     my %exp_p_node_types = map { ($_ => 1) } @{$exp_node_types};
     my $layered_search_results = $nodstor->_find_node_by_surrogate_id_within_layers( $container, \%exp_p_node_types, $attr_value_si_atvl );
-    if( $layered_search_results and $layered_search_results->[0] eq $attr_value ) {
-        return $attr_value_si_atvl;
-    }
+    return $attr_value_si_atvl
+        if $layered_search_results and $layered_search_results->[0] eq $attr_value;
     # If we get here, the value we are outputting is not an ancestor's sibling.
-    my %remotely_addressable_types = map { ($_ => $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR}) } 
+    my %remotely_addressable_types = map { ($_ => $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR}) }
         grep { $NODE_TYPES{$_}->{$TPI_REMOTE_ADDR} } @{$exp_node_types};
-    scalar( keys %remotely_addressable_types ) >= 1 or return; # Can't remotely address, so give up.
+    return
+        if (keys %remotely_addressable_types) == 0; # Can't remotely address, so give up.
     # If we get here, we are allowed to remotely address a Node.
     # Now make sure attr-val Node has an ancestor of the expected type.
     my @attr_value_si_chain = ();
     my %exp_anc_node_types = map { ($_ => 1) } map { @{$_} } values %remotely_addressable_types;
     my $attr_value_anc_nodstor = $attr_value;
-    while( $attr_value_anc_nodstor and !$exp_anc_node_types{$attr_value_anc_nodstor->{$NSPROP_NODE_TYPE}} ) {
-        my $anc_si_atvl = $attr_value_anc_nodstor->_get_surrogate_id_attribute( $container, 1 ) or return; # part of SI not defined yet
-        push( @attr_value_si_chain, $anc_si_atvl );
+    while ($attr_value_anc_nodstor and !$exp_anc_node_types{$attr_value_anc_nodstor->{$NSPROP_NODE_TYPE}}) {
+        my $anc_si_atvl = $attr_value_anc_nodstor->_get_surrogate_id_attribute( $container, 1 );
+        return
+            if !($anc_si_atvl); # part of SI not defined yet
+        push @attr_value_si_chain, $anc_si_atvl;
         $attr_value_anc_nodstor = $attr_value_anc_nodstor->{$NSPROP_PP_NSREF};
     }
-    $attr_value_anc_nodstor or return; # attr-val does not have expected ancestor
-    my $anc_si_atvl = $attr_value_anc_nodstor->_get_surrogate_id_attribute( $container, 1 ) or return; # part of SI not defined yet
-    push( @attr_value_si_chain, $anc_si_atvl ); # push required ancestor itself
+    return
+        if !$attr_value_anc_nodstor; # attr-val does not have expected ancestor
+    my $anc_si_atvl = $attr_value_anc_nodstor->_get_surrogate_id_attribute( $container, 1 );
+    return
+        if !$anc_si_atvl; # part of SI not defined yet
+    push @attr_value_si_chain, $anc_si_atvl; # push required ancestor itself
     my $remote_search_results = $nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, \@attr_value_si_chain );
-    $remote_search_results and $remote_search_results->[0] eq $attr_value or return; # can't find ourself, oops
+    return
+        if !$remote_search_results or $remote_search_results->[0] ne $attr_value; # can't find ourself, oops
     # If we get here, the fully-qualified form of the attr-value can be remotely addressed successfully.
-    if( $want_shortest ) {
+    if ($want_shortest) {
         # We want to further abbreviate output.
         my ($unqualified, $l2, $l3) = @attr_value_si_chain; # for simplicity, assume no more than 3 levels
-        $l2 or return $unqualified; # fully qualified version is only 1 element long
-        if( @{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified] )} == 1 ) {
+        return $unqualified
+            if !$l2; # fully qualified version is only 1 element long
+        if (@{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified] )} == 1) {
             # Fully unqualified version returns only one result, so it is currently unambiguous.
             return $unqualified; # 1 element
         }
-        $l3 or return \@attr_value_si_chain; # fully qualified version is only 2 elements long
-        if( @{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified, $l2] )} == 1 ) {
+        return \@attr_value_si_chain
+            if !$l3; # fully qualified version is only 2 elements long
+        if (@{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified, $l2] )} == 1) {
             # This partially qualified version returns only one result, so it is currently unambiguous.
             return [$unqualified, $l2]; # 2 elements
         }
-        if( @{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified, $l3] )} == 1 ) {
+        if (@{$nodstor->_find_node_by_surrogate_id_remotely( $container, \%remotely_addressable_types, [$unqualified, $l3] )} == 1) {
             # This partially qualified version returns only one result, so it is currently unambiguous.
             return [$unqualified, $l3]; # 2 elements
         }
         # If we get here, all shortened versions return multiple results, so return fully qualified version.
         return \@attr_value_si_chain; # 3 elements
-    } else {
+    }
+    else {
         # We do not want to further abbreviate output, so return fully qualified version.
         return \@attr_value_si_chain;
     }
@@ -3758,152 +4094,128 @@ sub _assert_in_node_deferrable_constraints {
     my ($nodstor, $container) = @_;
     my $type_info = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}};
 
-    # 1: Now assert constraints associated with Node-type details given in each 
+    # 1: Now assert constraints associated with Node-type details given in each
     # "Attribute List" section of NodeTypes.pod.
 
-    # 1.1: Assert that any primary parent ("PP") attribute is set.
-    unless( defined( $nodstor->{$NSPROP_PP_NSREF} ) or $type_info->{$TPI_PP_PSEUDONODE} ) {
-        $nodstor->_throw_error_message( 'SRT_N_ASDC_PP_VAL_NO_SET' );
-    }
+    # 1.1: Assert that the Node ID ("ID") attribute is set.
+    $nodstor->_throw_error_message( 'SRT_N_ASDC_NID_VAL_NO_SET' )
+        if !defined $nodstor->{$NSPROP_NODE_ID};
 
-    # 1.2: Assert that any surrogate id ("SI") attribute is set.
-    if( my $si_atnm = $type_info->{$TPI_SI_ATNM} ) {
+    # 1.2: Assert that any primary parent ("PP") attribute is set.
+    $nodstor->_throw_error_message( 'SRT_N_ASDC_PP_VAL_NO_SET' )
+        if !defined $nodstor->{$NSPROP_PP_NSREF} and !$type_info->{$TPI_PP_PSEUDONODE};
+
+    # 1.3: Assert that any surrogate id ("SI") attribute is set.
+    if (my $si_atnm = $type_info->{$TPI_SI_ATNM}) {
         my (undef, $lit, $enum, $nref) = @{$si_atnm};
-        # Skip 'id', as that's redundant with test 1.1.
-        if( $lit ) {
-            unless( defined( $nodstor->{$NSPROP_AT_LITERALS}->{$lit} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_SI_VAL_NO_SET', { 'ATNM' => $lit } );
-            }
-        }
-        if( $enum ) {
-            unless( defined( $nodstor->{$NSPROP_AT_ENUMS}->{$enum} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_SI_VAL_NO_SET', { 'ATNM' => $enum } );
-            }
-        }
-        if( $nref ) {
-            unless( defined( $nodstor->{$NSPROP_AT_NSREFS}->{$nref} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_SI_VAL_NO_SET', { 'ATNM' => $nref } );
-            }
-        }
+        my $name_of_not_set_si_attr
+            # Skip 'id', as that's redundant with test 1.1.
+            = ($lit and !defined $nodstor->{$NSPROP_AT_LITERALS}->{$lit}) ? $lit
+            : ($enum and !defined $nodstor->{$NSPROP_AT_ENUMS}->{$enum})  ? $enum
+            : ($nref and !defined $nodstor->{$NSPROP_AT_NSREFS}->{$nref}) ? $nref
+            :                                                               undef
+            ;
+        $nodstor->_throw_error_message( 'SRT_N_ASDC_SI_VAL_NO_SET',
+            { 'ATNM' => $name_of_not_set_si_attr } )
+            if $name_of_not_set_si_attr;
     }
 
-    # 1.3: Assert that any always-mandatory ("MA") attributes are set.
-    if( my $mand_attrs = $type_info->{$TPI_MA_ATNMS} ) {
+    # 1.4: Assert that any always-mandatory ("MA") attributes are set.
+    if (my $mand_attrs = $type_info->{$TPI_MA_ATNMS}) {
         my ($lits, $enums, $nrefs) = @{$mand_attrs};
-        foreach my $attr_name (@{$lits}) {
-            unless( defined( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_MA_VAL_NO_SET', { 'ATNM' => $attr_name } );
-            }
-        }
-        foreach my $attr_name (@{$enums}) {
-            unless( defined( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_MA_VAL_NO_SET', { 'ATNM' => $attr_name } );
-            }
-        }
-        foreach my $attr_name (@{$nrefs}) {
-            unless( defined( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ) ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_MA_VAL_NO_SET', { 'ATNM' => $attr_name } );
-            }
-        }
+        my @names_of_not_set_mand_attrs = (
+            (grep { !defined $nodstor->{$NSPROP_AT_LITERALS}->{$_} } @{$lits}),
+            (grep { !defined $nodstor->{$NSPROP_AT_ENUMS}->{$_} } @{$enums}),
+            (grep { !defined $nodstor->{$NSPROP_AT_NSREFS}->{$_} } @{$nrefs}),
+        );
+        $nodstor->_throw_error_message( 'SRT_N_ASDC_MA_VALS_NO_SET',
+            { 'ATNMS' => \@names_of_not_set_mand_attrs } )
+            if @names_of_not_set_mand_attrs;
     }
 
-    # 2: Now assert constraints associated with Node-type details given in each 
+    # 2: Now assert constraints associated with Node-type details given in each
     # "Exclusive Attribute Groups List" section of NodeTypes.pod.
 
-    if( my $mutex_atgps = $type_info->{$TPI_MUTEX_ATGPS} ) {
-        foreach my $mutex_atgp (@{$mutex_atgps}) {
+    if (my $mutex_atgps = $type_info->{$TPI_MUTEX_ATGPS}) {
+        for my $mutex_atgp (@{$mutex_atgps}) {
             my ($mutex_name, $lits, $enums, $nrefs, $is_mandatory) = @{$mutex_atgp};
-            my @valued_candidates = ();
-            foreach my $attr_name (@{$lits}) {
-                if( defined( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} ) ) {
-                    push( @valued_candidates, $attr_name );
-                }
+            my @names_of_valued_mutex_attrs = (
+                (grep { defined $nodstor->{$NSPROP_AT_LITERALS}->{$_} } @{$lits}),
+                (grep { defined $nodstor->{$NSPROP_AT_ENUMS}->{$_} } @{$enums}),
+                (grep { defined $nodstor->{$NSPROP_AT_NSREFS}->{$_} } @{$nrefs}),
+            );
+            if (@names_of_valued_mutex_attrs > 1) {
+                $nodstor->_throw_error_message( 'SRT_N_ASDC_MUTEX_TOO_MANY_SET',
+                    { 'NUMVALS' => scalar @names_of_valued_mutex_attrs,
+                    'ATNMS' => \@names_of_valued_mutex_attrs, 'MUTEX' => $mutex_name } );
             }
-            foreach my $attr_name (@{$enums}) {
-                if( defined( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} ) ) {
-                    push( @valued_candidates, $attr_name );
-                }
-            }
-            foreach my $attr_name (@{$nrefs}) {
-                if( defined( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ) ) {
-                    push( @valued_candidates, $attr_name );
-                }
-            }
-            if( scalar( @valued_candidates ) > 1 ) {
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_MUTEX_TOO_MANY_SET', 
-                    { 'NUMVALS' => scalar( @valued_candidates ), 
-                    'ATNMS' => \@valued_candidates, 'MUTEX' => $mutex_name } );
-            }
-            if( scalar( @valued_candidates ) == 0 ) {
-                if( $is_mandatory ) {
-                    my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
-                    $nodstor->_throw_error_message( 'SRT_N_ASDC_MUTEX_ZERO_SET', 
-                        { 'ATNMS' => \@possible_candidates, 'MUTEX' => $mutex_name } );
+            if (@names_of_valued_mutex_attrs == 0) {
+                if ($is_mandatory) {
+                    my @names_of_all_mutex_attrs = (@{$lits}, @{$enums}, @{$nrefs});
+                    $nodstor->_throw_error_message( 'SRT_N_ASDC_MUTEX_ZERO_SET',
+                        { 'ATNMS' => \@names_of_all_mutex_attrs, 'MUTEX' => $mutex_name } );
                 }
             }
         }
     }
 
-    # 3: Now assert constraints associated with Node-type details given in each 
+    # 3: Now assert constraints associated with Node-type details given in each
     # "Local Attribute Dependencies List" section of NodeTypes.pod.
 
-    if( my $local_atdps_list = $type_info->{$TPI_LOCAL_ATDPS} ) {
-        foreach my $local_atdps_item (@{$local_atdps_list}) {
+    if (my $local_atdps_list = $type_info->{$TPI_LOCAL_ATDPS}) {
+        for my $local_atdps_item (@{$local_atdps_list}) {
             my ($dep_on_lit_nm, $dep_on_enum_nm, $dep_on_nref_nm, $dependencies) = @{$local_atdps_item};
             my $dep_on_attr_nm = $dep_on_lit_nm || $dep_on_enum_nm || $dep_on_nref_nm;
-            my $dep_on_attr_val = $dep_on_lit_nm ? $nodstor->{$NSPROP_AT_LITERALS}->{$dep_on_lit_nm} :
-                $dep_on_enum_nm ? $nodstor->{$NSPROP_AT_ENUMS}->{$dep_on_enum_nm} :
-                $dep_on_nref_nm ? $nodstor->{$NSPROP_AT_NSREFS}->{$dep_on_nref_nm} : undef;
-            foreach my $dependency (@{$dependencies}) {
+            my $dep_on_attr_val
+                = $dep_on_lit_nm  ? $nodstor->{$NSPROP_AT_LITERALS}->{$dep_on_lit_nm}
+                : $dep_on_enum_nm ? $nodstor->{$NSPROP_AT_ENUMS}->{$dep_on_enum_nm}
+                : $dep_on_nref_nm ? $nodstor->{$NSPROP_AT_NSREFS}->{$dep_on_nref_nm}
+                :                   undef
+                ;
+            for my $dependency (@{$dependencies}) {
                 my ($lits, $enums, $nrefs, $dep_on_enum_vals, $is_mandatory) = @{$dependency};
-                my @valued_dependents = ();
-                foreach my $attr_name (@{$lits}) {
-                    if( defined( $nodstor->{$NSPROP_AT_LITERALS}->{$attr_name} ) ) {
-                        push( @valued_dependents, $attr_name );
-                    }
-                }
-                foreach my $attr_name (@{$enums}) {
-                    if( defined( $nodstor->{$NSPROP_AT_ENUMS}->{$attr_name} ) ) {
-                        push( @valued_dependents, $attr_name );
-                    }
-                }
-                foreach my $attr_name (@{$nrefs}) {
-                    if( defined( $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name} ) ) {
-                        push( @valued_dependents, $attr_name );
-                    }
-                }
-                if( !defined( $dep_on_attr_val ) ) {
+                my @names_of_valued_dependent_attrs = (
+                    (grep { defined $nodstor->{$NSPROP_AT_LITERALS}->{$_} } @{$lits}),
+                    (grep { defined $nodstor->{$NSPROP_AT_ENUMS}->{$_} } @{$enums}),
+                    (grep { defined $nodstor->{$NSPROP_AT_NSREFS}->{$_} } @{$nrefs}),
+                );
+                if (!defined $dep_on_attr_val) {
                     # The dependency is undef/null, so all dependents must be undef/null.
-                    if( scalar( @valued_dependents ) > 0 ) {
-                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL', 
-                            { 'DEP_ON' => $dep_on_attr_nm, 'NUMVALS' => scalar( @valued_dependents ), 
-                            'ATNMS' => \@valued_dependents } );
+                    if (@names_of_valued_dependent_attrs > 0) {
+                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_IS_NULL',
+                            { 'DEP_ON' => $dep_on_attr_nm,
+                            'NUMVALS' => scalar @names_of_valued_dependent_attrs,
+                            'ATNMS' => \@names_of_valued_dependent_attrs } );
                     }
                     # If we get here, the tests have passed concerning this $dependency.
-                } elsif( scalar( @{$dep_on_enum_vals} ) > 0 and 
-                        !scalar( grep { $_ eq $dep_on_attr_val } @{$dep_on_enum_vals} ) ) {
+                }
+                elsif (@{$dep_on_enum_vals} > 0
+                        and !grep { $_ eq $dep_on_attr_val } @{$dep_on_enum_vals}) {
                     # Not just any dependency value is acceptable for these dependents, and the
                     # dependency has the wrong value for these dependents; the latter must be undef/null.
-                    if( scalar( @valued_dependents ) > 0 ) {
-                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_HAS_WRONG_VAL', 
-                            { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-                            'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => \@valued_dependents } );
+                    if (@names_of_valued_dependent_attrs > 0) {
+                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_DEP_ON_HAS_WRONG_VAL',
+                            { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val,
+                            'NUMVALS' => scalar @names_of_valued_dependent_attrs,
+                            'ATNMS' => \@names_of_valued_dependent_attrs } );
                     }
                     # If we get here, the tests have passed concerning this $dependency.
-                } else {
-                    # Either any dependency value is acceptable for these dependents, or the valued 
+                }
+                else {
+                    # Either any dependency value is acceptable for these dependents, or the valued
                     # dependency has the right value for these dependents; one of them may be set.
-                    if( scalar( @valued_dependents ) > 1 ) {
-                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_TOO_MANY_SET', 
-                            { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-                            'NUMVALS' => scalar( @valued_dependents ), 'ATNMS' => \@valued_dependents } );
+                    if (@names_of_valued_dependent_attrs > 1) {
+                        $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_TOO_MANY_SET',
+                            { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val,
+                            'NUMVALS' => scalar @names_of_valued_dependent_attrs,
+                            'ATNMS' => \@names_of_valued_dependent_attrs } );
                     }
-                    if( scalar( @valued_dependents ) == 0 ) {
-                        if( $is_mandatory ) {
-                            my @possible_candidates = (@{$lits}, @{$enums}, @{$nrefs});
-                            $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_ZERO_SET', 
-                                { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val, 
-                                'ATNMS' => \@possible_candidates } );
+                    if (@names_of_valued_dependent_attrs == 0) {
+                        if ($is_mandatory) {
+                            my @names_of_all_dependent_attrs = (@{$lits}, @{$enums}, @{$nrefs});
+                            $nodstor->_throw_error_message( 'SRT_N_ASDC_LATDP_ZERO_SET',
+                                { 'DEP_ON' => $dep_on_attr_nm, 'DEP_ON_VAL' => $dep_on_attr_val,
+                                'ATNMS' => \@names_of_all_dependent_attrs } );
                         }
                     }
                     # If we get here, the tests have passed concerning this $dependency.
@@ -3917,25 +4229,25 @@ sub _assert_parent_ref_scope_deferrable_constraints {
     my ($nodstor, $container) = @_;
     my $type_info = $NODE_TYPES{$nodstor->{$NSPROP_NODE_TYPE}};
 
-    # 1. Now assert that all non-PP Node-ref attributes of the current Node point to Nodes that 
-    # are actually within the visible scope of the current Node.  
-    # Some of these applied constraints are associated with Node-type details given in each 
+    # 1. Now assert that all non-PP Node-ref attributes of the current Node point to Nodes that
+    # are actually within the visible scope of the current Node.
+    # Some of these applied constraints are associated with Node-type details given in each
     # "Ancestor Attribute Correlation List" and "Remotely Addressable Types List" section of NodeTypes.pod.
 
-    if( my $at_nsrefs = $type_info->{$TPI_AT_NSREFS} ) {
-        foreach my $attr_name (keys %{$at_nsrefs}) {
+    if (my $at_nsrefs = $type_info->{$TPI_AT_NSREFS}) {
+        for my $attr_name (keys %{$at_nsrefs}) {
             my $given_p_nodstor = $nodstor->{$NSPROP_AT_NSREFS}->{$attr_name};
-            if( defined( $given_p_nodstor ) ) {
+            if (defined $given_p_nodstor) {
                 my $given_p_node_si = $nodstor->_get_relative_surrogate_id( $container, $attr_name );
-                ref($given_p_node_si) eq 'ARRAY' or $given_p_node_si = [$given_p_node_si];
+                ref $given_p_node_si eq 'ARRAY' or $given_p_node_si = [$given_p_node_si];
                 my $fetched_p_nodes = $nodstor->_find_node_by_surrogate_id( $container, $attr_name, $given_p_node_si );
-                unless( $fetched_p_nodes and $fetched_p_nodes->[0] eq $given_p_nodstor ) {
+                if (!$fetched_p_nodes or $fetched_p_nodes->[0] ne $given_p_nodstor) {
                     my $given_p_node_type = $given_p_nodstor->{$NSPROP_NODE_TYPE};
                     my $given_p_node_id = $given_p_nodstor->{$NSPROP_NODE_ID};
                     my $given_p_node_sidch = $given_p_nodstor->_get_surrogate_id_chain( $container );
-                    $nodstor->_throw_error_message( 'SRT_N_ASDC_NREF_AT_NONEX_SID', 
-                        { 'ATNM' => $attr_name, 'EXPNTYPES' => $at_nsrefs->{$attr_name}, 
-                        'PNTYPE' => $given_p_node_type, 'PNID' => $given_p_node_id, 
+                    $nodstor->_throw_error_message( 'SRT_N_ASDC_NREF_AT_NONEX_SID',
+                        { 'ATNM' => $attr_name, 'EXPNTYPES' => $at_nsrefs->{$attr_name},
+                        'PNTYPE' => $given_p_node_type, 'PNID' => $given_p_node_id,
                         'PSIDCH' => $given_p_node_sidch, 'PSID' => $given_p_node_si, } );
                 }
             }
@@ -3944,47 +4256,50 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 
     # This is the end of the searching tests.
 
-    # 2. Now assert constraints associated with Node-type details given in each 
+    # 2. Now assert constraints associated with Node-type details given in each
     # "Related Parent Enumerated Attributes List" section of NodeTypes.pod.
 
-    if( my $rel_p_enums = $type_info->{$TPI_REL_P_ENUMS} ) {
+    if (my $rel_p_enums = $type_info->{$TPI_REL_P_ENUMS}) {
         my $pp_nodstor = $nodstor->{$NSPROP_PP_NSREF}; # earlier assert would fail if not set
         my $pp_node_type = $pp_nodstor->{$NSPROP_NODE_TYPE};
         my $pp_type_info = $NODE_TYPES{$pp_node_type};
-        foreach my $child_atnm (keys %{$rel_p_enums}) {
+        CHILD_ATNM:
+        for my $child_atnm (keys %{$rel_p_enums}) {
             my $child_attp = $type_info->{$TPI_AT_ENUMS}->{$child_atnm};
-            my $child_atvl = $nodstor->{$NSPROP_AT_ENUMS}->{$child_atnm} or next; # no violations possible here if child not set
+            my $child_atvl = $nodstor->{$NSPROP_AT_ENUMS}->{$child_atnm};
+            next CHILD_ATNM
+                if !$child_atvl; # no violations possible here if child not set
             # If we get here, the child attribute is known to be valued.
             my $parent_atnm = $rel_p_enums->{$child_atnm}->{$pp_node_type};
-            unless( $parent_atnm ) {
+            if (!$parent_atnm) {
                 # Violation: child valued but parent Node is wrong Node type to ever have a related value.
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_BAD_P_NTYPE', 
-                    { 'CATNM' => $child_atnm, 'PNTYPE' => $pp_node_type, 
+                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_BAD_P_NTYPE',
+                    { 'CATNM' => $child_atnm, 'PNTYPE' => $pp_node_type,
                     'PALLOWED' => [keys %{$rel_p_enums->{$child_atnm}}], } );
             }
             my $parent_attp = $pp_type_info->{$TPI_AT_ENUMS}->{$parent_atnm};
             my $parent_atvl = $pp_nodstor->{$NSPROP_AT_ENUMS}->{$parent_atnm};
-            unless( $parent_atvl ) {
+            if (!$parent_atvl) {
                 # Violation: child valued but parent not valued.
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_NO_P', 
+                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_NO_P',
                     { 'CATNM' => $child_atnm, 'PATNM' => $parent_atnm, } );
             }
-            # If we get here, both related attributes are valued, so they must match; 
-            # that is, assuming the given parent attribute type has any possible 
+            # If we get here, both related attributes are valued, so they must match;
+            # that is, assuming the given parent attribute type has any possible
             # children at all of the given child attribute type.
             my $allowed_c_for_p = $P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl};
-            unless( $allowed_c_for_p ) {
+            if (!$allowed_c_for_p) {
                 # Violation: no child value at all of the current type may be used with parent value.
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_NEVER_P', 
-                    { 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl, 
+                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_NEVER_P',
+                    { 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl,
                     'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, } );
             }
             # If we get here, the given parent may have children of the child's type; check if ours match.
-            unless( $allowed_c_for_p->{$child_atvl} ) {
+            if (!$allowed_c_for_p->{$child_atvl}) {
                 # Violation: the given child value may not be used with parent value.
-                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_C_NOT_REL', 
-                    { 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl, 
-                    'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, 
+                $nodstor->_throw_error_message( 'SRT_N_ASDC_REL_ENUM_P_C_NOT_REL',
+                    { 'CATNM' => $child_atnm, 'CENUMTYPE' => $child_attp, 'CATVL' => $child_atvl,
+                    'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl,
                     'CALLOWED' => [keys %{$allowed_c_for_p}], } );
             }
         }
@@ -3993,30 +4308,33 @@ sub _assert_parent_ref_scope_deferrable_constraints {
 
 sub _assert_child_comp_deferrable_constraints {
     my ($nodstor_or_class, $container, $pseudonode_name, $constor) = @_;
-    my $type_info = ref($nodstor_or_class) ? 
-        $NODE_TYPES{$nodstor_or_class->{$NSPROP_NODE_TYPE}} : 
+    my $type_info = ref $nodstor_or_class ?
+        $NODE_TYPES{$nodstor_or_class->{$NSPROP_NODE_TYPE}} :
         $PSEUDONODE_TYPES{$pseudonode_name};
 
     # First, gather a child list.
 
     my @parent_node_types = ();
     my @child_nodstors = ();
-    if( ref($nodstor_or_class) ) {
+    if (ref $nodstor_or_class) {
         my @parent_nodstors = ($nodstor_or_class);
         my $curr_nodstor = $nodstor_or_class;
-        while( my $wr_atnm = $NODE_TYPES{$curr_nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_WR_ATNM} ) {
-            if( $curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$wr_atnm} ) {
-                unshift( @parent_nodstors, $curr_nodstor );
-            } else {
-                last; # avoid undef warnings in while expr due to unset $curr_node
+        WR_ATNM:
+        while (my $wr_atnm = $NODE_TYPES{$curr_nodstor->{$NSPROP_NODE_TYPE}}->{$TPI_WR_ATNM}) {
+            if ($curr_nodstor = $curr_nodstor->{$NSPROP_AT_NSREFS}->{$wr_atnm}) {
+                unshift @parent_nodstors, $curr_nodstor;
+            }
+            else {
+                last WR_ATNM; # avoid undef warnings in while expr due to unset $curr_node
             }
         }
-        foreach my $parent_nodstor (@parent_nodstors) {
-            push( @parent_node_types, $parent_nodstor->{$NSPROP_NODE_TYPE} );
-            push( @child_nodstors, @{$parent_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}} );
+        for my $parent_nodstor (@parent_nodstors) {
+            push @parent_node_types, $parent_nodstor->{$NSPROP_NODE_TYPE};
+            push @child_nodstors, @{$parent_nodstor->{$NSPROP_PRIM_CHILD_NSREFS}};
         }
-    } else {
-        push( @parent_node_types, $pseudonode_name );
+    }
+    else {
+        push @parent_node_types, $pseudonode_name;
         @child_nodstors = @{$constor->{$CSPROP_PSEUDONODES}->{$pseudonode_name}};
     }
 
@@ -4025,34 +4343,38 @@ sub _assert_child_comp_deferrable_constraints {
 
     my %type_child_si = map { (%{$TYPE_CHILD_SI_ATNMS{$_}||{}}) } @parent_node_types;
     # Note: $TYPE_CHILD_SI_ATNMS only contains keys for [pseudo-|]Node types that can have primary-child Nodes.
-    if( scalar( keys %type_child_si ) ) {
+    if (keys %type_child_si) {
         my %examined_children = ();
-        foreach my $child_nodstor (@child_nodstors) {
+        CHILD:
+        for my $child_nodstor (@child_nodstors) {
             my $child_node_type = $child_nodstor->{$NSPROP_NODE_TYPE};
-            if( my $si_atnm = $type_child_si{$child_node_type} ) {
+            if (my $si_atnm = $type_child_si{$child_node_type}) {
                 my (undef, $lit, $enum, $nref) = @{$si_atnm};
-                my $hash_key = 
-                    $lit ? $child_nodstor->{$NSPROP_AT_LITERALS}->{$lit} : 
-                    $enum ? $child_nodstor->{$NSPROP_AT_ENUMS}->{$enum} : 
-                    $nref ? $child_nodstor->{$NSPROP_AT_NSREFS}->{$nref} : 
-                    $child_nodstor->{$NSPROP_NODE_ID};
-                defined( $hash_key ) or next; # An error, but let a different test flag it.
-                ref($hash_key) and next; # some comps by target lit/enum are known to be false errors; todo, see if any legit errors
-                if( exists( $examined_children{$hash_key} ) ) {
+                my $hash_key
+                    = $lit  ? $child_nodstor->{$NSPROP_AT_LITERALS}->{$lit}
+                    : $enum ? $child_nodstor->{$NSPROP_AT_ENUMS}->{$enum}
+                    : $nref ? $child_nodstor->{$NSPROP_AT_NSREFS}->{$nref}
+                    :         $child_nodstor->{$NSPROP_NODE_ID}
+                    ;
+                next CHILD
+                    if !defined $hash_key; # An error, but let a different test flag it.
+                ref $hash_key and next CHILD; # some comps by target lit/enum are known to be false errors; todo, see if any legit errors
+                if (exists $examined_children{$hash_key}) {
                     # Multiple Nodes have the same primary-parent and surrogate id.
                     my $child_node_id = $child_nodstor->{$NSPROP_NODE_ID};
                     my $matched_child_nodstor = $examined_children{$hash_key};
                     my $matched_child_node_type = $matched_child_nodstor->{$NSPROP_NODE_TYPE};
                     my $matched_child_node_id = $matched_child_nodstor->{$NSPROP_NODE_ID};
-                    if( ref($nodstor_or_class) ) {
-                        $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_SI_NON_DISTINCT', 
-                            { 'VALUE' => $hash_key, 
-                            'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
+                    if (ref $nodstor_or_class) {
+                        $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_SI_NON_DISTINCT',
+                            { 'VALUE' => $hash_key,
+                            'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id,
                             'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
-                    } else {
-                        $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_SI_NON_DISTINCT_PSN', 
-                            { 'PSNTYPE' => $pseudonode_name, 'VALUE' => $hash_key, 
-                            'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
+                    }
+                    else {
+                        $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_SI_NON_DISTINCT_PSN',
+                            { 'PSNTYPE' => $pseudonode_name, 'VALUE' => $hash_key,
+                            'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id,
                             'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
                     }
                 }
@@ -4061,84 +4383,94 @@ sub _assert_child_comp_deferrable_constraints {
         }
     }
 
-    # 2: Now assert constraints associated with Node-type details given in each 
+    # 2: Now assert constraints associated with Node-type details given in each
     # "Child Quantity List" section of NodeTypes.pod.
 
-    if( my $child_quants = $type_info->{$TPI_CHILD_QUANTS} ) {
-        foreach my $child_quant (@{$child_quants}) {
+    if (my $child_quants = $type_info->{$TPI_CHILD_QUANTS}) {
+        for my $child_quant (@{$child_quants}) {
             my ($child_node_type, $range_min, $range_max) = @{$child_quant};
             my $child_count = 0;
-            foreach my $child_nodstor (@child_nodstors) {
-                $child_nodstor->{$NSPROP_NODE_TYPE} eq $child_node_type or next;
+            CHILD_NODE:
+            for my $child_nodstor (@child_nodstors) {
+                next CHILD_NODE
+                    if $child_nodstor->{$NSPROP_NODE_TYPE} ne $child_node_type;
                 $child_count ++;
             }
-            if( $child_count < $range_min ) { 
-                if( ref($nodstor_or_class) ) {
-                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET', 
+            if ($child_count < $range_min) {
+                if (ref $nodstor_or_class) {
+                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET',
                         { 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
-                } else {
-                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN', 
-                        { 'PSNTYPE' => $pseudonode_name, 'COUNT' => $child_count, 
+                }
+                else {
+                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_FEW_SET_PSN',
+                        { 'PSNTYPE' => $pseudonode_name, 'COUNT' => $child_count,
                         'CNTYPE' => $child_node_type, 'EXPNUM' => $range_min } );
                 }
             }
-            if( defined( $range_max ) and $child_count > $range_max ) {
-                if( ref($nodstor_or_class) ) {
-                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_MANY_SET', 
+            if (defined $range_max and $child_count > $range_max) {
+                if (ref $nodstor_or_class) {
+                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_MANY_SET',
                         { 'COUNT' => $child_count, 'CNTYPE' => $child_node_type, 'EXPNUM' => $range_max } );
-                } else {
-                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_MANY_SET_PSN', 
-                        { 'PSNTYPE' => $pseudonode_name, 'COUNT' => $child_count, 
+                }
+                else {
+                    $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_CH_N_TOO_MANY_SET_PSN',
+                        { 'PSNTYPE' => $pseudonode_name, 'COUNT' => $child_count,
                         'CNTYPE' => $child_node_type, 'EXPNUM' => $range_max } );
                 }
             }
         }
     }
 
-    # 3: Now assert constraints associated with Node-type details given in each 
+    # 3: Now assert constraints associated with Node-type details given in each
     # "Distinct Child Groups List" section of NodeTypes.pod.
 
-    if( my $mudi_atgps = $type_info->{$TPI_MUDI_ATGPS} ) {
-        foreach my $mudi_atgp (@{$mudi_atgps}) {
+    if (my $mudi_atgps = $type_info->{$TPI_MUDI_ATGPS}) {
+        for my $mudi_atgp (@{$mudi_atgps}) {
             my ($mudi_name, $mudi_atgp_subsets) = @{$mudi_atgp};
             my %examined_children = ();
-            foreach my $mudi_atgp_subset (@{$mudi_atgp_subsets}) {
+            for my $mudi_atgp_subset (@{$mudi_atgp_subsets}) {
                 my ($child_node_type, $lits, $enums, $nrefs) = @{$mudi_atgp_subset};
-                CHILD: foreach my $child_nodstor (@child_nodstors) {
-                    $child_nodstor->{$NSPROP_NODE_TYPE} eq $child_node_type or next CHILD;
+                CHILD:
+                for my $child_nodstor (@child_nodstors) {
+                    next CHILD
+                        if $child_nodstor->{$NSPROP_NODE_TYPE} ne $child_node_type;
                     my $hash_key = ',';
-                    foreach my $attr_name (@{$lits}) {
+                    for my $attr_name (@{$lits}) {
                         my $val = $child_nodstor->{$NSPROP_AT_LITERALS}->{$attr_name};
-                        defined( $val ) or next CHILD; # null values are always distinct
-                        $val =~ s|,|<comma>|g; # avoid problems from literals containing delim chars
-                        $hash_key .= $val.',';
+                        next CHILD
+                            if !defined $val; # null values are always distinct
+                        $val =~ s/,/<comma>/xg; # avoid problems from literals containing delim chars
+                        $hash_key .= $val . ',';
                     }
-                    foreach my $attr_name (@{$enums}) {
+                    for my $attr_name (@{$enums}) {
                         my $val = $child_nodstor->{$NSPROP_AT_ENUMS}->{$attr_name};
-                        defined( $val ) or next CHILD; # null values are always distinct
-                        $hash_key .= $val.',';
+                        next CHILD
+                            if !defined $val; # null values are always distinct
+                        $hash_key .= $val . ',';
                     }
-                    foreach my $attr_name (@{$nrefs}) {
+                    for my $attr_name (@{$nrefs}) {
                         my $val = $child_nodstor->{$NSPROP_AT_NSREFS}->{$attr_name};
-                        defined( $val ) or next CHILD; # null values are always distinct
-                        $hash_key .= $val.','; # stringifies to likes of 'HASH(NNN)'
+                        next CHILD
+                            if !defined $val; # null values are always distinct
+                        $hash_key .= $val . ','; # stringifies to likes of 'HASH(NNN)'
                     }
-                    if( exists( $examined_children{$hash_key} ) ) {
-                        # Multiple Nodes in same group have the same hash key, which 
+                    if (exists $examined_children{$hash_key}) {
+                        # Multiple Nodes in same group have the same hash key, which
                         # means they are identical by means of the compared attributes.
                         my $child_node_id = $child_nodstor->{$NSPROP_NODE_ID};
                         my $matched_child_nodstor = $examined_children{$hash_key};
                         my $matched_child_node_type = $matched_child_nodstor->{$NSPROP_NODE_TYPE};
                         my $matched_child_node_id = $matched_child_nodstor->{$NSPROP_NODE_ID};
-                        if( ref($nodstor_or_class) ) {
-                            $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT', 
-                                { 'VALUES' => $hash_key, 'MUDI' => $mudi_name, 
-                                'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
+                        if (ref $nodstor_or_class) {
+                            $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT',
+                                { 'VALUES' => $hash_key, 'MUDI' => $mudi_name,
+                                'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id,
                                 'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
-                        } else {
-                            $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT_PSN', 
-                                { 'PSNTYPE' => $pseudonode_name, 'VALUES' => $hash_key, 'MUDI' => $mudi_name, 
-                                'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id, 
+                        }
+                        else {
+                            $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MUDI_NON_DISTINCT_PSN',
+                                { 'PSNTYPE' => $pseudonode_name, 'VALUES' => $hash_key, 'MUDI' => $mudi_name,
+                                'C1NTYPE' => $child_node_type, 'C1NID' => $child_node_id,
                                 'C2NTYPE' => $matched_child_node_type, 'C2NID' => $matched_child_node_id } );
                         }
                     }
@@ -4148,58 +4480,69 @@ sub _assert_child_comp_deferrable_constraints {
         }
     }
 
-    # 4. Now assert constraints associated with Node-type details given in each 
+    # 4. Now assert constraints associated with Node-type details given in each
     # "Mandatory Related Child Enumerated Attributes List" section of NodeTypes.pod.
 
-    if( my $ma_rel_c_enums = $type_info->{$TPI_MA_REL_C_ENUMS} ) {
-        foreach my $parent_atnm (keys %{$ma_rel_c_enums}) {
+    if (my $ma_rel_c_enums = $type_info->{$TPI_MA_REL_C_ENUMS}) {
+        PARENT_ATNM:
+        for my $parent_atnm (keys %{$ma_rel_c_enums}) {
             my $parent_attp = $type_info->{$TPI_AT_ENUMS}->{$parent_atnm};
-            my $parent_atvl = $nodstor_or_class->{$NSPROP_AT_ENUMS}->{$parent_atnm} or next; # no violations possible here if parent not set
+            my $parent_atvl = $nodstor_or_class->{$NSPROP_AT_ENUMS}->{$parent_atnm};
+            next PARENT_ATNM
+                if !$parent_atvl; # no violations possible here if parent not set
             # If we get here, the parent attribute is known to be valued.
             # Now build a list of what child attribute values are mandatory, which we test against.
             my %exp_ma_c_values = (); # keys are child enumerated type names, values are hash-lists of their enum values.
-            foreach my $child_attp (keys %{$P_C_REL_ENUMS{$parent_attp}}) {
-                my $allowed_c_for_p = $P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl} or next;
+            CHILD_ATTP:
+            for my $child_attp (keys %{$P_C_REL_ENUMS{$parent_attp}}) {
+                my $allowed_c_for_p = $P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl};
+                next CHILD_ATTP
+                    if !$allowed_c_for_p;
                 $exp_ma_c_values{$child_attp} = {%{$allowed_c_for_p}}; # copy values so originals not destroyed next
-                my $opt_c_for_p = $OPT_P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl} or next;
-                foreach my $opt_c_value (keys %{$opt_c_for_p}) {
-                    delete( $exp_ma_c_values{$child_attp}->{$opt_c_value} ); # remove opt from list, leaving mand only
+                my $opt_c_for_p = $OPT_P_C_REL_ENUMS{$parent_attp}->{$child_attp}->{$parent_atvl};
+                next CHILD_ATTP
+                    if !$opt_c_for_p;
+                for my $opt_c_value (keys %{$opt_c_for_p}) {
+                    delete $exp_ma_c_values{$child_attp}->{$opt_c_value}; # remove opt from list, leaving mand only
                 }
             }
-            # Now examine each child Node and remove %exp_ma_c_values list items 
+            # Now examine each child Node and remove %exp_ma_c_values list items
             # as they are matched, leaving behind only un-matched items.
-            foreach my $c_nodstor (@child_nodstors) {
+            CHILD_NODE:
+            for my $c_nodstor (@child_nodstors) {
                 my $c_node_type = $c_nodstor->{$NSPROP_NODE_TYPE};
                 my $c_type_info = $NODE_TYPES{$c_node_type};
-                my $child_atnms = $ma_rel_c_enums->{$parent_atnm}->{$c_node_type} or next; # current Node type not applicable
-                # If we get here, the child Node we're sitting on is of the correct 
+                my $child_atnms = $ma_rel_c_enums->{$parent_atnm}->{$c_node_type};
+                next CHILD_NODE
+                    if !$child_atnms; # current Node type not applicable
+                # If we get here, the child Node we're sitting on is of the correct
                 # type for this constraint to apply to.
                 my @valued_candidates = ();
-                foreach my $child_atnm (@{$child_atnms}) {
+                for my $child_atnm (@{$child_atnms}) {
                     my $child_attp = $c_type_info->{$TPI_AT_ENUMS}->{$child_atnm};
                     my $child_atvl = $c_nodstor->{$NSPROP_AT_ENUMS}->{$child_atnm};
-                    if( defined( $child_atvl ) ) {
-                        push( @valued_candidates, $child_atnm );
-                        delete( $exp_ma_c_values{$child_attp}->{$child_atvl} ); # this mand attr is populated as constraint requires
+                    if (defined $child_atvl) {
+                        push @valued_candidates, $child_atnm;
+                        delete $exp_ma_c_values{$child_attp}->{$child_atvl}; # this mand attr is populated as constraint requires
                     }
                 }
                 # Now assert that the related attr in child Node is set, and only one is set if multiple candidates.
-                if( scalar( @valued_candidates ) > 1 ) {
-                    $c_nodstor->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_TOO_MANY_SET', 
-                        { 'PATNM' => $parent_atnm, 'CATNMS' => $child_atnms, 
-                        'NUMVALS' => scalar( @valued_candidates ) } );
+                if (@valued_candidates > 1) {
+                    $c_nodstor->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_TOO_MANY_SET',
+                        { 'PATNM' => $parent_atnm, 'CATNMS' => $child_atnms,
+                        'NUMVALS' => scalar @valued_candidates } );
                 }
-                if( scalar( @valued_candidates ) == 0 ) {
-                    $c_nodstor->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_ZERO_SET', 
+                if (@valued_candidates == 0) {
+                    $c_nodstor->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_ZERO_SET',
                         { 'PATNM' => $parent_atnm, 'CATNMS' => $child_atnms } );
                 }
             }
             # If we get here, then all applicable child Nodes each have their related enum attr set.
             # Now check if any mandatory child enum values are not set.
-            if( my @missing_c_values = map { (keys %{$_}) } values %exp_ma_c_values ) {
+            if (my @missing_c_values = map { (keys %{$_}) } values %exp_ma_c_values) {
                 # Violation: the given parent value requires child values that are missing.
-                $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES', 
-                    { 'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl, 
+                $nodstor_or_class->_throw_error_message( 'SRT_N_ASDC_MA_REL_ENUM_MISSING_VALUES',
+                    { 'PATNM' => $parent_atnm, 'PENUMTYPE' => $parent_attp, 'PATVL' => $parent_atvl,
                     'CATVLS' => \@missing_c_values } );
             }
         }
@@ -4219,10 +4562,10 @@ sub _get_all_properties {
         %{$nodstor->{$NSPROP_AT_LITERALS}},
         %{$nodstor->{$NSPROP_AT_ENUMS}},
         (map { ( $_ => (
-                $links_as_si ? 
-                $nodstor->_get_relative_surrogate_id( $container, $_, $want_shortest ) : 
+                $links_as_si ?
+                $nodstor->_get_relative_surrogate_id( $container, $_, $want_shortest ) :
                 $at_nsrefs_in->{$_}->{$NSPROP_NODE_ID}
-            ) ) } 
+            ) ) }
             keys %{$at_nsrefs_in}),
     }, [
         map { $_->_get_all_properties( $container, $links_as_si, $want_shortest ) } @{$nodstor->{$NSPROP_PRIM_CHILD_NSREFS}}
@@ -4235,16 +4578,19 @@ sub _get_all_properties {
 package SQL::Routine::Group;
 use base qw( SQL::Routine );
 
+use Scalar::Util qw( weaken );
+
 ######################################################################
 
 sub new {
     my ($class, $container) = @_;
-    my $group = bless( {}, ref($class) || $class );
+    my $group = bless {}, ref $class || $class;
 
-    defined( $container ) or $group->_throw_error_message( 'SRT_G_NEW_GROUP_NO_ARG_CONT' );
-    unless( ref($container) and UNIVERSAL::isa( $container, 'SQL::Routine::Container' ) ) {
-        $group->_throw_error_message( 'SRT_G_NEW_GROUP_BAD_CONT', { 'ARGGCONT' => $container } );
-    }
+    $group->_throw_error_message( 'SRT_G_NEW_GROUP_NO_ARG_CONT' )
+        if !defined $container;
+    $group->_throw_error_message( 'SRT_G_NEW_GROUP_BAD_CONT',
+        { 'ARGGCONT' => $container } )
+        if !ref $container or !UNIVERSAL::isa( $container, 'SQL::Routine::Container' );
 
     $group->{$GPROP_CONTAINER} = $container;
     $group->{$GPROP_MEMBER_NSREFS} = {};
@@ -4253,16 +4599,17 @@ sub new {
     $group->{$GPROP_IS_LC_ADD_BLOCK} = 0;
     $group->{$GPROP_IS_MUTEX} = 0;
 
-    if( !$container->{$CPROP_DEFAULT_GROUP} ) {
+    if (!$container->{$CPROP_DEFAULT_GROUP}) {
         # We were invoked by SQL::Routine::Container.new() and are its default mutex Group.
         # Group's ref to Container is weak, Container's ref to Group is strong.
-        Scalar::Util::weaken( $group->{$GPROP_CONTAINER} );
+        weaken $group->{$GPROP_CONTAINER};
         $container->{$CPROP_DEFAULT_GROUP} = $group;
-    } else {
+    }
+    else {
         # We were invoked by external code and are an explicit Group in the Container.
         # Group's ref to Container is strong, Container's ref to Group is weak.
         $container->{$CPROP_EXPLICIT_GROUPS}->{$group} = $group;
-        Scalar::Util::weaken( $container->{$CPROP_EXPLICIT_GROUPS}->{$group} );
+        weaken $container->{$CPROP_EXPLICIT_GROUPS}->{$group};
     }
 
     return $group;
@@ -4272,23 +4619,25 @@ sub new {
 
 #sub impose_write_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_WRITE_BLOCK} and return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        $node->{$NSPROP_ATT_MUTEX} and 
-#            $group->_throw_error_message( 'SRT_G_IMP_WR_BL_MUTEX_ATT' );
+#    return
+#        if $group->{$GPROP_IS_WRITE_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        $group->_throw_error_message( 'SRT_G_IMP_WR_BL_MUTEX_ATT' )
+#            if $node->{$NSPROP_ATT_MUTEX};
 #    }
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
 #        $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} = $group;
-#        Scalar::Util::weaken( $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} );
+#        weaken $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_WRITE_BLOCK} = 1;
 #}
 
 #sub remove_write_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_WRITE_BLOCK} or return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        delete( $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group} );
+#    return
+#        if !$group->{$GPROP_IS_WRITE_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        delete $node->{$NSPROP_ATT_WRITE_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_WRITE_BLOCK} = 0;
 #}
@@ -4297,23 +4646,25 @@ sub new {
 
 #sub impose_child_addition_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_PC_ADD_BLOCK} and return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        $node->{$NSPROP_ATT_MUTEX} and 
-#            $group->_throw_error_message( 'SRT_G_IMP_CA_BL_MUTEX_ATT' );
+#    return
+#        if $group->{$GPROP_IS_PC_ADD_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        $group->_throw_error_message( 'SRT_G_IMP_CA_BL_MUTEX_ATT' )
+#            if $node->{$NSPROP_ATT_MUTEX};
 #    }
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
 #        $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} = $group;
-#        Scalar::Util::weaken( $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} );
+#        weaken $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_PC_ADD_BLOCK} = 1;
 #}
 
 #sub remove_child_addition_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_PC_ADD_BLOCK} or return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        delete( $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group} );
+#    return
+#        if !$group->{$GPROP_IS_PC_ADD_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        delete $node->{$NSPROP_ATT_PC_ADD_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_PC_ADD_BLOCK} = 0;
 #}
@@ -4322,23 +4673,25 @@ sub new {
 
 #sub impose_reference_addition_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_LC_ADD_BLOCK} and return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        $node->{$NSPROP_ATT_MUTEX} and 
-#            $group->_throw_error_message( 'SRT_G_IMP_RA_BL_MUTEX_ATT' );
+#    return
+#        if $group->{$GPROP_IS_LC_ADD_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        $group->_throw_error_message( 'SRT_G_IMP_RA_BL_MUTEX_ATT' )
+#            if $node->{$NSPROP_ATT_MUTEX};
 #    }
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
 #        $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} = $group;
-#        Scalar::Util::weaken( $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} );
+#        weaken $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_LC_ADD_BLOCK} = 1;
 #}
 
 #sub remove_reference_addition_block {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_LC_ADD_BLOCK} or return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        delete( $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group} );
+#    return
+#        if !$group->{$GPROP_IS_LC_ADD_BLOCK}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        delete $node->{$NSPROP_ATT_LC_ADD_BLOCKS}->{$group};
 #    }
 #    $group->{$GPROP_IS_LC_ADD_BLOCK} = 0;
 #}
@@ -4347,29 +4700,31 @@ sub new {
 
 #sub impose_mutex {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_MUTEX} and return; # no-op
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
-#        (keys %{$node->{$NSPROP_ATT_WRITE_BLOCKS}}) == 0 or 
-#            $group->_throw_error_message( 'SRT_G_IMP_MUTEX_WR_BL_ATT' );
-#        (keys %{$node->{$NSPROP_ATT_PC_ADD_BLOCKS}}) == 0 or 
-#            $group->_throw_error_message( 'SRT_G_IMP_MUTEX_CA_BL_ATT' );
-#        (keys %{$node->{$NSPROP_ATT_LC_ADD_BLOCKS}}) == 0 or 
-#            $group->_throw_error_message( 'SRT_G_IMP_MUTEX_RA_BL_ATT' );
-#        $node->{$NSPROP_ATT_MUTEX} and 
-#            $group->_throw_error_message( 'SRT_G_IMP_MUTEX_OTHER_MUTEX_ATT' );
+#    return
+#        if $group->{$GPROP_IS_MUTEX}; # no-op
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#        $group->_throw_error_message( 'SRT_G_IMP_MUTEX_WR_BL_ATT' )
+#            if (keys %{$node->{$NSPROP_ATT_WRITE_BLOCKS}}) >= 1;
+#        $group->_throw_error_message( 'SRT_G_IMP_MUTEX_CA_BL_ATT' )
+#            if (keys %{$node->{$NSPROP_ATT_PC_ADD_BLOCKS}}) >= 1;
+#        $group->_throw_error_message( 'SRT_G_IMP_MUTEX_RA_BL_ATT' )
+#            if (keys %{$node->{$NSPROP_ATT_LC_ADD_BLOCKS}}) >= 1;
+#        $group->_throw_error_message( 'SRT_G_IMP_MUTEX_OTHER_MUTEX_ATT' )
+#            if $node->{$NSPROP_ATT_MUTEX};
 #    }
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
 #        $node->{$NSPROP_ATT_MUTEX} = $group;
-#        Scalar::Util::weaken( $node->{$NSPROP_ATT_MUTEX} );
+#        weaken $node->{$NSPROP_ATT_MUTEX};
 #    }
 #    $group->{$GPROP_IS_MUTEX} = 1;
 #}
 
 #sub remove_mutex {
 #    my ($group) = @_;
-#    $group->{$GPROP_IS_MUTEX} or return; # no-op
+#    return
+#        if !$group->{$GPROP_IS_MUTEX}; # no-op
 #    # TODO: Assert that there are no un-committed transactions involving member Nodes.
-#    foreach my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
+#    for my $node (values %{$group->{$GPROP_MEMBER_NSREFS}}) {
 #        $node->{$NSPROP_ATT_MUTEX} = undef;
 #    }
 #    $group->{$GPROP_IS_MUTEX} = 0;
@@ -4379,10 +4734,12 @@ sub new {
 
 #sub add_node {
 #    my ($group, $node) = @_;
-#    defined( $node ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_UNDEF', { 'METH' => 'add_node', 'ARGNM' => 'NODE' } );
-#    ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'add_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_UNDEF',
+#        { 'METH' => 'add_node', 'ARGNM' => 'NODE' } )
+#        if !defined $node;
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_NO_NODE',
+#        { 'METH' => 'add_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } )
+#        if !ref $node or !UNIVERSAL::isa( $node, 'SQL::Routine::Node' );
 #
 #}
 
@@ -4390,10 +4747,12 @@ sub new {
 
 #sub add_node_tree {
 #    my ($group, $node) = @_;
-#    defined( $node ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_UNDEF', { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE' } );
-#    ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_UNDEF',
+#        { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE' } )
+#        if !defined $node;
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_NO_NODE',
+#        { 'METH' => 'add_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } )
+#        if !ref $node or !UNIVERSAL::isa( $node, 'SQL::Routine::Node' );
 #
 #}
 
@@ -4401,10 +4760,12 @@ sub new {
 
 #sub remove_node {
 #    my ($group, $node) = @_;
-#    defined( $node ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_UNDEF', { 'METH' => 'remove_node', 'ARGNM' => 'NODE' } );
-#    ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'remove_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_UNDEF',
+#        { 'METH' => 'remove_node', 'ARGNM' => 'NODE' } )
+#        if !defined $node;
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_NO_NODE',
+#        { 'METH' => 'remove_node', 'ARGNM' => 'NODE', 'ARGVL' => $node } )
+#        if !ref $node or !UNIVERSAL::isa( $node, 'SQL::Routine::Node' );
 #
 #}
 
@@ -4412,10 +4773,12 @@ sub new {
 
 #sub remove_node_tree {
 #    my ($group, $node) = @_;
-#    defined( $node ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_UNDEF', { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE' } );
-#    ref($node) and UNIVERSAL::isa( $node, 'SQL::Routine::Node' ) or $group->_throw_error_message( 
-#        'SRT_G_METH_ARG_NO_NODE', { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } );
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_UNDEF',
+#        { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE' } )
+#        if !defined $node;
+#    $group->_throw_error_message( 'SRT_G_METH_ARG_NO_NODE',
+#        { 'METH' => 'remove_node_tree', 'ARGNM' => 'NODE', 'ARGVL' => $node } )
+#        if !ref $node or !UNIVERSAL::isa( $node, 'SQL::Routine::Node' );
 #
 #}
 
@@ -4433,7 +4796,7 @@ SQL::Routine - Specify all database tasks with SQL routines
 
 =head1 VERSION
 
-This document describes SQL::Routine version 0.70.2.
+This document describes SQL::Routine version 0.70.3.
 
 =head1 SYNOPSIS
 
@@ -4447,15 +4810,15 @@ capable of, since more advanced features are not shown for brevity.
 
     eval {
         # Create a model/container in which all SQL details are to be stored.
-        # The two boolean options being set true here permit all the subsequent code to be as concise, 
+        # The two boolean options being set true here permit all the subsequent code to be as concise,
         # easy to read, and most SQL-string-like as possible, at the cost of being slower to execute.
         my $model = SQL::Routine->new_container();
         $model->auto_set_node_ids( 1 );
         $model->may_match_surrogate_node_ids( 1 );
 
-        # This defines 4 scalar/column/field data types (1 number, 2 char strings, 1 enumerated value type) 
+        # This defines 4 scalar/column/field data types (1 number, 2 char strings, 1 enumerated value type)
         # and 2 row/table data types; the former are atomic and the latter are composite.
-        # The former can describe individual columns of a base table (table) or viewed table (view), 
+        # The former can describe individual columns of a base table (table) or viewed table (view),
         # while the latter can describe an entire table or view.
         # Any of these can describe a 'domain' schema object or a stored procedure's variable's data type.
         # See also the 'person' and 'person_with_parents' table+view defs further below; these data types help describe them.
@@ -4492,18 +4855,18 @@ capable of, since more advanced features are not shown for brevity.
         ] );
         my $schema = $catalog_bp->find_child_node_by_surrogate_id( 'Gene Schema' );
 
-        # This defines a base table (table) schema object that lives in the aforementioned database catalog. 
-        # It contains 6 columns, including a not-null primary key (having a trivial sequence generator to give it 
+        # This defines a base table (table) schema object that lives in the aforementioned database catalog.
+        # It contains 6 columns, including a not-null primary key (having a trivial sequence generator to give it
         # default values), another not-null field, a surrogate key, and 2 self-referencing foreign keys.
         # Each row represents a single 'person', for each storing up to 2 unique identifiers, name, sex, and the parents' unique ids.
         my $tb_person = $schema->build_child_node_tree( 'table', { 'si_name' => 'person', 'row_data_type' => 'person', }, [
             [ 'table_field', { 'si_row_field' => 'person_id', 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, }, ],
             [ 'table_field', { 'si_row_field' => 'name'     , 'mandatory' => 1, }, ],
             [ 'table_index', { 'si_name' => 'primary' , 'index_type' => 'UNIQUE', }, [
-                [ 'table_index_field', 'person_id', ], 
+                [ 'table_index_field', 'person_id', ],
             ], ],
             [ 'table_index', { 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, [
-                [ 'table_index_field', 'alternate_id', ], 
+                [ 'table_index_field', 'alternate_id', ],
             ], ],
             [ 'table_index', { 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, [
                 [ 'table_index_field', { 'si_field' => 'father_id', 'f_field' => 'person_id' } ],
@@ -4513,10 +4876,10 @@ capable of, since more advanced features are not shown for brevity.
             ], ],
         ] );
 
-        # This defines a viewed table (view) schema object that lives in the aforementioned database catalog. 
+        # This defines a viewed table (view) schema object that lives in the aforementioned database catalog.
         # It left-outer-joins the 'person' table to itself twice and returns 2 columns from each constituent, for 6 total.
         # Each row gives the unique id and name each for 3 people, a given person and that person's 2 parents.
-        my $vw_pwp = $schema->build_child_node_tree( 'view', { 'si_name' => 'person_with_parents', 
+        my $vw_pwp = $schema->build_child_node_tree( 'view', { 'si_name' => 'person_with_parents',
                 'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [
             ( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, [
                 map { [ 'view_src_field', $_, ], } ( 'person_id', 'name', 'father_id', 'mother_id', ),
@@ -4544,13 +4907,13 @@ capable of, since more advanced features are not shown for brevity.
         ] );
 
         # This defines another scalar data type, which is used by some routines that follow below.
-        my $sdt_login_auth = $model->build_child_node( 'scalar_data_type', { 'si_name' => 'login_auth', 
+        my $sdt_login_auth = $model->build_child_node( 'scalar_data_type', { 'si_name' => 'login_auth',
             'base_type' => 'STR_CHAR', 'max_chars' => 20, 'char_enc' => 'UTF8', } );
 
-        # This defines an application-side routine/function that connects to the 'Gene Database', fetches all 
+        # This defines an application-side routine/function that connects to the 'Gene Database', fetches all
         # the records from the 'person_with_parents' view, disconnects the database, and returns the fetched records.
         # It takes run-time arguments for a user login name and password that are used when connecting.
-        my $rt_fetch_pwp = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'fetch_pwp', 
+        my $rt_fetch_pwp = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'fetch_pwp',
                 'routine_type' => 'FUNCTION', 'return_cont_type' => 'RW_ARY', 'return_row_data_type' => 'person_with_parents', }, [
             [ 'routine_arg', { 'si_name' => 'login_name', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
             [ 'routine_arg', { 'si_name' => 'login_pass', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
@@ -4577,8 +4940,8 @@ capable of, since more advanced features are not shown for brevity.
             ], ],
         ] );
 
-        # This defines an application-side routine/procedure that inserts a set of records, given in an argument, 
-        # into the 'person' table.  It takes an already opened db connection handle to operate through as a 
+        # This defines an application-side routine/procedure that inserts a set of records, given in an argument,
+        # into the 'person' table.  It takes an already opened db connection handle to operate through as a
         # 'context' argument (which would represent the invocant if this routine was wrapped in an object-oriented interface).
         my $rt_add_people = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'add_people', 'routine_type' => 'PROCEDURE', }, [
             [ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
@@ -4592,9 +4955,9 @@ capable of, since more advanced features are not shown for brevity.
             ], ],
         ] );
 
-        # This defines an application-side routine/function that fetches one record 
+        # This defines an application-side routine/function that fetches one record
         # from the 'person' table which matches its argument.
-        my $rt_get_person = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'get_person', 
+        my $rt_get_person = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'get_person',
                 'routine_type' => 'FUNCTION', 'return_cont_type' => 'ROW', 'return_row_data_type' => 'person', }, [
             [ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
             [ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
@@ -4619,7 +4982,7 @@ capable of, since more advanced features are not shown for brevity.
         ] );
 
         # This defines 6 database engine descriptors and 2 database bridge descriptors that we may be using.
-        # These details can help external code determine such things as what string-SQL flavors should be 
+        # These details can help external code determine such things as what string-SQL flavors should be
         # generated from the model, as well as which database features can be used natively or have to be emulated.
         # The 'si_name' has no meaning to code and is for users; the other attribute values should have meaning to said external code.
         $model->build_child_node_trees( [
@@ -4635,10 +4998,10 @@ capable of, since more advanced features are not shown for brevity.
         ] );
 
         # This defines one concrete instance each of the database catalog and an application using it.
-        # This concrete database instance includes two concrete user definitions, one that can owns 
-        # the schema and one that can only edit data.  The concrete application instance includes 
+        # This concrete database instance includes two concrete user definitions, one that can owns
+        # the schema and one that can only edit data.  The concrete application instance includes
         # a concrete connection descriptor going to this concrete database instance.
-        # Note that 'user' descriptions are only stored in a SQL::Routine model when that model is being used to create 
+        # Note that 'user' descriptions are only stored in a SQL::Routine model when that model is being used to create
         # database catalogs and/or create or modify database users; otherwise 'user' should not be kept for security sake.
         $model->build_child_node_trees( [
             [ 'catalog_instance', { 'si_name' => 'test', 'blueprint' => $catalog_bp, 'product' => 'PostgreSQL v8', }, [
@@ -4669,7 +5032,7 @@ capable of, since more advanced features are not shown for brevity.
             ], ],
         ] );
 
-        # This line will run some correctness tests on the model that were not done 
+        # This line will run some correctness tests on the model that were not done
         # when the model was being populated for execution speed efficiency.
         $model->assert_deferrable_constraints();
 
@@ -4679,17 +5042,16 @@ capable of, since more advanced features are not shown for brevity.
     };
     $@ and print error_to_string($@);
 
-    # SQL::Routine throws object exceptions when it encounters bad input; this function 
+    # SQL::Routine throws object exceptions when it encounters bad input; this function
     # will convert those into human readable text for display by the try/catch block.
     sub error_to_string {
         my ($message) = @_;
-        if( ref($message) and UNIVERSAL::isa( $message, 'Locale::KeyedText::Message' ) ) {
+        if (ref $message and UNIVERSAL::isa( $message, 'Locale::KeyedText::Message' )) {
             my $translator = Locale::KeyedText->new_translator( ['SQL::Routine::L::'], ['en'] );
             my $user_text = $translator->translate_message( $message );
-            unless( $user_text ) {
-                return 'internal error: can\'t find user text for a message: '.
-                    $message->as_string().' '.$translator->as_string();
-            }
+            return q{internal error: can't find user text for a message: }
+                . $message->as_string() . ' ' . $translator->as_string();
+                if !$user_text;
             return $user_text;
         }
         return $message; # if this isn't the right kind of object
@@ -4939,7 +5301,7 @@ This example is for creating the VIEW schema object:
         LEFT OUTER JOIN person AS father ON father.person_id = self.father_id
         LEFT OUTER JOIN person AS mother ON mother.person_id = self.father_id;
 
-If the 'get_person' routine were implemented as a database schema object, this 
+If the 'get_person' routine were implemented as a database schema object, this
 is what it might look like:
 
     CREATE FUNCTION get_person (arg_person_id INTEGER(9)) RETURNS ROW(...) AS
@@ -4956,7 +5318,7 @@ Then it could be invoked elsewhere like this:
 If the same routine were implemented as an application-side routine, then
 it might look like this (not actual DBI syntax):
 
-    my $sth = $dbh->prepare( "SELECT * FROM person AS s WHERE s.person_id = :arg_person_id" );
+    my $sth = $dbh->prepare( 'SELECT * FROM person AS s WHERE s.person_id = :arg_person_id' );
     $sth->bind_param( 'arg_person_id', 'INTEGER(9)' );
     $sth->execute( { 'arg_person_id' => '3' } );
     my $my_rec = $sth->fetchrow_hashref();
@@ -5108,7 +5470,7 @@ support the features you are using (or they are emulated).  That said, it
 is generally expected that if a database is missing a specific feature that
 is easy to emulate, then code which evaluates SQL::Routines will emulate it
 (for example, emulating "left()" with "substr()"); in such cases, it is
-expected that when you use such features they will work with any database. 
+expected that when you use such features they will work with any database.
 For example, if you want a model-specified BOOLEAN data type, you will
 always get it, whether it is implemented  on a per-database-basis as a
 "boolean" or an "int(1)" or a "number(1,0)".  Or a model-specified
@@ -5210,7 +5572,7 @@ move_before_sibling() method to change this.
 The order of child Nodes under a parent is often significant, so it is
 important to preserve this sequence explicitly if you store a Node set in
 an RDBMS, since databases do not consider record order to be significant or
-worth remembering; you would add extra columns to store sequence numbers. 
+worth remembering; you would add extra columns to store sequence numbers.
 You do not have to do any extra work when storing Nodes in XML, however,
 because XML does consider node order to be significant and will preserve
 it.
@@ -5233,7 +5595,7 @@ types as their primary parents.
 Some Node types do not have a "pp" attribute and Nodes of those types never
 have primary parent Nodes; rather, all Nodes of those types will always
 have a specific pseudo-Node as their primary parents; pseudo-Node primary
-parents are not referenced in any attribute, and they can not be changed. 
+parents are not referenced in any attribute, and they can not be changed.
 All 6 pseudo-Nodes have no attributes, even 'id', and only one of each
 exists; they are created by default with the Container they are part of,
 forming the top 2 levels of the Node tree, and can not be removed.  They
@@ -5392,7 +5754,7 @@ fashion) by multiple program components and modules that may not be
 considerate of each other, or that may run into trouble part way through a
 multi-part model update. By using these features, you can save yourself
 from the substantial hassle of implementing the same checks and balances
-externally; you can program more lazily without some of the consequences. 
+externally; you can program more lazily without some of the consequences.
 These features are intended primarily to stop accidental interference
 between program components, usually the result of programmer oversights or
 short cuts.  To a lesser extent, the features are also designed to prevent
@@ -5448,7 +5810,7 @@ something to fix; 2. You have decided to let it validate some of your input
 data for you (which is quite appropriate).
 
 SQL::Routine objects will not lose their well-formedness regardless of what
-kind of bad input data you provide to object methods or module functions. 
+kind of bad input data you provide to object methods or module functions.
 Providing bad input data will cause the module to throw an exception; if
 you catch this and the program continues running (such as to chide the user
 and have them try entering correct input), then the objects will remain
@@ -5472,7 +5834,7 @@ Note also that SQL::Routine is quite strict in its own argument checking,
 both for internal simplicity and robustness, and so that code which *reads*
 data from it can be simpler.  If you want your own program to be more
 liberal in what input it accepts, then you will have to bear the burden of
-cleaning up or interpreting that input, or delegating such work elsewhere. 
+cleaning up or interpreting that input, or delegating such work elsewhere.
 (Or perhaps someone may want to make a wrapper module to do this?)
 
 =head2 ACID Compliance and Transactions
@@ -5558,7 +5920,7 @@ invoking impose_child_addition_block() or impose_reference_addition_block()
 on a Group will prevent anyone from adding, respectively, new primary-child
 Nodes or new link-child Nodes, to its member Nodes, whether by way of the
 Group's own Container interface or any other Container interface.  Between
-the 3 block types, you can block additions, edits, and deletes by anyone. 
+the 3 block types, you can block additions, edits, and deletes by anyone.
 A Node can belong to any number of Groups at the same time which impose any
 combination of these 3 block types, and the Node can be read by all
 Container interfaces.  You can remove blocks by invoking the respective
@@ -5658,7 +6020,7 @@ I would be happy to hear it.>
 =head1 NODE IDENTITY ATTRIBUTES
 
 Every Node has a positive integer 'id' attribute whose value is distinct
-among every Node in the same Container, without regard for the Node type. 
+among every Node in the same Container, without regard for the Node type.
 These 'id' attributes are used internally by SQL::Routine when linking
 child and parent Nodes, but they have no use at all in any SQL statement
 strings that are generated for a typical database engine.  Rather,
@@ -5798,7 +6160,7 @@ is especially useful with the build*tree() methods.
 =head2 auto_set_node_ids([ NEW_VALUE ])
 
 This method returns this Container interface's "auto set node ids" boolean
-property; if NEW_VALUE is defined, it will first set that property to it. 
+property; if NEW_VALUE is defined, it will first set that property to it.
 When this flag is true, SQL::Routine will automatically generate and set a
 Node Id for a Node being created for this Container interface when there is
 no explicit Id given as a Node.new() argument.  When this flag is false, a
@@ -5871,7 +6233,7 @@ Nodes of all pseudo-Nodes are searched.
 This "getter" method returns an integer which is valid for use as the Node
 ID of a new Node that is going to be put in this Container.  Its value is 1
 higher than the highest Node ID for any Node that is already in the
-Container, or had been before; in a brand new Container, its value is 1. 
+Container, or had been before; in a brand new Container, its value is 1.
 You can use this method like a sequence generator to produce Node Ids for
 you rather than you producing them in some other way.  An example situation
 when this method might be useful is if you are building a SQL::Routine by
@@ -6191,7 +6553,7 @@ search method come into play for Node types that are connected to the
 concepts of "wrapper attribute", "ancestor attribute correlation", and
 "remotely addressable types".  Note that it is illegal to use the return
 value of get_surrogate_id_chain() as a TARGET_ATTR_VALUE with this method;
-you can give the return value of get_relative_surrogate_id(), however. 
+you can give the return value of get_relative_surrogate_id(), however.
 Note that counting the number of return values from
 find_node_by_surrogate_id() is an accurate way to tell whether
 set_attribute() with the same 2 arguments will succeed or not; it will only
@@ -6205,7 +6567,7 @@ This "getter" method searches for a primary-child Node of the current Node
 whose Surrogate Node Id matches the TARGET_ATTR_VALUE argument; if one is
 found then it is returned by reference; if none is found, then undef is
 returned.  The TARGET_ATTR_VALUE argument is treated as an array-ref; if it
-is in fact not one, that single value is used as a single-element array. 
+is in fact not one, that single value is used as a single-element array.
 The search is multi-generational, one generation more childwards per array
 element; the first element matches a child of the invoked Node, the next
 element the child of the first matched child, and so on.  If said array ref
@@ -6307,7 +6669,7 @@ makes it easier to see at a glance whether the other class methods are
 doing what you expect.  The output of this method should also be easy to
 serialize or unserialize to strings of Perl code or xml or other things,
 should you want to compare your results easily by string compare; see
-"get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()". 
+"get_all_properties_as_perl_str()" and "get_all_properties_as_xml_str()".
 If the optional boolean argument LINKS_AS_SI is true, then each Node ref
 attribute will be output as the target Node's surrogate id value, as
 returned by get_relative_surrogate_id( <attr-name>, WANT_SHORTEST ), if it
@@ -6365,8 +6727,8 @@ Node objects.
 
 =head2 build_node( NODE_TYPE[, ATTRS] )
 
-    my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } ); 
-    my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } ); 
+    my $nodeP = $model->build_node( 'catalog', { 'id' => 1, } );
+    my $nodeN = $node->build_node( 'catalog', { 'id' => 1, } );
 
 This method will create and return a new Node, that lives in the invocant
 Container or in the same Container as the invocant Node, whose type is
@@ -6418,8 +6780,7 @@ build_child_node_tree() for each element found in it; each element of
 CHILDREN must be an array ref whose elements correspond to the arguments of
 build_child_node_tree().  This method does not return anything.
 
-=head2 build_container([ CHILDREN[, AUTO_ASSERT[, AUTO_IDS[,
-MATCH_SURR_IDS]]] ])
+=head2 build_container([ CHILDREN[, AUTO_ASSERT[, AUTO_IDS[, MATCH_SURR_IDS]]] ])
 
 When called with no arguments, this function is like new_container(), in
 that it will create and return a new Container object; if the array ref
@@ -6442,7 +6803,7 @@ will generate a user interface for manual editing of data stored in or
 accessed through SQL::Routine constructs.  It will allow such programs to
 continue working without many changes while SQL::Routine itself continues
 to evolve. In a manner of speaking, these functions/methods let a caller
-program query as to what 'schema' or 'business logic' drive this class. 
+program query as to what 'schema' or 'business logic' drive this class.
 These functions/methods are all deterministic and stateless; they can be
 used in any context and will always give the same answers from the same
 arguments, and no object properties are used.  You can invoke them from any
@@ -6533,12 +6894,14 @@ This module requires any version of Perl 5.x.y that is at least 5.8.1.
 It also requires the Perl modules L<version> and L<only>, which would
 conceptually be built-in to Perl, but aren't, so they are on CPAN instead.
 
-It also requires the Perl module L<Scalar::Util>, which would conceptually
-be built-in to Perl, but is bundled with it instead.
+It also requires the Perl modules L<Scalar::Util> and L<List::Util>, which
+would conceptually be built-in to Perl, but are bundled with it instead.
 
-It also requires these modules that are on CPAN:
+It also requires the Perl module L<List::MoreUtils> '0.12-', which would
+conceptually be built-in to Perl, but isn't, so it is on CPAN instead.
 
-    Locale::KeyedText 1.6.0 (for error messages)
+It also requires these modules that are on CPAN: L<Locale::KeyedText>
+'1.6.0-' (for error messages).
 
 =head1 INCOMPATIBILITIES
 

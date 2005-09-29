@@ -2,9 +2,9 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 # This module is used when testing SQL::Routine.
-# These tests check that a model can be built using the terse wrapper 
+# These tests check that a model can be built using the terse wrapper
 # interface without errors, and serializes to the correct output.
-# This module contains sample input and output data which is used to test 
+# This module contains sample input and output data which is used to test
 # SQL::Routine, and possibly other modules that are derived from it.
 
 package # hide this class name from PAUSE indexer
@@ -20,13 +20,13 @@ sub populate_model {
     $model->build_child_node_trees( [ map { [ 'scalar_data_type', $_ ] } (
         { 'id' =>  1, 'si_name' => 'bin1k' , 'base_type' => 'STR_BIT', 'max_octets' =>  1_000, },
         { 'id' =>  2, 'si_name' => 'bin32k', 'base_type' => 'STR_BIT', 'max_octets' => 32_000, },
-        { 'id' =>  3, 'si_name' => 'str4'  , 'base_type' => 'STR_CHAR', 'max_chars' =>     4, 'store_fixed' => 1, 
-            'char_enc' => 'ASCII', 'trim_white' => 1, 'uc_latin' => 1, 
+        { 'id' =>  3, 'si_name' => 'str4'  , 'base_type' => 'STR_CHAR', 'max_chars' =>     4, 'store_fixed' => 1,
+            'char_enc' => 'ASCII', 'trim_white' => 1, 'uc_latin' => 1,
             'pad_char' => ' ', 'trim_pad' => 1, },
-        { 'id' =>  4, 'si_name' => 'str10' , 'base_type' => 'STR_CHAR', 'max_chars' =>    10, 'store_fixed' => 1, 
-            'char_enc' => 'ASCII', 'trim_white' => 1, 
+        { 'id' =>  4, 'si_name' => 'str10' , 'base_type' => 'STR_CHAR', 'max_chars' =>    10, 'store_fixed' => 1,
+            'char_enc' => 'ASCII', 'trim_white' => 1,
             'pad_char' => ' ', 'trim_pad' => 1, },
-        { 'id' =>  5, 'si_name' => 'str30' , 'base_type' => 'STR_CHAR', 'max_chars' =>    30, 
+        { 'id' =>  5, 'si_name' => 'str30' , 'base_type' => 'STR_CHAR', 'max_chars' =>    30,
             'char_enc' => 'ASCII', 'trim_white' => 1, },
         { 'id' =>  6, 'si_name' => 'str2k' , 'base_type' => 'STR_CHAR', 'max_chars' => 2_000, 'char_enc' => 'UTF8', },
         { 'id' =>  7, 'si_name' => 'byte' , 'base_type' => 'NUM_INT', 'num_precision' =>  3, },
@@ -58,8 +58,8 @@ sub populate_model {
         { 'id' => 29, 'si_value' => 'F', },
     ) ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 304, 'si_name' => 'person', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 304, 'si_name' => 'person', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 220, 'si_name' => 'person_id'   , 'scalar_data_type' =>  9, },
             { 'id' => 221, 'si_name' => 'alternate_id', 'scalar_data_type' => 23, },
@@ -70,8 +70,8 @@ sub populate_model {
         ) ),
     ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 312, 'si_name' => 'person_with_parents', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 312, 'si_name' => 'person_with_parents', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 116, 'si_name' => 'self_id'    , 'scalar_data_type' =>  9, },
             { 'id' => 117, 'si_name' => 'self_name'  , 'scalar_data_type' => 24, },
@@ -82,8 +82,8 @@ sub populate_model {
         ) ),
     ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 301, 'si_name' => 'user_auth', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 301, 'si_name' => 'user_auth', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 201, 'si_name' => 'user_id'      , 'scalar_data_type' =>  9, },
             { 'id' => 202, 'si_name' => 'login_name'   , 'scalar_data_type' => 23, },
@@ -95,8 +95,8 @@ sub populate_model {
         ) ),
     ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 302, 'si_name' => 'user_profile', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 302, 'si_name' => 'user_profile', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 208, 'si_name' => 'user_id'     , 'scalar_data_type' =>  9, },
             { 'id' => 209, 'si_name' => 'public_name' , 'scalar_data_type' => 25, },
@@ -110,8 +110,8 @@ sub populate_model {
         ) ),
     ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 311, 'si_name' => 'user', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 311, 'si_name' => 'user', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 101, 'si_name' => 'user_id'      , 'scalar_data_type' =>  9, },
             { 'id' => 102, 'si_name' => 'login_name'   , 'scalar_data_type' => 23, },
@@ -131,8 +131,8 @@ sub populate_model {
         ) ),
     ] );
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 303, 'si_name' => 'user_pref', }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 303, 'si_name' => 'user_pref', }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 217, 'si_name' => 'user_id'   , 'scalar_data_type' =>  9, },
             { 'id' => 218, 'si_name' => 'pref_name' , 'scalar_data_type' => 26, },
@@ -149,8 +149,8 @@ sub populate_model {
 
     ##### NEXT SET APPLICATION ELEMENT-TYPE DETAILS #####
 
-    $model->build_child_node_tree( 'row_data_type', 
-            { 'id' => 313, 'si_name' => 'user_theme',  }, [ 
+    $model->build_child_node_tree( 'row_data_type',
+            { 'id' => 313, 'si_name' => 'user_theme',  }, [
         ( map { [ 'row_data_type_field', $_ ] } (
             { 'id' => 122, 'si_name' => 'theme_name' , 'scalar_data_type' => 27, },
             { 'id' => 123, 'si_name' => 'theme_count', 'scalar_data_type' =>  9, },
@@ -159,46 +159,46 @@ sub populate_model {
 
     ##### NEXT SET CATALOG BLUEPRINT-TYPE DETAILS #####
 
-    my $catalog = $model->build_child_node_tree( 
-        'catalog', { 'id' => 31, 'si_name' => 'The Catalog Blueprint' }, 
-        [ [ 'owner', { 'id' =>  32,  'si_name' => 'Gene\'s Owner', } ] ] ); 
+    my $catalog = $model->build_child_node_tree(
+        'catalog', { 'id' => 31, 'si_name' => 'The Catalog Blueprint' },
+        [ [ 'owner', { 'id' =>  32,  'si_name' => q{Gene's Owner}, } ] ] );
 
-    my $schema = $catalog->build_child_node_tree( 'schema', 
-        { 'id' => 33, 'si_name' => 'gene', 'owner' => 32, } ); 
+    my $schema = $catalog->build_child_node_tree( 'schema',
+        { 'id' => 33, 'si_name' => 'gene', 'owner' => 32, } );
 
-    $schema->build_child_node_tree( 'table', 
-            { 'id' => 44, 'si_name' => 'person', 'row_data_type' => 304, }, [ 
+    $schema->build_child_node_tree( 'table',
+            { 'id' => 44, 'si_name' => 'person', 'row_data_type' => 304, }, [
         ( map { [ 'table_field', $_ ] } (
             { 'id' => 520, 'si_row_field' => 220, 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, },
             { 'id' => 522, 'si_row_field' => 222, 'mandatory' => 1, },
         ) ),
-        ( map { [ 'table_index', $_->[0], 
+        ( map { [ 'table_index', $_->[0],
                 [ [ 'table_index_field', $_->[1] ] ] ] } (
-            [ { 'id' => 701, 'si_name' => 'primary'        , 'index_type' => 'UNIQUE', }, { 'id' => 702, 'si_field' => 220, }, ], 
-            [ { 'id' => 703, 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, { 'id' => 704, 'si_field' => 221, }, ], 
-            [ { 'id' => 705, 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 44, }, 
-                { 'id' => 706, 'si_field' => 224, 'f_field' => 220 }, ], 
-            [ { 'id' => 707, 'si_name' => 'fk_mother', 'index_type' => 'FOREIGN', 'f_table' => 44, }, 
-                { 'id' => 708, 'si_field' => 225, 'f_field' => 220 }, ], 
+            [ { 'id' => 701, 'si_name' => 'primary'        , 'index_type' => 'UNIQUE', }, { 'id' => 702, 'si_field' => 220, }, ],
+            [ { 'id' => 703, 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, { 'id' => 704, 'si_field' => 221, }, ],
+            [ { 'id' => 705, 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 44, },
+                { 'id' => 706, 'si_field' => 224, 'f_field' => 220 }, ],
+            [ { 'id' => 707, 'si_name' => 'fk_mother', 'index_type' => 'FOREIGN', 'f_table' => 44, },
+                { 'id' => 708, 'si_field' => 225, 'f_field' => 220 }, ],
         ) ),
     ] );
 
-    $schema->build_child_node_tree( 'view', { 'id' => 52, 
-            'si_name' => 'person_with_parents', 'view_type' => 'JOINED', 'row_data_type' => 312, }, [ 
-        [ 'view_src', { 'id' => 73, 'si_name' => 'self'  , 
-                'match' => 44, }, [ 
+    $schema->build_child_node_tree( 'view', { 'id' => 52,
+            'si_name' => 'person_with_parents', 'view_type' => 'JOINED', 'row_data_type' => 312, }, [
+        [ 'view_src', { 'id' => 73, 'si_name' => 'self'  ,
+                'match' => 44, }, [
             [ 'view_src_field', { 'id' => 417, 'si_match_field' => 220, }, ],
             [ 'view_src_field', { 'id' => 418, 'si_match_field' => 222, }, ],
             [ 'view_src_field', { 'id' => 425, 'si_match_field' => 224, }, ],
             [ 'view_src_field', { 'id' => 426, 'si_match_field' => 225, }, ],
         ] ],
-        [ 'view_src', { 'id' => 74, 'si_name' => 'father', 
-                'match' => 44, }, [ 
+        [ 'view_src', { 'id' => 74, 'si_name' => 'father',
+                'match' => 44, }, [
             [ 'view_src_field', { 'id' => 419, 'si_match_field' => 220, }, ],
             [ 'view_src_field', { 'id' => 420, 'si_match_field' => 222, }, ],
         ] ],
-        [ 'view_src', { 'id' => 75, 'si_name' => 'mother', 
-                'match' => 44, }, [ 
+        [ 'view_src', { 'id' => 75, 'si_name' => 'mother',
+                'match' => 44, }, [
             [ 'view_src_field', { 'id' => 421, 'si_match_field' => 220, }, ],
             [ 'view_src_field', { 'id' => 422, 'si_match_field' => 222, }, ],
         ] ],
@@ -210,18 +210,18 @@ sub populate_model {
             { 'id' => 620, 'si_row_field' => 120, 'src_field' => 421, },
             { 'id' => 621, 'si_row_field' => 121, 'src_field' => 422, },
         ) ),
-        [ 'view_join', { 'id' => 731, 'lhs_src' => 73, 
-                'rhs_src' => 74, 'join_op' => 'LEFT', }, [ 
+        [ 'view_join', { 'id' => 731, 'lhs_src' => 73,
+                'rhs_src' => 74, 'join_op' => 'LEFT', }, [
             [ 'view_join_field', { 'id' => 732, 'lhs_src_field' => 425, 'rhs_src_field' => 419, } ],
         ] ],
-        [ 'view_join', { 'id' => 733, 'lhs_src' => 73, 
-                'rhs_src' => 75, 'join_op' => 'LEFT', }, [ 
+        [ 'view_join', { 'id' => 733, 'lhs_src' => 73,
+                'rhs_src' => 75, 'join_op' => 'LEFT', }, [
             [ 'view_join_field', { 'id' => 734, 'lhs_src_field' => 426, 'rhs_src_field' => 421, } ],
         ] ],
     ] );
 
-    $schema->build_child_node_tree( 'table', 
-            { 'id' => 41, 'si_name' => 'user_auth', 'row_data_type' => 301, }, [ 
+    $schema->build_child_node_tree( 'table',
+            { 'id' => 41, 'si_name' => 'user_auth', 'row_data_type' => 301, }, [
         ( map { [ 'table_field', $_ ] } (
             { 'id' => 501, 'si_row_field' => 201, 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, },
             { 'id' => 502, 'si_row_field' => 202, 'mandatory' => 1, },
@@ -231,33 +231,33 @@ sub populate_model {
             { 'id' => 506, 'si_row_field' => 206, 'mandatory' => 1, },
             { 'id' => 507, 'si_row_field' => 207, 'mandatory' => 1, 'default_val' => 3, },
         ) ),
-        ( map { [ 'table_index', $_->[0], 
+        ( map { [ 'table_index', $_->[0],
                 [ [ 'table_index_field', $_->[1] ] ] ] } (
-            [ { 'id' => 709, 'si_name' => 'primary'         , 'index_type' => 'UNIQUE', }, { 'id' => 710, 'si_field' => 201, }, ], 
-            [ { 'id' => 711, 'si_name' => 'ak_login_name'   , 'index_type' => 'UNIQUE', }, { 'id' => 712, 'si_field' => 202, }, ], 
-            [ { 'id' => 713, 'si_name' => 'ak_private_email', 'index_type' => 'UNIQUE', }, { 'id' => 714, 'si_field' => 205, }, ], 
+            [ { 'id' => 709, 'si_name' => 'primary'         , 'index_type' => 'UNIQUE', }, { 'id' => 710, 'si_field' => 201, }, ],
+            [ { 'id' => 711, 'si_name' => 'ak_login_name'   , 'index_type' => 'UNIQUE', }, { 'id' => 712, 'si_field' => 202, }, ],
+            [ { 'id' => 713, 'si_name' => 'ak_private_email', 'index_type' => 'UNIQUE', }, { 'id' => 714, 'si_field' => 205, }, ],
         ) ),
     ] );
 
-    $schema->build_child_node_tree( 'table', 
-            { 'id' => 42, 'si_name' => 'user_profile', 'row_data_type' => 302, }, [ 
+    $schema->build_child_node_tree( 'table',
+            { 'id' => 42, 'si_name' => 'user_profile', 'row_data_type' => 302, }, [
         ( map { [ 'table_field', $_ ] } (
             { 'id' => 508, 'si_row_field' => 208, 'mandatory' => 1, },
             { 'id' => 509, 'si_row_field' => 209, 'mandatory' => 1, },
         ) ),
-        ( map { [ 'table_index', $_->[0], 
+        ( map { [ 'table_index', $_->[0],
                 [ [ 'table_index_field', $_->[1] ] ] ] } (
-            [ { 'id' => 715, 'si_name' => 'primary'       , 'index_type' => 'UNIQUE', }, { 'id' => 716, 'si_field' => 208, }, ], 
-            [ { 'id' => 717, 'si_name' => 'ak_public_name', 'index_type' => 'UNIQUE', }, { 'id' => 718, 'si_field' => 209, }, ], 
-            [ { 'id' => 719, 'si_name' => 'fk_user'       , 'index_type' => 'FOREIGN', 'f_table' => 41, }, 
-                { 'id' => 720, 'si_field' => 208, 'f_field' => 201 }, ], 
+            [ { 'id' => 715, 'si_name' => 'primary'       , 'index_type' => 'UNIQUE', }, { 'id' => 716, 'si_field' => 208, }, ],
+            [ { 'id' => 717, 'si_name' => 'ak_public_name', 'index_type' => 'UNIQUE', }, { 'id' => 718, 'si_field' => 209, }, ],
+            [ { 'id' => 719, 'si_name' => 'fk_user'       , 'index_type' => 'FOREIGN', 'f_table' => 41, },
+                { 'id' => 720, 'si_field' => 208, 'f_field' => 201 }, ],
         ) ),
     ] );
 
-    $schema->build_child_node_tree( 'view', { 'id' => 51, 
-            'si_name' => 'user', 'view_type' => 'JOINED', 'row_data_type' => 311, }, [ 
-        [ 'view_src', { 'id' => 71, 'si_name' => 'user_auth', 
-                'match' => 41, }, [ 
+    $schema->build_child_node_tree( 'view', { 'id' => 51,
+            'si_name' => 'user', 'view_type' => 'JOINED', 'row_data_type' => 311, }, [
+        [ 'view_src', { 'id' => 71, 'si_name' => 'user_auth',
+                'match' => 41, }, [
             [ 'view_src_field', { 'id' => 401, 'si_match_field' => 201, }, ],
             [ 'view_src_field', { 'id' => 402, 'si_match_field' => 202, }, ],
             [ 'view_src_field', { 'id' => 403, 'si_match_field' => 203, }, ],
@@ -266,8 +266,8 @@ sub populate_model {
             [ 'view_src_field', { 'id' => 406, 'si_match_field' => 206, }, ],
             [ 'view_src_field', { 'id' => 407, 'si_match_field' => 207, }, ],
         ] ],
-        [ 'view_src', { 'id' => 72, 'si_name' => 'user_profile', 
-                'match' => 42, }, [ 
+        [ 'view_src', { 'id' => 72, 'si_name' => 'user_profile',
+                'match' => 42, }, [
             [ 'view_src_field', { 'id' => 408, 'si_match_field' => 208, }, ],
             [ 'view_src_field', { 'id' => 409, 'si_match_field' => 209, }, ],
             [ 'view_src_field', { 'id' => 410, 'si_match_field' => 210, }, ],
@@ -295,45 +295,45 @@ sub populate_model {
             { 'id' => 614, 'si_row_field' => 114, 'src_field' => 415, },
             { 'id' => 615, 'si_row_field' => 115, 'src_field' => 416, },
         ) ),
-        [ 'view_join', { 'id' => 735, 'lhs_src' => 71, 'rhs_src' => 72, 'join_op' => 'LEFT', }, [ 
+        [ 'view_join', { 'id' => 735, 'lhs_src' => 71, 'rhs_src' => 72, 'join_op' => 'LEFT', }, [
             [ 'view_join_field', { 'id' => 736, 'lhs_src_field' => 401, 'rhs_src_field' => 408, } ],
         ] ],
     ] );
 
-    $schema->build_child_node_tree( 'table', 
-            { 'id' => 43, 'si_name' => 'user_pref', 'row_data_type' => 303, }, [ 
+    $schema->build_child_node_tree( 'table',
+            { 'id' => 43, 'si_name' => 'user_pref', 'row_data_type' => 303, }, [
         ( map { [ 'table_field', $_ ] } (
             { 'id' => 517, 'si_row_field' => 217, 'mandatory' => 1, },
             { 'id' => 518, 'si_row_field' => 218, 'mandatory' => 1, },
         ) ),
-        ( map { [ 'table_index', $_->[0], [ 
+        ( map { [ 'table_index', $_->[0], [
                 map { [ 'table_index_field', $_ ] } @{$_->[1]}
                 ] ] } (
-            [ { 'id' => 721, 'si_name' => 'primary', 'index_type' => 'UNIQUE', }, 
-                [ { 'id' => 722, 'si_field' => 217, }, { 'id' => 723, 'si_field' => 218, }, ], ], 
-            [ { 'id' => 724, 'si_name' => 'fk_user', 'index_type' => 'FOREIGN', 'f_table' => 41, }, 
-                [ { 'id' => 725, 'si_field' => 217, 'f_field' => 201 }, ], ], 
+            [ { 'id' => 721, 'si_name' => 'primary', 'index_type' => 'UNIQUE', },
+                [ { 'id' => 722, 'si_field' => 217, }, { 'id' => 723, 'si_field' => 218, }, ], ],
+            [ { 'id' => 724, 'si_name' => 'fk_user', 'index_type' => 'FOREIGN', 'f_table' => 41, },
+                [ { 'id' => 725, 'si_field' => 217, 'f_field' => 201 }, ], ],
         ) ),
     ] );
 
     ##### NEXT SET APPLICATION BLUEPRINT-TYPE DETAILS #####
 
-    my $application = $model->build_child_node_tree( 'application', { 'id' => 34, 'si_name' => 'My App', }, ); 
+    my $application = $model->build_child_node_tree( 'application', { 'id' => 34, 'si_name' => 'My App', }, );
 
-    $application->build_child_node_tree( 'view', 
-            { 'id' => 53, 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 313, }, [ 
-        [ 'view_src', { 'id' => 76, 'si_name' => 'user_pref', 'match' => 43, }, [ 
+    $application->build_child_node_tree( 'view',
+            { 'id' => 53, 'si_name' => 'user_theme', 'view_type' => 'JOINED', 'row_data_type' => 313, }, [
+        [ 'view_src', { 'id' => 76, 'si_name' => 'user_pref', 'match' => 43, }, [
             [ 'view_src_field', { 'id' => 423, 'si_match_field' => 218, }, ],
             [ 'view_src_field', { 'id' => 424, 'si_match_field' => 219, }, ],
         ] ],
         [ 'view_field', { 'id' => 842, 'si_row_field' => 122, 'src_field' => 424, }, ],
         [ 'view_expr', { 'view_part' => 'RESULT', 'id' => 843, 'set_result_field' => 123, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
-        [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 811, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+        [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 811, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
             [ 'view_expr', { 'id' => 812, 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 423, }, ],
             [ 'view_expr', { 'id' => 813, 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'scalar_data_type' => 5, 'valf_literal' => 'theme', }, ],
         ] ],
         [ 'view_expr', { 'view_part' => 'GROUP', 'id' => 814, 'cont_type' => 'SCALAR', 'valf_src_field' => 424, }, ],
-        [ 'view_expr', { 'view_part' => 'HAVING', 'id' => 815, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, [ 
+        [ 'view_expr', { 'view_part' => 'HAVING', 'id' => 815, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'GT', }, [
             [ 'view_expr', { 'id' => 816, 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'COUNT', }, ],
             [ 'view_expr', { 'id' => 817, 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'scalar_data_type' => 9, 'valf_literal' => '1', }, ],
         ] ],
@@ -341,16 +341,16 @@ sub populate_model {
         [ 'view_expr', { 'view_part' => 'ORDER', 'id' => 856, 'cont_type' => 'SCALAR', 'valf_result_field' => 122, }, ],
     ] );
 
-    $application->build_child_node_tree( 'routine', 
-            { 'id' => 61, 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 921, }, [ 
+    $application->build_child_node_tree( 'routine',
+            { 'id' => 61, 'routine_type' => 'FUNCTION', 'si_name' => 'get_user', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 921, }, [
         [ 'routine_arg', { 'id' => 91, 'si_name' => 'curr_uid', 'cont_type' => 'SCALAR', 'scalar_data_type' => 9, }, ],
         [ 'routine_var', { 'id' => 901, 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_ext' => 921, }, [
-            [ 'view', { 'id' => 55, 'si_name' => 'get_user', 'view_type' => 'JOINED', 'row_data_type' => 311, }, [ 
-                [ 'view_src', { 'id' => 78, 'si_name' => 'm', 'match' => 51, }, [ 
+            [ 'view', { 'id' => 55, 'si_name' => 'get_user', 'view_type' => 'JOINED', 'row_data_type' => 311, }, [
+                [ 'view_src', { 'id' => 78, 'si_name' => 'm', 'match' => 51, }, [
                     [ 'view_src_field', { 'id' => 430, 'si_match_field' => 101, }, ],
                     [ 'view_src_field', { 'id' => 431, 'si_match_field' => 102, }, ],
                 ] ],
-                [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 801, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [ 
+                [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 801, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'EQ', }, [
                     [ 'view_expr', { 'id' => 802, 'call_sroutine_arg' => 'LHS', 'cont_type' => 'SCALAR', 'valf_src_field' => 430, }, ],
                     [ 'view_expr', { 'id' => 803, 'call_sroutine_arg' => 'RHS', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 91, }, ],
                 ] ],
@@ -362,24 +362,24 @@ sub populate_model {
         ] ],
     ] );
 
-    $application->build_child_node_tree( 'routine', 
-            { 'id' => 62, 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 922, }, [ 
+    $application->build_child_node_tree( 'routine',
+            { 'id' => 62, 'routine_type' => 'FUNCTION', 'si_name' => 'get_pwp', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 922, }, [
         [ 'routine_arg', { 'id' => 92, 'si_name' => 'srchw_fa', 'cont_type' => 'SCALAR', 'scalar_data_type' => 5, }, ],
         [ 'routine_arg', { 'id' => 93, 'si_name' => 'srchw_mo', 'cont_type' => 'SCALAR', 'scalar_data_type' => 5, }, ],
         [ 'routine_var', { 'id' => 903, 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_ext' => 922, }, [
-            [ 'view', { 'id' => 56, 'si_name' => 'get_pwp', 'view_type' => 'JOINED', 'row_data_type' => 312, }, [ 
-                [ 'view_src', { 'id' => 79, 'si_name' => 'm', 'match' => 52, }, [ 
+            [ 'view', { 'id' => 56, 'si_name' => 'get_pwp', 'view_type' => 'JOINED', 'row_data_type' => 312, }, [
+                [ 'view_src', { 'id' => 79, 'si_name' => 'm', 'match' => 52, }, [
                     [ 'view_src_field', { 'id' => 427, 'si_match_field' => 117, }, ],
                     [ 'view_src_field', { 'id' => 428, 'si_match_field' => 119, }, ],
                     [ 'view_src_field', { 'id' => 429, 'si_match_field' => 121, }, ],
                 ] ],
-                [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 804, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, [ 
-                    [ 'view_expr', { 'id' => 911, 'call_sroutine_arg' => 'FACTORS', 'cont_type' => 'LIST', }, [ 
-                        [ 'view_expr', { 'id' => 805, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+                [ 'view_expr', { 'view_part' => 'WHERE', 'id' => 804, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'AND', }, [
+                    [ 'view_expr', { 'id' => 911, 'call_sroutine_arg' => 'FACTORS', 'cont_type' => 'LIST', }, [
+                        [ 'view_expr', { 'id' => 805, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [
                             [ 'view_expr', { 'id' => 806, 'call_sroutine_arg' => 'LOOK_IN', 'cont_type' => 'SCALAR', 'valf_src_field' => 428, }, ],
                             [ 'view_expr', { 'id' => 807, 'call_sroutine_arg' => 'LOOK_FOR', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 92, }, ],
                         ] ],
-                        [ 'view_expr', { 'id' => 808, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [ 
+                        [ 'view_expr', { 'id' => 808, 'cont_type' => 'SCALAR', 'valf_call_sroutine' => 'LIKE', }, [
                             [ 'view_expr', { 'id' => 809, 'call_sroutine_arg' => 'LOOK_IN', 'cont_type' => 'SCALAR', 'valf_src_field' => 429, }, ],
                             [ 'view_expr', { 'id' => 810, 'call_sroutine_arg' => 'LOOK_FOR', 'cont_type' => 'SCALAR', 'valf_p_routine_item' => 93, }, ],
                         ] ],
@@ -395,10 +395,10 @@ sub populate_model {
         ] ],
     ] );
 
-    $application->build_child_node_tree( 'routine', 
-            { 'id' => 63, 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 923, }, [ 
+    $application->build_child_node_tree( 'routine',
+            { 'id' => 63, 'routine_type' => 'FUNCTION', 'si_name' => 'get_theme', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 923, }, [
         [ 'routine_var', { 'id' => 905, 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_ext' => 923, }, [
-            [ 'view', { 'id' => 57, 'si_name' => 'get_theme', 'view_type' => 'ALIAS', 'row_data_type' => 313, }, [ 
+            [ 'view', { 'id' => 57, 'si_name' => 'get_theme', 'view_type' => 'ALIAS', 'row_data_type' => 313, }, [
                 [ 'view_src', { 'id' => 69, 'si_name' => 'm', 'match' => 53, }, ],
             ] ],
         ] ],
@@ -407,10 +407,10 @@ sub populate_model {
         ] ],
     ] );
 
-    $application->build_child_node_tree( 'routine', 
-            { 'id' => 64, 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 924, }, [ 
+    $application->build_child_node_tree( 'routine',
+            { 'id' => 64, 'routine_type' => 'FUNCTION', 'si_name' => 'get_person', 'return_cont_type' => 'CURSOR', 'return_curs_ext' => 924, }, [
         [ 'routine_var', { 'id' => 907, 'si_name' => 'cursor_cx', 'cont_type' => 'CURSOR', 'curs_ext' => 924, }, [
-            [ 'view', { 'id' => 54, 'si_name' => 'get_person', 'view_type' => 'ALIAS', 'row_data_type' => 304, }, [ 
+            [ 'view', { 'id' => 54, 'si_name' => 'get_person', 'view_type' => 'ALIAS', 'row_data_type' => 304, }, [
                 [ 'view_src', { 'id' => 77, 'si_name' => 'person', 'match' => 44, }, ],
             ] ],
         ] ],
@@ -425,8 +425,8 @@ sub populate_model {
 
     ##### NEXT SET INSTANCE-TYPE DETAILS #####
 
-    my $app_inst = $model->build_child_node_tree( 'application_instance', 
-        { 'id' => 35, 'si_name' => 'My App Instance', 'blueprint' => 34, } ); 
+    my $app_inst = $model->build_child_node_tree( 'application_instance',
+        { 'id' => 35, 'si_name' => 'My App Instance', 'blueprint' => 34, } );
 
     ##### END OF DETAILS SETTING #####
 }
@@ -435,7 +435,7 @@ sub populate_model {
 
 sub expected_model_nid_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="bin1k" base_type="STR_BIT" max_octets="1000" />
@@ -537,7 +537,7 @@ sub expected_model_nid_xml_output {
     </elements>
     <blueprints>
         <catalog id="31" si_name="The Catalog Blueprint">
-            <owner id="32" si_name="Gene\'s Owner" />
+            <owner id="32" si_name="Gene's Owner" />
             <schema id="33" si_name="gene" owner="32">
                 <table id="44" si_name="person" row_data_type="304">
                     <table_field id="520" si_row_field="220" mandatory="1" default_val="1" auto_inc="1" />
@@ -765,7 +765,7 @@ sub expected_model_nid_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -773,7 +773,7 @@ sub expected_model_nid_xml_output {
 
 sub expected_model_sid_long_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="bin1k" base_type="STR_BIT" max_octets="1000" />
@@ -875,8 +875,8 @@ sub expected_model_sid_long_xml_output {
     </elements>
     <blueprints>
         <catalog id="31" si_name="The Catalog Blueprint">
-            <owner id="32" si_name="Gene\'s Owner" />
-            <schema id="33" si_name="gene" owner="Gene\'s Owner">
+            <owner id="32" si_name="Gene's Owner" />
+            <schema id="33" si_name="gene" owner="Gene's Owner">
                 <table id="44" si_name="person" row_data_type="person">
                     <table_field id="520" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
                     <table_field id="522" si_row_field="name" mandatory="1" />
@@ -1103,7 +1103,7 @@ sub expected_model_sid_long_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -1111,7 +1111,7 @@ sub expected_model_sid_long_xml_output {
 
 sub expected_model_sid_short_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="bin1k" base_type="STR_BIT" max_octets="1000" />
@@ -1213,8 +1213,8 @@ sub expected_model_sid_short_xml_output {
     </elements>
     <blueprints>
         <catalog id="31" si_name="The Catalog Blueprint">
-            <owner id="32" si_name="Gene\'s Owner" />
-            <schema id="33" si_name="gene" owner="Gene\'s Owner">
+            <owner id="32" si_name="Gene's Owner" />
+            <schema id="33" si_name="gene" owner="Gene's Owner">
                 <table id="44" si_name="person" row_data_type="person">
                     <table_field id="520" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
                     <table_field id="522" si_row_field="name" mandatory="1" />
@@ -1441,7 +1441,7 @@ sub expected_model_sid_short_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 

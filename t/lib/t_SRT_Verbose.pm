@@ -2,9 +2,9 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 # This module is used when testing SQL::Routine.
-# These tests check that a model can be built using the verbose standard 
+# These tests check that a model can be built using the verbose standard
 # interface without errors, and serializes to the correct output.
-# This module contains sample input and output data which is used to test 
+# This module contains sample input and output data which is used to test
 # SQL::Routine, and possibly other modules that are derived from it.
 
 package # hide this class name from PAUSE indexer
@@ -90,7 +90,7 @@ sub populate_model {
 
     # Define the unrealized database user that owns our primary schema:
     my $owner = make_a_child_node( 'owner', $catalog_bp );
-    $owner->set_attribute( 'si_name', 'Gene\'s Owner' );
+    $owner->set_attribute( 'si_name', q{Gene's Owner} );
 
     # Define the primary schema that holds our data:
     my $schema = make_a_child_node( 'schema', $catalog_bp );
@@ -561,7 +561,7 @@ sub populate_model {
 
 sub expected_model_nid_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -577,7 +577,7 @@ sub expected_model_nid_xml_output {
     </elements>
     <blueprints>
         <catalog id="10" si_name="The Catalog Blueprint">
-            <owner id="11" si_name="Gene\'s Owner" />
+            <owner id="11" si_name="Gene's Owner" />
             <schema id="12" si_name="gene" owner="11">
                 <row_domain id="13" si_name="person_type" data_type="3" />
                 <table id="14" si_name="person" row_data_type="13">
@@ -733,7 +733,7 @@ sub expected_model_nid_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -741,7 +741,7 @@ sub expected_model_nid_xml_output {
 
 sub expected_model_sid_long_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -757,8 +757,8 @@ sub expected_model_sid_long_xml_output {
     </elements>
     <blueprints>
         <catalog id="10" si_name="The Catalog Blueprint">
-            <owner id="11" si_name="Gene\'s Owner" />
-            <schema id="12" si_name="gene" owner="Gene\'s Owner">
+            <owner id="11" si_name="Gene's Owner" />
+            <schema id="12" si_name="gene" owner="Gene's Owner">
                 <row_domain id="13" si_name="person_type" data_type="person" />
                 <table id="14" si_name="person" row_data_type="person_type">
                     <table_field id="15" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
@@ -891,7 +891,7 @@ sub expected_model_sid_long_xml_output {
     </tools>
     <sites>
         <catalog_instance id="105" si_name="test" blueprint="The Catalog Blueprint" product="SQLite v2.8.12">
-            <user id="106" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="K34dsD" />
+            <user id="106" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene's Owner" password="K34dsD" />
             <user id="107" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
         </catalog_instance>
         <application_instance id="108" si_name="test Setup" blueprint="Setup">
@@ -901,7 +901,7 @@ sub expected_model_sid_long_xml_output {
             <catalog_link_instance id="111" blueprint="editor_link" product="Microsoft ODBC" target="test" local_dsn="test" />
         </application_instance>
         <catalog_instance id="112" si_name="demo" blueprint="The Catalog Blueprint" product="Oracle v9i">
-            <user id="113" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="0sfs8G" />
+            <user id="113" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene's Owner" password="0sfs8G" />
             <user id="114" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
         </catalog_instance>
         <application_instance id="115" si_name="demo Setup" blueprint="Setup">
@@ -913,7 +913,7 @@ sub expected_model_sid_long_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -921,7 +921,7 @@ sub expected_model_sid_long_xml_output {
 
 sub expected_model_sid_short_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -937,8 +937,8 @@ sub expected_model_sid_short_xml_output {
     </elements>
     <blueprints>
         <catalog id="10" si_name="The Catalog Blueprint">
-            <owner id="11" si_name="Gene\'s Owner" />
-            <schema id="12" si_name="gene" owner="Gene\'s Owner">
+            <owner id="11" si_name="Gene's Owner" />
+            <schema id="12" si_name="gene" owner="Gene's Owner">
                 <row_domain id="13" si_name="person_type" data_type="person" />
                 <table id="14" si_name="person" row_data_type="person_type">
                     <table_field id="15" si_row_field="person_id" mandatory="1" default_val="1" auto_inc="1" />
@@ -1071,7 +1071,7 @@ sub expected_model_sid_short_xml_output {
     </tools>
     <sites>
         <catalog_instance id="105" si_name="test" blueprint="The Catalog Blueprint" product="SQLite v2.8.12">
-            <user id="106" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="K34dsD" />
+            <user id="106" si_name="ronsealy" user_type="SCHEMA_OWNER" match_owner="Gene's Owner" password="K34dsD" />
             <user id="107" si_name="joesmith" user_type="DATA_EDITOR" password="fdsKJ4" />
         </catalog_instance>
         <application_instance id="108" si_name="test Setup" blueprint="Setup">
@@ -1081,7 +1081,7 @@ sub expected_model_sid_short_xml_output {
             <catalog_link_instance id="111" blueprint="editor_link" product="Microsoft ODBC" target="test" local_dsn="test" />
         </application_instance>
         <catalog_instance id="112" si_name="demo" blueprint="The Catalog Blueprint" product="Oracle v9i">
-            <user id="113" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene\'s Owner" password="0sfs8G" />
+            <user id="113" si_name="florence" user_type="SCHEMA_OWNER" match_owner="Gene's Owner" password="0sfs8G" />
             <user id="114" si_name="thainuff" user_type="DATA_EDITOR" password="9340sd" />
         </catalog_instance>
         <application_instance id="115" si_name="demo Setup" blueprint="Setup">
@@ -1093,7 +1093,7 @@ sub expected_model_sid_short_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 

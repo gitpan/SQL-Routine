@@ -365,7 +365,7 @@ This pseudo-Node has one child Node-type: sql_fragment.
 =head2 scalar_data_type
 
 This type of Node describes a user-defined customization of a base
-simple_scalar_type, the latter of which SQL::Routine recognizes in code. 
+simple_scalar_type, the latter of which SQL::Routine recognizes in code.
 This customization encompases several things: 1. The scalar_data_type can
 be referenced by entities such as domain definitions, table column
 definitions, view column definitions, and routine variables, as their "data
@@ -377,7 +377,7 @@ pre or post processing of values, such as trimming of bounding whitespace
 or uppercasing its contents.
 
 For example, the user may decide to create a custom data type called
-"currency", which is a decimal number of precision 15 and a scale of 2. 
+"currency", which is a decimal number of precision 15 and a scale of 2.
 Or, they may want to have an "ip address" type, which is a string that can
 hold 15 characters (how ips are normally displayed to humans).  Or, they
 may want a custom SIN or telephone-no or person-name type.  They can then
@@ -398,7 +398,7 @@ Attribute List:
     id - NODE_ID - unique identifier for each Node within this Node Type
     si_name - L.cstr - SI - the name this scalar data type is identified by
     base_type - E.simple_scalar_type - MA - name of the base data type this data_type is customized from
-    num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact 
+    num_precision - L.uint - max length in digits for exact number, or count of significant digits for inexact
     num_scale - L.uint - for non-integral numbers, how many digits can be on the right of the radix point
     num_octets - L.uint - for integral or inexact (floating point) numbers, fixed storage size in octets
     num_unsigned - L.bool - for numbers, true means only values >= 0 may be stored
@@ -696,7 +696,7 @@ Remotely Addressable Types List:
 =head2 sequence
 
 This type of Node describes a simple named sequence number generator, which
-will produce integers (normal purpose) but not fractional numbers. 
+will produce integers (normal purpose) but not fractional numbers.
 Sequence generators are part of the SQL:2003 standard (see "4.21 Sequence
 generators"), and many database products have them; apparently they are not
 part of older SQL standards.  The standard says that only integers can be
@@ -840,7 +840,7 @@ short-cut is available which allows a view to be defined entirely with as
 few as two Nodes, one "view" having type of ALIAS and one "view_src".  This
 short cut is mainly for use when we want to simulate full direct table
 access, which is needed for mass back-ups or restores of tables, or when
-implementing a utility that lets users make direct changes to a table. 
+implementing a utility that lets users make direct changes to a table.
 Other part-way short cuts are available too.
 
 The view_join[/_field] Nodes that belong to a "view" ("viewed table") Node,
@@ -868,7 +868,7 @@ flag defaults to false.
 
 SQL::Routine also uses "views" to describe editing DML operations, such as
 Insert, Update, Delete operations.  The view definition says what the
-conditions for each DML operation is, namely what rows they will affect. 
+conditions for each DML operation is, namely what rows they will affect.
 With Update and Delete operations, all rows that would be returned by the
 view will be correspondingly updated or deleted.  An Insert (single or
 multiple row) won't affect the existing rows, but will add to what the view
@@ -896,10 +896,10 @@ Attribute List:
     may_write - L.bool - true when we should at least try allowing updates through the selecting view
     ins_p_routine_item - N.routine_arg,routine_var - the ROW/RW_ARY routine arg|var we are inserting into the table/view
 
-    Note: if pp is a routine_var, then that var declares a cursor defined by this view; 
+    Note: if pp is a routine_var, then that var declares a cursor defined by this view;
     if pp is a routine_stmt, then stmt is a SELECT or DML statement defined by this view.
 
-    Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT"; 
+    Note: setting distinct_rows to true results in "[SELECT|UNION|...] DISTINCT";
     a false or undefined value results in "[SELECT|UNION|...] ALL".
 
 Local Attribute Dependencies List:
@@ -994,7 +994,7 @@ Attribute List:
     catalog_link - N.catalog_link - if match_[table|view] in another catalog, say via which catalog link
     may_write - L.bool - alternately to the same 'view' attribute, say here which exact sources we want to 'select for update'
 
-    Note: The 'match' attribute can be either a named table or view that is nearby, 
+    Note: The 'match' attribute can be either a named table or view that is nearby,
     or a ROW/RW_ARY arg to the parent view, or a ROW/RW_ARY arg or var of the parent routine.
 
 =head2 view_src_arg
@@ -1365,12 +1365,12 @@ Attribute List:
     catalog_link - N.catalog_link - if uroutine in another catalog, say via which catalog link
 
     If 'block_routine' is set, the routine statement declares a compound
-    statement that can contain other statements; eg BEGIN ... END.  If 
+    statement that can contain other statements; eg BEGIN ... END.  If
     'assign_dest' is set, the action is an assignment of an
     expression value to a variable (SQL:2003 calls it 'SET').  If either of
     'call_[s|u]routine' is set, the action is to call that built-in or routine.
 
-    TODO: Relevant structures to specify certain exceptions to catch or throw. 
+    TODO: Relevant structures to specify certain exceptions to catch or throw.
     Meanwhile, all exceptions are thrown out to the application that is using SRT.
 
 Exclusive Attribute Groups List:
@@ -1505,7 +1505,7 @@ Exclusive Attribute Groups List:
 This type of Node describes a distinct data link product that someone can
 use to connect to a data storage product, such as ODBC 2 or OCI8 or a
 proxy.  Your choice here doesn't necessarily reflect on what data storage
-product you are using as the link product may abstract its details away. 
+product you are using as the link product may abstract its details away.
 That said, while a catalog blueprint typically just needs to know its
 storage product, an application linking to one should know a link product
 and possibly a storage.
@@ -1651,7 +1651,7 @@ Attribute List:
     login_name - L.cstr - if we want to spec a username to always connect with, put here; else get it at runtime
     login_pass - L.cstr - if we always use same password, put it here; else get it at runtime
 
-    TODO: blueprint and target actually aren't mandatory when pp is a catalog_link_instance; 
+    TODO: blueprint and target actually aren't mandatory when pp is a catalog_link_instance;
     they inherit their root-of-type copy of said attributes.
 
 Ancestor Attribute Correlation List:

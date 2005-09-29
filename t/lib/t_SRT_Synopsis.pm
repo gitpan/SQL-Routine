@@ -2,9 +2,9 @@
 use 5.008001; use utf8; use strict; use warnings;
 
 # This module is used when testing SQL::Routine.
-# These tests check that a model can be built using the SYNOPSIS code in 
+# These tests check that a model can be built using the SYNOPSIS code in
 # Routine.pm without errors, and serializes to the correct output.
-# This module contains sample input and output data which is used to test 
+# This module contains sample input and output data which is used to test
 # SQL::Routine, and possibly other modules that are derived from it.
 
 package # hide this class name from PAUSE indexer
@@ -15,9 +15,9 @@ t_SRT_Synopsis;
 sub populate_model {
     my (undef, $model) = @_;
 
-    # This defines 4 scalar/column/field data types (1 number, 2 char strings, 1 enumerated value type) 
+    # This defines 4 scalar/column/field data types (1 number, 2 char strings, 1 enumerated value type)
     # and 2 row/table data types; the former are atomic and the latter are composite.
-    # The former can describe individual columns of a base table (table) or viewed table (view), 
+    # The former can describe individual columns of a base table (table) or viewed table (view),
     # while the latter can describe an entire table or view.
     # Any of these can describe a 'domain' schema object or a stored procedure's variable's data type.
     # See also the 'person' and 'person_with_parents' table+view defs further below; these data types help describe them.
@@ -54,18 +54,18 @@ sub populate_model {
     ] );
     my $schema = $catalog_bp->find_child_node_by_surrogate_id( 'Gene Schema' );
 
-    # This defines a base table (table) schema object that lives in the aforementioned database catalog. 
-    # It contains 6 columns, including a not-null primary key (having a trivial sequence generator to give it 
+    # This defines a base table (table) schema object that lives in the aforementioned database catalog.
+    # It contains 6 columns, including a not-null primary key (having a trivial sequence generator to give it
     # default values), another not-null field, a surrogate key, and 2 self-referencing foreign keys.
     # Each row represents a single 'person', for each storing up to 2 unique identifiers, name, sex, and the parents' unique ids.
     my $tb_person = $schema->build_child_node_tree( 'table', { 'si_name' => 'person', 'row_data_type' => 'person', }, [
         [ 'table_field', { 'si_row_field' => 'person_id', 'mandatory' => 1, 'default_val' => 1, 'auto_inc' => 1, }, ],
         [ 'table_field', { 'si_row_field' => 'name'     , 'mandatory' => 1, }, ],
         [ 'table_index', { 'si_name' => 'primary' , 'index_type' => 'UNIQUE', }, [
-            [ 'table_index_field', 'person_id', ], 
+            [ 'table_index_field', 'person_id', ],
         ], ],
         [ 'table_index', { 'si_name' => 'ak_alternate_id', 'index_type' => 'UNIQUE', }, [
-            [ 'table_index_field', 'alternate_id', ], 
+            [ 'table_index_field', 'alternate_id', ],
         ], ],
         [ 'table_index', { 'si_name' => 'fk_father', 'index_type' => 'FOREIGN', 'f_table' => 'person', }, [
             [ 'table_index_field', { 'si_field' => 'father_id', 'f_field' => 'person_id' } ],
@@ -75,10 +75,10 @@ sub populate_model {
         ], ],
     ] );
 
-    # This defines a viewed table (view) schema object that lives in the aforementioned database catalog. 
+    # This defines a viewed table (view) schema object that lives in the aforementioned database catalog.
     # It left-outer-joins the 'person' table to itself twice and returns 2 columns from each constituent, for 6 total.
     # Each row gives the unique id and name each for 3 people, a given person and that person's 2 parents.
-    my $vw_pwp = $schema->build_child_node_tree( 'view', { 'si_name' => 'person_with_parents', 
+    my $vw_pwp = $schema->build_child_node_tree( 'view', { 'si_name' => 'person_with_parents',
             'view_type' => 'JOINED', 'row_data_type' => 'person_with_parents', }, [
         ( map { [ 'view_src', { 'si_name' => $_, 'match' => 'person', }, [
             map { [ 'view_src_field', $_, ], } ( 'person_id', 'name', 'father_id', 'mother_id', ),
@@ -106,13 +106,13 @@ sub populate_model {
     ] );
 
     # This defines another scalar data type, which is used by some routines that follow below.
-    my $sdt_login_auth = $model->build_child_node( 'scalar_data_type', { 'si_name' => 'login_auth', 
+    my $sdt_login_auth = $model->build_child_node( 'scalar_data_type', { 'si_name' => 'login_auth',
         'base_type' => 'STR_CHAR', 'max_chars' => 20, 'char_enc' => 'UTF8', } );
 
-    # This defines an application-side routine/function that connects to the 'Gene Database', fetches all 
+    # This defines an application-side routine/function that connects to the 'Gene Database', fetches all
     # the records from the 'person_with_parents' view, disconnects the database, and returns the fetched records.
     # It takes run-time arguments for a user login name and password that are used when connecting.
-    my $rt_fetch_pwp = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'fetch_pwp', 
+    my $rt_fetch_pwp = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'fetch_pwp',
             'routine_type' => 'FUNCTION', 'return_cont_type' => 'RW_ARY', 'return_row_data_type' => 'person_with_parents', }, [
         [ 'routine_arg', { 'si_name' => 'login_name', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
         [ 'routine_arg', { 'si_name' => 'login_pass', 'cont_type' => 'SCALAR', 'scalar_data_type' => $sdt_login_auth }, ],
@@ -139,8 +139,8 @@ sub populate_model {
         ], ],
     ] );
 
-    # This defines an application-side routine/procedure that inserts a set of records, given in an argument, 
-    # into the 'person' table.  It takes an already opened db connection handle to operate through as a 
+    # This defines an application-side routine/procedure that inserts a set of records, given in an argument,
+    # into the 'person' table.  It takes an already opened db connection handle to operate through as a
     # 'context' argument (which would represent the invocant if this routine was wrapped in an object-oriented interface).
     my $rt_add_people = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'add_people', 'routine_type' => 'PROCEDURE', }, [
         [ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
@@ -154,9 +154,9 @@ sub populate_model {
         ], ],
     ] );
 
-    # This defines an application-side routine/function that fetches one record 
+    # This defines an application-side routine/function that fetches one record
     # from the 'person' table which matches its argument.
-    my $rt_get_person = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'get_person', 
+    my $rt_get_person = $application_bp->build_child_node_tree( 'routine', { 'si_name' => 'get_person',
             'routine_type' => 'FUNCTION', 'return_cont_type' => 'ROW', 'return_row_data_type' => 'person', }, [
         [ 'routine_context', { 'si_name' => 'conn_cx', 'cont_type' => 'CONN', 'conn_link' => 'editor_link', }, ],
         [ 'routine_arg', { 'si_name' => 'arg_person_id', 'cont_type' => 'SCALAR', 'scalar_data_type' => 'entity_id', }, ],
@@ -181,7 +181,7 @@ sub populate_model {
     ] );
 
     # This defines 6 database engine descriptors and 2 database bridge descriptors that we may be using.
-    # These details can help external code determine such things as what string-SQL flavors should be 
+    # These details can help external code determine such things as what string-SQL flavors should be
     # generated from the model, as well as which database features can be used natively or have to be emulated.
     # The 'si_name' has no meaning to code and is for users; the other attribute values should have meaning to said external code.
     $model->build_child_node_trees( [
@@ -197,10 +197,10 @@ sub populate_model {
     ] );
 
     # This defines one concrete instance each of the database catalog and an application using it.
-    # This concrete database instance includes two concrete user definitions, one that can owns 
-    # the schema and one that can only edit data.  The concrete application instance includes 
+    # This concrete database instance includes two concrete user definitions, one that can owns
+    # the schema and one that can only edit data.  The concrete application instance includes
     # a concrete connection descriptor going to this concrete database instance.
-    # Note that 'user' descriptions are only stored in a SQL::Routine model when that model is being used to create 
+    # Note that 'user' descriptions are only stored in a SQL::Routine model when that model is being used to create
     # database catalogs and/or create or modify database users; otherwise 'user' should not be kept for security sake.
     $model->build_child_node_trees( [
         [ 'catalog_instance', { 'si_name' => 'test', 'blueprint' => $catalog_bp, 'product' => 'PostgreSQL v8', }, [
@@ -237,7 +237,7 @@ sub populate_model {
 
 sub expected_model_nid_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -410,7 +410,7 @@ sub expected_model_nid_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -418,7 +418,7 @@ sub expected_model_nid_xml_output {
 
 sub expected_model_sid_long_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -591,7 +591,7 @@ sub expected_model_sid_long_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 
@@ -599,7 +599,7 @@ sub expected_model_sid_long_xml_output {
 
 sub expected_model_sid_short_xml_output {
     return
-'<?xml version="1.0" encoding="UTF-8"?>
+q{<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <elements>
         <scalar_data_type id="1" si_name="entity_id" base_type="NUM_INT" num_precision="9" />
@@ -772,7 +772,7 @@ sub expected_model_sid_short_xml_output {
     </sites>
     <circumventions />
 </root>
-'
+}
     ;
 }
 

@@ -1,6 +1,149 @@
                              SQL-Routine
 ----------------------------------------------------------------------
 
+2005-09-28   Darren Duncan <perl@DarrenDuncan.net>
+
+    * SQL-Routine Release 0.70.3 (SVN r878).
+
+    * New code file versions are: Routine.pm 0.70.3 and en.pm 0.38.2.
+
+    * From now on, any ordinary 'use [|only ]Foo' statements that appear
+    within *.pm files will be located in different places than before; the
+    'use' statements for modules that do not export anything, particularly
+    object oriented modules, will appear near the top of the file, above
+    all package declarations, but just below the use-pragma statements; the
+    'use' statements for modules whose exported functions we are using will
+    be placed just below the declarations of each package in which the
+    relevant exported functions are used.
+
+    * Removed any line-trailing whitespace from all distribution files.
+
+    * Reformatted all code by swapping various string quoting delimiters.
+
+    * Reformatted Routine.pm to un-cuddle all 'else' and 'elsif' blocks.
+
+    * Updated the _set_primary_parent_attribute() method in Routine.pm to
+    replace its postfix do-while loop with an equivalent code block
+    featuring an ordinary 'while' loop.  Likewise, updated the
+    _find_node_by_surrogate_id_remotely() method to replace its postfix
+    do-until loop with an equivalent code block featuring an ordinary
+    'while' loop.
+
+    * Updated Routine.pm and t_SRT_Util.pm to replace all of their 'unless'
+    conditionals with equivalent 'if' conditionals.
+
+    * Updated Routine.pm to rename all of its 'foreach' loops to 'for'.
+
+    * Updated Routine.pm to move its 2 for-loop labels upwards to their own
+    lines.
+
+    * Updated Routine.pm to reformat the 1 '|' delimited regular expression
+    as a '/' delimited one.
+
+    * Updated Routine.pm to reformat all 14 regular expressions so that
+    they use the /x flag.
+
+    * Reformatted all code to change any "if( ... ) {" to "if (...) {".
+
+    * Updated Routine.pm to reformat all 8 'while' like the 'if' were.
+
+    * Added named constants $EMPTY_STR and $INDENT to Routine.pm.
+
+    * Updated Routine.pm to add labels to all un-labeled [next|last|redo]
+    statements (22), and their innermost bounding loop controls (15).
+
+    * Reformatted all code so that any uses of the named unary operators
+    [defined|ref] no longer have parenthesis around their argument.
+
+    * Updated Routine.pm to reformat 14 uses of 'delete', and 16 uses of
+    'exists', and 7 uses of 'scalar', like with 'ref'.
+
+    * Removed 20 superfluous uses of 'scalar' in Routine.pm.
+
+    * Updated Routine.pm to replace 32 "<condition> and return ...;" each
+    with "return ... if <condition>;".
+
+    * Updated Routine.pm to replace 37 "<condition> or return ...;" each
+    with "return ... if <complement-condition>;".
+
+    * Updated Routine.pm to split up each of 11 "return if !(my $foo =
+    ...);" statements into 2, "my $foo = ...;" and "return if !$foo;".
+
+    * Updated Routine.pm to replace 17 "<condition> [and|or] [next|last]
+    ...;" with "[next|last] ... if ..." like with 'return'.
+
+    * Updated Routine.pm to replace every "<condition> [and|or]
+    $self->_throw ..." each with "$self->_throw ... if
+    [<condition>|<complement-condition>]".
+
+    * Updated Routine.pm to replace 17 "if ... return ..." with their
+    postfix-if equivalents; t_SRT_Util.pm also had 1 such change.
+
+    * Updated Routine.pm and SRT_11_Circular.t to rearrange (3,2)
+    conditional 'die' statements so they have postfix-if conditionals.
+
+    * Updated Routine.pm to rearrange 28 conditional '_throw...' statements
+    so they have postfix-if conditionals.
+
+    * Reformatted all code, in Routine.pm, so that any uses of the built-in
+    operators or functions named [bless|join|push|shift|splice|unshift] no
+    longer have parenthesis around their argument lists; either the parens
+    were just removed, or they were moved to surround both the
+    operator/function name and its arguments.
+
+    * Updated Routine.pm to reformat all 13 uses of the honorary built-in
+    function Scalar::Util::weaken() so it looks like a built-in; for each
+    use, the package-name qualifier was removed, as were the parenthesis
+    around its lone argument.  Since Scalar::Util exports nothing by
+    default, added a 'qw( weaken )' suffix to its 'use' statement.
+
+    * Added new external dependency on the honorary built-in function
+    List::Util::first() to Routine.pm.  Then rewrote 4 '(grep { $_ } @)[0]'
+    expressions as 'first { $_ } @', in the _build_node_is_child_or_not()
+    and valid_node_type_surrogate_id_attributes() functions.
+
+    * Added new external dependency on the honorary built-in function
+    List::MoreUtils::first_index() to Routine.pm.  Then rewrote the
+    _clear_node_ref_attribute() method to use this function rather than a
+    last-terminated for-loop when looking for a child Node in its parent's
+    child list.  Specifically, List::MoreUtils versions 0.12 and up are
+    required, since versions 0.11 and below didn't export some functions.
+
+    * In Routine.pm, updated the _assert_in_node_deferrable_constraints()
+    in several ways: 1. Added a new explicit test that a Node's "id" is
+    set, which while redundant now, won't be after a future update; 2. The
+    always-mandatory attribute validation test now reports a list of all
+    failing attributes, rather than just the first one encountered; 3.
+    Rewrote 3 other test blocks to be more concise, using grep statements
+    rather than for-with-push loops.  Related to the #2 changes, updated
+    en.pm to rename and reword the 'SRT_N_ASDC_MA_VAL_NO_SET' user text
+    message to 'SRT_N_ASDC_MA_VALS_NO_SET'; note that the en.pm message for
+    #1 was already in en.pm from when what will be was then so.
+
+    * Split up some long lines in en.pm.
+
+    * Updated any DEPENDENCIES documentation to reformat any indented
+    sections as paragraphs, and show version ranges like 'only' takes them.
+
+    * Reformatted all code so that every occurance of the string
+    concatenation operator (.) has a space between the operator and each of
+    its 2 arguments, rather than their all being in contact.  Also
+    reformatted any lines that are split on this operator so the operator
+    appears at the start of the second line, rather than the end of the
+    first line.
+
+    * Reformatted a few multi-line statements so that any [=|and|or] that
+    are split on appear at the start of a line rather than the end of one.
+
+    * Reformatted all of the code comments at the top of Routine.pm,
+    where its object property names, and constant values, are declared,
+    so that all comment lines don't exceed the 75 character line length.
+
+    * In Routine.pm, reformatted 4 cascading ternary statements into
+    aligned columns.
+
+    * Other miscellaneous code line alignments and splitting.
+
 2005-09-14   Darren Duncan <perl@DarrenDuncan.net>
 
     * SQL-Routine Release 0.70.2 (SVN r813).
@@ -124,7 +267,7 @@
 2004-10-04   Darren Duncan <perl@DarrenDuncan.net>
 
     * SQL-Routine Release 0.43, containing SQL::Routine 0.43, was released
-    on CPAN; this is the first release of the SQL-Routine distribution. 
+    on CPAN; this is the first release of the SQL-Routine distribution.
     This is the first release of any distribution to contain SQL::Routine,
     which was renamed from SQL::SyntaxModel.  This is the first release of
     this module following its official registration on the Perl 5 Module

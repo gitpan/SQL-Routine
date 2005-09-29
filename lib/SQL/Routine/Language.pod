@@ -25,7 +25,7 @@ amount of flexibility of what the SQL string can say, but it must conform
 to a specific grammar.
 
 This document, SQL::Routine::Language, is meant to say what all the 'types'
-of Nodes are, and what attributes and relationships are allowed for each. 
+of Nodes are, and what attributes and relationships are allowed for each.
 It is meant to say what 'grammar' for SQL::Routine's 'language' is, or what
 'schema' it accepts.
 
@@ -46,7 +46,7 @@ instead of 90 and 10.
 
 SQL::Routine aims to be a "90%+ solution", natively supporting what I
 consider to be the "most important" features of SQL, those which have stood
-the test of time, become widely used, and supported by multiple vendors. 
+the test of time, become widely used, and supported by multiple vendors.
 This includes many "advanced" features which shipping database products
 often lack, and even a handful which no database may support now but
 "should".  I have mainly avoided features which are new and unused, or
@@ -447,7 +447,7 @@ The SQL::Routine language does not require you to explicitly run a
 connect/open/attach command before running SQL against a database.  Since
 the info it needs to do this is provided in 'catalog link' definitions that
 are already related to the SQL definitions, an implementer can just
-implicitely connect to a database for you when you ask it to run the SQL. 
+implicitely connect to a database for you when you ask it to run the SQL.
 And that implicit link can either be cached or new, such as the implementer
 decides. I<Note that this idea may need to be thought out further.>
 
@@ -487,7 +487,7 @@ section lists the currently known enumerated sets.)
 B<node_ref> - This is a number which is equal to the B<node_id> of another
 Node that has a particular Node Type; it is used to implement relations
 between Nodes.  This attribute type is for attributes whose conceptual
-values are either multi-part or are possibly shared by multiple Nodes. 
+values are either multi-part or are possibly shared by multiple Nodes.
 Each minor type is a Node Type.
 
 =back
@@ -507,7 +507,7 @@ not.
 =item
 
 B<uint> - This is an "unsigned integer", also known as a non-negative
-integer; its values may only be integers greater than or equal to 0. 
+integer; its values may only be integers greater than or equal to 0.
 Attributes of this type indicate the "scale" of something, meaning how
 'big' or 'long' it is.
 

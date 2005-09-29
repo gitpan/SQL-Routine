@@ -115,20 +115,20 @@ This set of connection management built-ins may only be invoked in a
 client-side routine, usually with 'routine_stmt' Nodes.
 
     CATALOG_LIST()
-        purpose: 
+        purpose:
             - Fetches a list of auto-detectable database instances.
             - Skips by default any details that CATALOG_INFO() and CONN-context
             built-ins can handle; it is minimalist for speed.
         args:
             - RECURSIVE(1) - SCALAR.bool - Opt: To scan inside each db as well.
-        effects: 
+        effects:
             - A new 'catalog' Node is added to the SQL::Routine::Container for
             each one found, plus associated 'catalog_link', 'catalog_instance',
             and 'catalog_link_instance' Nodes (one each per 'catalog'), plus
             'data_storage_product' and 'data_link_product' Nodes if necessary.
             - If RECURSIVE is true, call CATALOG_INFO() in recursive mode for
             each database catalog found.
-        returns: 
+        returns:
             - SRT_NODE_LIST:catalog_link - The newly added cli Nodes.
         throws:
             - SRTX_NO_ENVI_LOAD_FAILED, SRTX_ENVI_EXEC_FAILED,
@@ -146,7 +146,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
             - RECURSIVE(1) - SCALAR.bool - Opt: To get all determinable details.
         effects:
             - May set some catalog Node attributes, or add child Nodes.
-            - If RECURSIVE is true, call these built-ins in recursive mode: 
+            - If RECURSIVE is true, call these built-ins in recursive mode:
             OWNER_LIST(), SCHEMA_LIST(), ROLE_LIST(), USER_LIST().
         returns:
             - SRT_NODE:catalog_link - The same cli that LINK_BP has.
@@ -155,7 +155,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
             SRTX_NO_CONN_SERVER_ABSENT, SRTX_NO_CONN_BAD_AUTH,
             SRTX_NO_CONN_ACTIVE_LOST
 
-    CATALOG_VERIFY() 
+    CATALOG_VERIFY()
         purpose:
             - Compares a provided db spec to an actual database.
             - Functions analogously to CATALOG_INFO() except that no changes
@@ -178,7 +178,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
             SRTX_NO_CONN_SERVER_ABSENT, SRTX_NO_CONN_BAD_AUTH,
             SRTX_NO_CONN_ACTIVE_LOST
 
-    CATALOG_CREATE() 
+    CATALOG_CREATE()
         purpose:
             - Creates a new database instance.
             - By default, creates just the catalog but puts nothing inside it.
@@ -192,20 +192,20 @@ client-side routine, usually with 'routine_stmt' Nodes.
             SRTX_NO_CONN_SERVER_ABSENT, SRTX_NO_CONN_BAD_AUTH,
             SRTX_NO_CONN_ACTIVE_LOST
 
-    CATALOG_DELETE() 
+    CATALOG_DELETE()
         purpose:
             - Deletes a database instance.
         args:
             - LINK_BP(1) - SRT_NODE:catalog_link - The catalog to delete.
 
-    CATALOG_CLONE() 
+    CATALOG_CLONE()
         purpose:
             - Makes a clone of a db instance in another storage loc.
         args:
             - SOURCE_LINK_BP(1) - SRT_NODE:catalog_link - The catalog to copy from.
             - DEST_LINK_BP(1) - SRT_NODE:catalog_link - The catalog to copy to / create.
 
-    CATALOG_MOVE() 
+    CATALOG_MOVE()
         purpose:
             - Moves a db inst from one storage location to another.
         args:
@@ -215,7 +215,7 @@ client-side routine, usually with 'routine_stmt' Nodes.
 This set of connection management built-ins may only be invoked in a
 routine, client or database side, usually with 'routine_stmt' Nodes.
 
-    CATALOG_OPEN() 
+    CATALOG_OPEN()
         purpose:
             - Opens a link or connection to a database instance from an application.
             - Note that it is the routine_var or routine_arg declaration SRT
@@ -237,7 +237,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
         "lightweight connections" or independent transactional contexts to
         share the same actual/heavy connection.
 
-    CATALOG_CLOSE() 
+    CATALOG_CLOSE()
         purpose:
             - Closes a link or connection to a database instance from an application.
         context:
@@ -247,7 +247,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
         throws:
             - SRTX_NO_CONN_ACTIVE_LOST
 
-    CATALOG_PING() 
+    CATALOG_PING()
         purpose:
             - Verifies that a db connection is still open, that the db is accessible.
         context:
@@ -258,7 +258,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
             - Since we are explicitly testing it, no SRTX_NO_CONN_ACTIVE_LOST
             exception is thrown if the connection is down.
 
-    CATALOG_ATTACH() 
+    CATALOG_ATTACH()
         purpose:
             - Attaches a link or connection to a database instance from another db instance.
         context:
@@ -268,7 +268,7 @@ routine, client or database side, usually with 'routine_stmt' Nodes.
         throws:
             - SRTX_NO_CONN_ACTIVE_LOST
 
-    CATALOG_DETACH() 
+    CATALOG_DETACH()
         purpose:
             - Detaches a link or connection to a database instance from another db instance.
         context:
@@ -352,13 +352,13 @@ database side, usually with 'routine_stmt' Nodes.
     REC_LOCK(view)    - places a lock on recs for a consistent read plus update
     REC_UNLOCK(view)  - releases an existing lock on recs
 
-    RETURN() 
+    RETURN()
         purpose:
             - Causes the parent routine to stop right away, and optionally returns a value.
         args:
             - RETURN_VALUE(1) - Opt: The container expression value that the parent routine returns.
 
-    CURSOR_OPEN() 
+    CURSOR_OPEN()
         purpose:
             - Opens a select cursor context for reading from (or performs a select if in right context).
         context:
@@ -366,7 +366,7 @@ database side, usually with 'routine_stmt' Nodes.
         effects:
             - The CURSOR_CX changes from an inactive state to active, ready to be fetched from.
 
-    CURSOR_CLOSE() 
+    CURSOR_CLOSE()
         purpose:
             - Closes a select cursor context when you're done with it.
         context:
@@ -374,7 +374,7 @@ database side, usually with 'routine_stmt' Nodes.
         effects:
             - The CURSOR_CX changes from an active to an inactive state.
 
-    CURSOR_FETCH() 
+    CURSOR_FETCH()
         purpose:
             - Reads one row from an opened cursor and puts it in a ROW variable.
         context:
@@ -382,7 +382,7 @@ database side, usually with 'routine_stmt' Nodes.
         args:
             - INTO(1) - ROW - The ROW variable being fetched into.
 
-    SELECT() 
+    SELECT()
         purpose:
             - Fetches either one row or all rows from a table/view and puts it in a ROW/RW_ARY variable.
             - The container type of the target variable determines how many rows are fetched.
@@ -392,7 +392,7 @@ database side, usually with 'routine_stmt' Nodes.
             - SELECT_DEFN(1) - SRT_NODE:view - The view that defines this select action.
             - INTO(1) - ROW|RW_ARY - The ROW/RW_ARY variable being fetched into.
 
-    INSERT() 
+    INSERT()
         purpose:
             - Inserts the contents of a ROW/RW_ARY variable into a table/view.
             - The container type of the source variable determines how many rows are inserted.
@@ -401,7 +401,7 @@ database side, usually with 'routine_stmt' Nodes.
         args:
             - INSERT_DEFN(1) - SRT_NODE:view - The view that defines this insert action.
 
-    UPDATE() 
+    UPDATE()
         purpose:
             - Updates between zero and all rows in a table/view.
             - The "where clause" of the view determines how many rows are updated.
@@ -410,7 +410,7 @@ database side, usually with 'routine_stmt' Nodes.
         args:
             - UPDATE_DEFN(1) - SRT_NODE:view - The view that defines this update action.
 
-    DELETE() 
+    DELETE()
         purpose:
             - Deletes between zero and all rows in a table/view.
             - The "where clause" of the view determines how many rows are deleted.
@@ -419,13 +419,13 @@ database side, usually with 'routine_stmt' Nodes.
         args:
             - DELETE_DEFN(1) - SRT_NODE:view - The view that defines this delete action.
 
-    COMMIT() 
+    COMMIT()
         purpose:
             - Commits the current transaction, then starts a new one.
         context:
             - CONN_CX - CONN - An open database connection to provide our action context.
 
-    ROLLBACK() 
+    ROLLBACK()
         purpose:
             - Rolls back the current transaction, then starts a new one.
         context:
@@ -437,25 +437,25 @@ database side, usually with 'routine_stmt' Nodes.
 
 The following possible built-ins currently lack rigorous definitions.
 
-    LOCK - 
-    UNLOCK - 
-    PLAIN - 
-    THROW - 
-    TRY - 
-    CATCH - 
-    IF - 
-    ELSEIF - 
-    ELSE - 
-    SWITCH - 
-    CASE - 
-    OTHERWISE - 
-    FOREACH - 
-    FOR - 
-    WHILE - 
-    UNTIL - 
-    MAP - 
-    GREP - 
-    REGEXP - 
+    LOCK -
+    UNLOCK -
+    PLAIN -
+    THROW -
+    TRY -
+    CATCH -
+    IF -
+    ELSEIF -
+    ELSE -
+    SWITCH -
+    CASE -
+    OTHERWISE -
+    FOREACH -
+    FOR -
+    WHILE -
+    UNTIL -
+    MAP -
+    GREP -
+    REGEXP -
     LOOP - a loop/iterator context inside a routine, such as a 'foreach'
     CONDITION - a conditional context inside a routine, such as an 'if'
     LOGIC - some control-flow logic operation ...
@@ -463,7 +463,7 @@ The following possible built-ins currently lack rigorous definitions.
 This set of built-in standard routines may be invoked within any routine or
 view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
 
-    CAST() 
+    CAST()
         purpose:
             - Cast a single child expression into a different specified scalar data-type.
         args:
@@ -594,24 +594,24 @@ view, client or db side, usually with 'routine_expr' or 'view_expr' Nodes.
     GB_CUBE - olap, use in group-by - produces CUBE ( sub-exprs )
         FACTORS(N) - the sub-exprs defining the grouping operation
 
-    Note that the function list is incomplete and will grow over time.  It does not currently 
-    mention functions for working with view/cursor subqueries, such as "in" (field in subquery), 
-    and also doesn't include any list operators, such as for comparing a list of field names to 
+    Note that the function list is incomplete and will grow over time.  It does not currently
+    mention functions for working with view/cursor subqueries, such as "in" (field in subquery),
+    and also doesn't include any list operators, such as for comparing a list of field names to
     a subquery that returns multiple columns (as I suspect MySQL 4.1 supports).
 
-    I took out CROWID, CROWNUM, CLEVEL; there exist replacements for such as these, 
+    I took out CROWID, CROWNUM, CLEVEL; there exist replacements for such as these,
     such as in SQL:2003, 7.14 "<search or cycle clause>" (p365).
 
-    Note: While it might conceptually go here, statements of type DECLARE will 
+    Note: While it might conceptually go here, statements of type DECLARE will
     be added to a block/routine implicitely by the fact that routine_var Nodes exist.
-    The SQL:2003 standard says DECLARE appears inside a BEGIN ... END block, not before 
+    The SQL:2003 standard says DECLARE appears inside a BEGIN ... END block, not before
     it such as Oracle does.  It looks like "DECLARE <var name> <type name> [DEFAULT <expr>]".
     The standard also says "SET foo = expr;" rather than the "foo := expr;" as in Oracle.
 
 =head2 simple_scalar_type
 
 These represent the basic scalar data value types that can be used to
-further qualify variables (or literals) whose container_type is SCALAR. 
+further qualify variables (or literals) whose container_type is SCALAR.
 The 1999 SQL standard indicates 5 classes of simple (Predefined) data
 types: Numeric, String, Boolean, Datetime, Interval; all of the data types
 in those classes are represented by at least one of the following
@@ -620,10 +620,10 @@ ignore that one for the moment; you can store XML in a STR_CHAR.
 
     NUM_INT   - an exact integral or whole number/numeric
     NUM_EXA   - an exact decimal or fractional number/numeric
-    NUM_APR   - an approximately represented number/numeric (eg: floating point) 
+    NUM_APR   - an approximately represented number/numeric (eg: floating point)
     STR_BIT   - a string of bits or generic binary data (can store anything)
-    STR_CHAR  - a string of characters (encoding spec defined separately) 
-    BOOLEAN   - only two values: false or true 
+    STR_CHAR  - a string of characters (encoding spec defined separately)
+    BOOLEAN   - only two values: false or true
     DATM_FULL - a full datetime ('timestamp') having both YMD and HMS components
     DATM_DATE - a valid Gregorian (says the 2003,1999 standard) date having just YMD
     DATM_TIME - a valid time of day having just HMS components
@@ -643,7 +643,7 @@ are only applicable to data whose simple_scalar_type is STR_CHAR.
     UTF32  - unicode UTF-32 (has big/little endian versions)
     ASCII  - 8-bit ascii
     ANSEL  - 8-bit ansel (a standard-defined super-set of ascii, used by libraries, genealogy)
-    EBCDIC - 8-bit ebcdic   
+    EBCDIC - 8-bit ebcdic
 
     Others will be added as appropriate.
     Note that some of these examples may be wrong for practical use and be changed later.
@@ -705,13 +705,13 @@ will impose constraints on what data can be put in the columns.
     FOREIGN  - index imposes a many-to-one foreign key constraint on a set of columns
     UFOREIGN - index imposes a one-to-one foreign key (assuming target is a unique key)
 
-    Note that the FULLTEXT index currently takes no arguments when it is getting 
+    Note that the FULLTEXT index currently takes no arguments when it is getting
     set up, such as a customizable stopword list; that will be added later.
     Note that the UFOREIGN type is interchangeable with UNIQUE+FOREIGN for same table cols.
 
 =head2 view_type
 
-These represent the basic types that a database view or SQL query can be. 
+These represent the basic types that a database view or SQL query can be.
 All types of views are very similar in structure, but they are not the
 same; by setting the view_type of a view, you are saying which differences
 apply to that view and possibly any child views.
@@ -776,18 +776,18 @@ in the "from" part.
     MAXR   - says to page the results, and how many rows per page, corresponds to SQL "limit" first part
     SKIPR  - says how many of the first rows to skip before returing the next ones, corr to "limit" second part
 
-    Note that SQL::Routine may need more metadata to represent parts of a GROUP BY 
+    Note that SQL::Routine may need more metadata to represent parts of a GROUP BY
     clause, such as OLAP extensions ... or it may not.
 
     Note that details for the INTO portion of a "select|fetch into" query is
     stored in 'view' Nodes, and so isn't represented by the view_part
     enumerated list.  So is the SET portion of an "insert statement".
 
-    According to SQL:2003 Foundation 7.11 (p331), the WINDOW clause in a query seems 
-    to contain/replace the likes of ORDER BY, LIMIT/MAXR, OFFSET/SKIPR, but it is 
+    According to SQL:2003 Foundation 7.11 (p331), the WINDOW clause in a query seems
+    to contain/replace the likes of ORDER BY, LIMIT/MAXR, OFFSET/SKIPR, but it is
     more powerful than that.  SQL::Routine may need more metadata to do this right.
 
-    Note that several databases like Postgres and SQLite use LIMIT for MAXR 
+    Note that several databases like Postgres and SQLite use LIMIT for MAXR
     and OFFSET for SKIPR.  I may do that too.
 
 =head2 routine_type
@@ -831,12 +831,12 @@ execute.
     AFTR_DEL - after delete
     INST_DEL - instead of delete
 
-    Note: Some databases (eg: SQLServer 2000) can let a trigger run "instead" of the triggering 
+    Note: Some databases (eg: SQLServer 2000) can let a trigger run "instead" of the triggering
     event, though the SQL:2003 standard does not mention such a feature.
 
-    Note: It appears that triggers (in Oracle at least) can have names and a much more complicated 
+    Note: It appears that triggers (in Oracle at least) can have names and a much more complicated
     condition as its "event"; it also can be attached to things other than tables.
-    It can also exist in a separate schema.  Keep that in mind for a future update.  
+    It can also exist in a separate schema.  Keep that in mind for a future update.
     See this: http://www.cit.uws.edu.au/docs/oracle/sqlref/ch4h.htm
 
 =head2 user_type

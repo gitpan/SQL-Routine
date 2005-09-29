@@ -18,13 +18,12 @@ sub message {
 
 sub error_to_string {
     my (undef, $message) = @_;
-    if( ref($message) and UNIVERSAL::isa( $message, 'Locale::KeyedText::Message' ) ) {
+    if (ref $message and UNIVERSAL::isa( $message, 'Locale::KeyedText::Message' )) {
         my $translator = Locale::KeyedText->new_translator( ['SQL::Routine::L::'], ['en'] );
         my $user_text = $translator->translate_message( $message );
-        unless( $user_text ) {
-            return 'internal error: can\'t find user text for a message: '.
-                $message->as_string().' '.$translator->as_string();
-        }
+        return q{internal error: can't find user text for a message: }
+            . $message->as_string() . ' ' . $translator->as_string()
+            if !$user_text;
         return $user_text;
     }
     return $message; # if this isn't the right kind of object

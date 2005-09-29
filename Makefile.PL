@@ -9,7 +9,9 @@ WriteMakefile(
     'PREREQ_PM' => {
         'version' => 0,
         'only' => 0,
-        'Scalar::Util' => 0, # for weak refs
+        'Scalar::Util' => 0,
+        'List::Util' => 0,
+        'List::MoreUtils' => '0.12',
         'Test::More' => 0, # but only for the test suite
         'Locale::KeyedText' => '1.6.0',
     },

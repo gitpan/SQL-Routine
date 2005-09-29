@@ -23,30 +23,32 @@ eval {
     eval {
         $vw2->set_primary_parent_attribute( $vw3 );
     };
-    if( my $exception = $@ ) {
-        if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-            if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
+    if (my $exception = $@) {
+        if (ref $exception and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' )) {
+            if ($exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF') {
                 $test1_passed = 1;
             }
         }
-        $test1_passed or die $exception;
+        die $exception
+            if !$test1_passed;
     }
-    ok( $test1_passed, "prevent creation of circular refs - parent is child" );
+    ok( $test1_passed, 'prevent creation of circular refs - parent is child' );
 
     my $test2_passed = 0;
     eval {
         $vw2->set_primary_parent_attribute( $vw2 );
     };
-    if( my $exception = $@ ) {
-        if( ref($exception) and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' ) ) {
-            if( $exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF' ) {
+    if (my $exception = $@) {
+        if (ref $exception and UNIVERSAL::isa( $exception, 'Locale::KeyedText::Message' )) {
+            if ($exception->get_message_key() eq 'SRT_N_SET_PP_AT_CIRC_REF') {
                 $test2_passed = 1;
             }
         }
-        $test2_passed or die $exception;
+        die $exception
+            if !$test2_passed;
     }
-    ok( $test2_passed, "prevent creation of circular refs - parent is self" );
+    ok( $test2_passed, 'prevent creation of circular refs - parent is self' );
 };
-$@ and fail( "TESTS ABORTED: ".t_SRT_Util->error_to_string( $@ ) );
+$@ and fail( 'TESTS ABORTED: ' . t_SRT_Util->error_to_string( $@ ) );
 
 1;
